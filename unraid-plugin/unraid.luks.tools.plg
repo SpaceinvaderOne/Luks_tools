@@ -1,0 +1,141 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name                 "unraid.luks.tools">
+<!ENTITY plugin_version       "2025.01.22">
+<!ENTITY main_plugin          "https://github.com/spaceinvaderone/rebuild-missing-Unraid-docker-templates/raw/refs/heads/main/packages/pluginmain/unraid.luks.tools-&plugin_version;-x86_64.txz">
+<!ENTITY plugin_md5           "f47c9953463d29f2af52faa7b7d30b93">
+<!ENTITY plugdir              "/boot/config/plugins/&name;">
+<!ENTITY launch               "Settings/rebuild">
+<!ENTITY author               "SpaceInvaderOne">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch;" icon="gears">
+
+<CHANGES>
+###2024.11.01
+- Initial release of unraid.luks.tools plugin
+</CHANGES>
+
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    COMPATIBILITY CHECK START     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+<FILE Run="/usr/bin/php">
+<INLINE><![CDATA[
+<?php
+  $version = parse_ini_file("/etc/unraid-version");
+  if (version_compare($version['version'], "6.9.0", "<")) {
+    echo "********************************************************************\n";
+    echo "This Plugin requires Unraid version 6.9.0 or greater.\n";
+    echo "********************************************************************\n";
+    exit(1);
+  }
+?>
+]]></INLINE>
+</FILE>
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    COMPATIBILITY CHECK END     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    MAIN PLUGIN START   xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+<!-- REMOVE OLD -->
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+# ---------------------------------------------------
+PLUGIN_NAME="unraid.luks.tools"
+PLUGIN_MD5="f47c9953463d29f2af52faa7b7d30b93"
+# ---------------------------------------------------
+LOCAL_PATH="/boot/config/plugins/$PLUGIN_NAME"
+
+# look for old plugin files by checking md5
+for FILE in "$LOCAL_PATH/${PLUGIN_NAME}"*; do
+  if [[ -f "$FILE" ]]; then
+    echo "Checking file $FILE"
+    MD5=$(md5sum "$FILE" 2>/dev/null | grep -Po '^\S+')
+    
+    if [[ "$MD5" != "$PLUGIN_MD5" ]]; then
+      echo " $FILE does not match MD5 checksum. Removing old plugin file."
+      rm -f "$FILE"
+    else
+      echo " $FILE is current. Keeping this file."
+    fi
+  fi
+done
+]]></INLINE>
+</FILE>
+<!-- INSTALL -->
+<FILE Name="&plugdir;/&name;-&plugin_version;-x86_64.txz" Run="upgradepkg --install-new">
+  <URL>&main_plugin;</URL>
+  <MD5>&plugin_md5;</MD5>
+</FILE>
+
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    MAIN PLUGIN END   xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+
+
+
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX     POST INSTALL START    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+# ---------------------------------------------------
+PLUGIN_NAME="unraid.luks.tools"
+# ---------------------------------------------------
+SCRIPT_DIR="/usr/local/emhttp/plugins/$PLUGIN_NAME/scripts/"
+echo "+=============================================================================="
+echo "|  Setting permissions"
+echo "+=============================================================================="
+# loop through each .sh file in the script directory and set executable permissions
+for script in "$SCRIPT_DIR"*.sh; do
+    if [ -f "$script" ]; then
+        chmod +x "$script"
+        echo "Set executable permissions for $script"
+    else
+        echo "No .sh files found in $SCRIPT_DIR."
+    fi
+done
+
+echo ""
+echo "+=============================================================================="
+echo "|  &name; v &plugin_version;"
+echo "|  by &author;"
+echo "|  Has successfully been installed"
+echo "+=============================================================================="
+echo ""
+]]></INLINE>
+</FILE>
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX      POST INSTALL END     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX      UNINSTALL START      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+<!-- Uninstall Script -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE><![CDATA[
+# Define variables
+PLUGIN_NAME="unraid.luks.tools"
+LOCAL_PATH="/boot/config/plugins/$PLUGIN_NAME"
+
+echo "Starting uninstallation of $PLUGIN_NAME and its dependencies..."
+
+# Loop through all files in LOCAL_PATH, uninstalling each package
+for FILE in "$LOCAL_PATH"/*.t{g,x}z; do
+  if [[ -f "$FILE" ]]; then
+    # Remove the extension to get the full package name
+    PACKAGE_NAME=$(basename "$FILE" .tgz)
+    PACKAGE_NAME=$(basename "$PACKAGE_NAME" .txz)
+
+    echo "Uninstalling package: $PACKAGE_NAME"
+    removepkg "$PACKAGE_NAME"
+
+    echo "Package $PACKAGE_NAME has been uninstalled."
+  fi
+done
+
+# Remove the main plugin directory and all related files/subdirectories
+rm -rf /usr/local/emhttp/plugins/$PLUGIN_NAME
+rm -rf "$LOCAL_PATH"
+echo ""
+echo "+=============================================================================="
+echo "|  $PLUGIN_NAME" and any dependencies
+echo "|  have sucessfully been removed"
+echo "+=============================================================================="
+echo ""
+]]></INLINE>
+</FILE>
+<!-- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX      UNINSTALL END      xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-->
+
+
+
+</PLUGIN>

@@ -1,0 +1,51 @@
+Menu="luks:1"
+Title="Auto Start"
+---
+<div class="section">
+  <h2>LUKS Management - Autostart Configuration</h2>
+  <p>Configure and manage your LUKS-encrypted drives with this tool. Enter the required passphrase and specify options for header backup and dry run mode.</p>
+
+  <form id="luksForm">
+    <label for="passphrase"><strong>Passphrase:</strong></label>
+    <input type="password" id="passphrase" name="passphrase" required><br><br>
+
+    <label for="backupHeaders"><strong>Backup Headers:</strong></label>
+    <select id="backupHeaders" name="backupHeaders">
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select><br><br>
+
+    <label for="dryRun"><strong>Dry Run:</strong></label>
+    <select id="dryRun" name="dryRun">
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select><br><br>
+
+    <button type="button" onclick="runLUKSCommand()">Run LUKS Command</button>
+  </form>
+
+  <p id="outputLUKS"></p> <!-- Output display -->
+</div>
+
+<script>
+  function runLUKSCommand() {
+    const passphrase = document.getElementById('passphrase').value;
+    const backupHeaders = document.getElementById('backupHeaders').value;
+    const dryRun = document.getElementById('dryRun').value;
+
+    if (!passphrase) {
+      document.getElementById('outputLUKS').innerHTML = 'Error: Passphrase is required.';
+      return;
+    }
+
+    $.post('/usr/local/emhttp/plugins/unraid.luks.tools/scripts/luks_script.php', {
+      passphrase: passphrase,
+      backupHeaders: backupHeaders,
+      dryRun: dryRun
+    }, function(data) {
+      document.getElementById('outputLUKS').innerHTML = data.replace(/\\n/g, '<br>');
+    }).fail(function() {
+      document.getElementById('outputLUKS').innerHTML = 'Error: Failed to execute the LUKS command.';
+    });
+  }
+</script>

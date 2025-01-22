@@ -1,0 +1,7 @@
+Menu="Luks_Tools"
+Type="xmenu"
+Title="Unraid Luks Tools"
+Tabs="true"
+Icon="plugin_kuks_tools.png"
+Tag="custom-icon"
+---
