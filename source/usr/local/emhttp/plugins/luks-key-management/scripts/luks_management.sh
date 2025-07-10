@@ -41,27 +41,22 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # Display script usage information and exit
 #
 usage() {
-    echo "Usage: In the User Scripts GUI, provide arguments like:"
-    echo "  -p '<passphrase>' [-d] [-b]"
-    echo "IMPORTANT: Always wrap your passphrase in single quotes."
+    echo "Usage: This script is intended to be called from the plugin UI."
+    echo "The passphrase should be piped to standard input."
+    echo "Flags: [-d] [-b]"
     exit 1
 }
 
 #
-# Custom argument parser for the Unraid User Scripts environment
+# Custom argument parser for the Unraid Plugin environment
 #
 parse_args() {
-    local input_string="$*" # Combine all arguments into a single string
+    # Read the passphrase securely from standard input to avoid shell quoting issues.
+    read -r PASSPHRASE
 
-    # Extract the passphrase from within single quotes after the -p flag
-    if [[ "$input_string" =~ -p[[:space:]]\'([^\']+)\' ]]; then
-        PASSPHRASE="${BASH_REMATCH[1]}"
-    else
-        echo "Error: Could not find a valid passphrase. Please provide it using -p '<password>'"
-        usage
-    fi
+    local input_string="$*" # Combine all command-line arguments into a single string
 
-    # Check for other flags in the string
+    # Check for flags in the argument string
     if [[ "$input_string" =~ -d ]]; then
         DRY_RUN="yes"
         echo "Dry run mode enabled."
@@ -73,7 +68,7 @@ parse_args() {
 
     # Final validation
     if [[ -z "$PASSPHRASE" ]]; then
-        echo "Error: Passphrase is required and could not be parsed."
+        echo "Error: Passphrase is required and was not received via standard input."
         usage
     fi
 }
