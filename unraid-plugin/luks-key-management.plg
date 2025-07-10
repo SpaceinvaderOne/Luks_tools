@@ -5,7 +5,7 @@
 <!ENTITY plugin_version       "2025.07.10">
 <!ENTITY launch_page          "Settings/&name;">
 <!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.10-x86_64.txz">
-<!ENTITY plugin_md5           "3fb24ef345fb6d6231fd38dc1d8488a6">
+<!ENTITY plugin_md5           "fc8a9cd3f64b89ad04fd3f5e9e1b51ed">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
