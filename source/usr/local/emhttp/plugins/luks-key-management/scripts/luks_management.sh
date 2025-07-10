@@ -4,15 +4,6 @@
 # This script generates a dynamic key based on hardware identifiers (motherboard
 # serial and default gateway MAC address) and adds it as a valid key to all
 # LUKS-encrypted devices. It also provides functionality to back up LUKS headers.
-#
-# Unraid User Script Header:
-# description=Encrypt drives with a hardware-tied key and manage LUKS headers
-# foregroundOnly=true
-# arrayStarted=true
-# name=LUKS Key Management
-# clearLog=true
-# argumentDescription=Use flags: -p <pass> -d (dry-run) -b (backup headers). Quote passwords with special characters!
-# argumentDefault=-p 'YOUR_PASSWORD_HERE' -d
 
 # Exit on any error
 set -e
@@ -42,7 +33,6 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 #
 usage() {
     echo "Usage: This script is intended to be called from the plugin UI."
-    echo "The passphrase should be piped to standard input."
     echo "Flags: [-d] [-b]"
     exit 1
 }
@@ -51,26 +41,27 @@ usage() {
 # Custom argument parser for the Unraid Plugin environment
 #
 parse_args() {
-    # Read the passphrase securely from standard input to avoid shell quoting issues.
-    read -r PASSPHRASE
-
-    local input_string="$*" # Combine all command-line arguments into a single string
-
-    # Check for flags in the argument string
-    if [[ "$input_string" =~ -d ]]; then
-        DRY_RUN="yes"
-        echo "Dry run mode enabled."
-    fi
-    if [[ "$input_string" =~ -b ]]; then
-        BACKUP_HEADERS="yes"
-        echo "Header backup enabled."
-    fi
-
-    # Final validation
-    if [[ -z "$PASSPHRASE" ]]; then
-        echo "Error: Passphrase is required and was not received via standard input."
+    # Read the passphrase securely from an environment variable.
+    if [[ -n "$LUKS_PASSPHRASE" ]]; then
+        PASSPHRASE="$LUKS_PASSPHRASE"
+    else
+        echo "Error: Passphrase not found in environment variable."
         usage
     fi
+
+    # Process command-line flags (-d, -b)
+    for arg in "$@"; do
+        case "$arg" in
+            -d)
+                DRY_RUN="yes"
+                echo "Dry run mode enabled."
+                ;;
+            -b)
+                BACKUP_HEADERS="yes"
+                echo "Header backup enabled."
+                ;;
+        esac
+    done
 }
 
 #
@@ -437,8 +428,8 @@ cleanup() {
 # Ensure cleanup runs on script exit, including on error
 trap cleanup EXIT
 
-# Step 1: Parse command-line arguments. Use "$*" to pass all args as a single string.
-parse_args "$*"
+# Step 1: Parse command-line arguments.
+parse_args "$@"
 
 # Step 2: Generate the dynamic, hardware-tied keyfile
 generate_keyfile

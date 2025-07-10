@@ -3,7 +3,6 @@
 header('Content-Type: text/plain');
 
 // Define the absolute path to your main LUKS management script
-// IMPORTANT: Update this path to match your plugin's structure.
 $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh";
 
 // --- Get POST data from the UI ---
@@ -17,7 +16,7 @@ if (empty($passphrase)) {
     exit(1);
 }
 
-// --- Build the Shell Command Arguments (Password is now sent via stdin) ---
+// --- Build the Shell Command Arguments ---
 $args = "";
 if ($backup_headers_option === 'yes') {
     $args .= " -b";
@@ -28,21 +27,27 @@ if ($dry_run_option === 'yes') {
 
 $command = $script_path . $args;
 
-// --- Execute the Command using proc_open for secure password handling ---
+// --- Execute the Command using proc_open ---
 
 // Define the process descriptors
 $descriptorspec = array(
-   0 => array("pipe", "r"),  // stdin is a pipe that we can write to
-   1 => array("pipe", "w"),  // stdout is a pipe that we can read from
-   2 => array("pipe", "w")   // stderr is a pipe that we can read from
+   0 => array("pipe", "r"),  // stdin
+   1 => array("pipe", "w"),  // stdout
+   2 => array("pipe", "w")   // stderr
 );
 
-// Start the process
-$process = proc_open($command, $descriptorspec, $pipes);
+// THE FIX: Pass the passphrase securely as an environment variable.
+// We also explicitly provide a standard PATH to ensure the script can find system commands.
+$env = array(
+    'LUKS_PASSPHRASE' => $passphrase,
+    'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
+);
+
+// Start the process with the explicit environment
+$process = proc_open($command, $descriptorspec, $pipes, null, $env);
 
 if (is_resource($process)) {
-    // Write the raw passphrase to the script's standard input
-    fwrite($pipes[0], $passphrase);
+    // We don't need to write to stdin anymore, so close it immediately.
     fclose($pipes[0]);
 
     // Read the output from the script's standard output
@@ -63,7 +68,7 @@ if (is_resource($process)) {
 
     echo $output;
 } else {
-    echo "Error: Failed to execute the script process.";
+    echo "Error: Failed to execute the script process (proc_open failed).";
     exit(1);
 }
 ?>
