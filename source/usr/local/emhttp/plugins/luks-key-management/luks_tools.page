@@ -1,0 +1,115 @@
+<?
+# --- Unraid .page file header ---
+# Menu="Utilities"
+# Type="xmenu"
+# Title="LUKS Key Management"
+# Tabs="false"
+# Icon="icon-key"
+# Tag="custom-icon"
+?>
+
+<div class="section">
+  <h2>LUKS Auto-Unlock for Encrypted Arrays and Pools</h2>
+  <p>This tool adds a secondary LUKS key, dynamically generated at boot by hashing your router’s MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk or downloaded.</p>
+  <p>Drives will auto-unlock only when the server is running on the original hardware and connected to the original router. If stolen, the unlock fails unless both the server and router are present.</p>
+  <p>Manual unlock is always possible using your original passphrase or the secondary key (if backed up). This provides secure auto-unlock without storing keys or relying on the internet.</p>
+
+  <form id="luksToolsForm">
+    <!-- LUKS Management Section -->
+    <h3>Step 1 - Add Derived Key</h3>
+    <dl>
+      <dt><strong>Passphrase:</strong></dt>
+      <dd>
+        <input type="password" id="passphrase" name="passphrase" class="short" required>
+        <div class="description">Enter your original LUKS encryption key.</div>
+      </dd>
+
+      <dt><strong>Backup Headers:</strong></dt>
+      <dd>
+        <select id="backupHeaders" name="backupHeaders">
+          <option value="no" selected>No</option>
+          <option value="yes">Yes</option>
+        </select>
+        <div class="description">Recommended. Creates a password-protected backup of all LUKS headers on your boot drive.</div>
+      </dd>
+
+      <dt><strong>Dry Run:</strong></dt>
+      <dd>
+        <select id="dryRun" name="dryRun">
+          <option value="yes" selected>Yes</option>
+          <option value="no">No</option>
+        </select>
+        <div class="description">Simulates the process without making changes. Select ‘No’ to apply changes.</div>
+      </dd>
+    </dl>
+    <p>
+      <button type="button" onclick="runLUKSCommand()">Add Derived Key</button>
+    </p>
+
+    <hr>
+
+    <!-- Go File Configuration Section -->
+    <h3>Step 2 - Enable Auto-Unlock at Boot</h3>
+    <p>Once you’ve added the derived key, you need to update the go file so the server can recalculate the key and unlock the drives during boot.</p>
+    <p>This section allows you to add or remove the required auto-unlock commands from <code>/boot/config/go</code>. This ensures the key is generated automatically each time the system starts.</p>
+    <dl>
+        <dt><strong>Action:</strong></dt>
+        <dd>
+            <select id="goAction" name="goAction">
+                <option value="add" selected>Add to go file</option>
+                <option value="remove">Remove from go file</option>
+            </select>
+            <div class="description">Select whether to add or remove the auto-unlock block from your startup script.</div>
+        </dd>
+    </dl>
+    <p>
+      <button type="button" onclick="runGoCommand()">Update Go file</button>
+    </p>
+  </form>
+
+  <hr>
+
+  <h3>Output</h3>
+  <pre id="outputArea" style="background-color: #333; color: #fff; padding: 15px; border-radius: 5px; min-height: 100px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+</div>
+
+<script>
+  function runLUKSCommand() {
+    const passphrase = document.getElementById('passphrase').value;
+    const backupHeaders = document.getElementById('backupHeaders').value;
+    const dryRun = document.getElementById('dryRun').value;
+    const outputDiv = document.getElementById('outputArea'); // Unified output div
+
+    if (!passphrase) {
+      outputDiv.textContent = 'Error: Passphrase is required.';
+      return;
+    }
+
+    outputDiv.textContent = 'Executing LUKS management script, please wait...';
+
+    $.post('/plugins/luks-key-management/scripts/run_luks_script.php', {
+      passphrase: passphrase,
+      backupHeaders: backupHeaders,
+      dryRun: dryRun
+    }, function(data) {
+      outputDiv.textContent = data;
+    }).fail(function() {
+      outputDiv.textContent = 'Error: Failed to execute the LUKS management script. Check browser console for more details.';
+    });
+  }
+
+  function runGoCommand() {
+    const action = document.getElementById('goAction').value;
+    const outputDiv = document.getElementById('outputArea'); // Unified output div
+
+    outputDiv.textContent = 'Executing startup script configuration, please wait...';
+
+    $.post('/plugins/luks-key-management/scripts/run_go_script.php', {
+      action: action
+    }, function(data) {
+      outputDiv.textContent = data;
+    }).fail(function() {
+      outputDiv.textContent = 'Error: Failed to execute the go file script. Check browser console for more details.';
+    });
+  }
+</script>

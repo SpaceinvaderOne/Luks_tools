@@ -1,0 +1,100 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name                 "luks-key-management">
+<!ENTITY author               "SpaceInvaderOne">
+<!ENTITY plugin_version       "2025.07.10">
+<!ENTITY launch_page          "Plugins/&name;/luks_management.page">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.10-x86_64.txz">
+<!ENTITY plugin_md5           "9b7ed0ecf8e4c2b1835f5b4863db4e3f">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
+
+<CHANGES>
+### 2025.07.10
+- Initial release of the LUKS Key Management plugin.
+</CHANGES>
+
+<!-- 
+  This file is the installer for the plugin. It downloads a .txz package,
+  which contains all the necessary PHP, HTML, and Shell scripts, and installs
+  them to the correct locations on your Unraid server.
+-->
+
+<!-- COMPATIBILITY CHECK: Ensures user is on a compatible Unraid version. -->
+<FILE Run="/usr/bin/php">
+<INLINE><![CDATA[
+<?php
+  // This script is deprecated in favor of the min="" attribute in the <PLUGIN> tag,
+  // but is kept for an extra layer of safety on older systems.
+  $unraid_version = parse_ini_file("/etc/unraid-version");
+  if (version_compare($unraid_version['version'], "6.9.0", "<")) {
+    echo "********************************************************************\n";
+    echo "This Plugin requires Unraid version 6.9.0 or greater.\n";
+    echo "********************************************************************\n";
+    exit(1);
+  }
+?>
+]]></INLINE>
+</FILE>
+
+<!-- INSTALLATION: Downloads and installs the main plugin package. -->
+
+<!-- Step 1: Remove any previous installation of this plugin to ensure a clean install. -->
+<FILE Run="/bin/bash">
+<INLINE>
+removepkg &name;-&plugin_version;-x86_64
+</INLINE>
+</FILE>
+
+<!-- Step 2: Download and install the new package. -->
+<FILE Name="/boot/config/plugins/&name;/&name;-&plugin_version;-x86_64.txz" Run="upgradepkg --install-new">
+  <URL>&plugin_url;</URL>
+  <MD5>&plugin_md5;</MD5>
+</FILE>
+
+<!-- POST-INSTALL: Sets permissions for the scripts. -->
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+echo ""
+echo "----------------------------------------------------"
+echo " Setting executable permissions for scripts... "
+echo "----------------------------------------------------"
+
+# Set executable permissions on all shell scripts within the plugin's script directory.
+chmod +x /usr/local/emhttp/plugins/&name;/scripts/*.sh
+
+echo ""
+echo "----------------------------------------------------"
+echo " &name; version &plugin_version; has been installed."
+echo "----------------------------------------------------"
+echo ""
+]]></INLINE>
+</FILE>
+
+<!-- UNINSTALL: Removes the plugin and its files. -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE><![CDATA[
+echo ""
+echo "----------------------------------------------------"
+echo " Uninstalling &name;... "
+echo "----------------------------------------------------"
+
+# Remove the plugin package from the system.
+removepkg &name;-&plugin_version;-x86_64
+
+# Remove the plugin's web files.
+rm -rf /usr/local/emhttp/plugins/&name;
+
+# Remove the plugin's installation file and folder.
+rm -rf /boot/config/plugins/&name;
+
+echo ""
+echo "----------------------------------------------------"
+echo " &name; has been successfully removed."
+echo "----------------------------------------------------"
+echo ""
+]]></INLINE>
+</FILE>
+
+</PLUGIN>
