@@ -2,9 +2,9 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.10">
+<!ENTITY plugin_version       "2025.07.11">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.10-x86_64.txz">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.11-x86_64.txz">
 <!ENTITY plugin_md5           "f47e0e53f31defb89c7d41a1f8a88d06">
 ]>
 
@@ -61,8 +61,8 @@ echo "----------------------------------------------------"
 echo " Setting executable permissions for scripts... "
 echo "----------------------------------------------------"
 
-# Set executable permissions on all shell scripts within the plugin's script directory.
-chmod +x /usr/local/emhttp/plugins/&name;/scripts/*.sh
+# Set executable permissions on all shell scripts within the plugin's script directory (recursively, safely).
+find /usr/local/emhttp/plugins/&name;/scripts -type f -name "*.sh" -exec chmod +x {} \;
 
 echo ""
 echo "----------------------------------------------------"
@@ -80,14 +80,17 @@ echo "----------------------------------------------------"
 echo " Uninstalling &name;... "
 echo "----------------------------------------------------"
 
+PLUGIN_DIR="/usr/local/emhttp/plugins/&name;"
+CONFIG_DIR="/boot/config/plugins/&name;"
+if [[ "$PLUGIN_DIR" != "/usr/local/emhttp/plugins/" && -d "$PLUGIN_DIR" ]]; then
+  rm -rf "$PLUGIN_DIR"
+fi
+if [[ "$CONFIG_DIR" != "/boot/config/plugins/" && -d "$CONFIG_DIR" ]]; then
+  rm -rf "$CONFIG_DIR"
+fi
+
 # Remove the plugin package from the system.
 removepkg &name;-&plugin_version;-x86_64
-
-# Remove the plugin's web files.
-rm -rf /usr/local/emhttp/plugins/&name;
-
-# Remove the plugin's installation file and folder.
-rm -rf /boot/config/plugins/&name;
 
 echo ""
 echo "----------------------------------------------------"
