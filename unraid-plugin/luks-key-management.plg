@@ -2,9 +2,9 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.11">
+<!ENTITY plugin_version       "2025.07.14">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.11-x86_64.txz">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.14-x86_64.txz">
 <!ENTITY plugin_md5           "f47e0e53f31defb89c7d41a1f8a88d06">
 ]>
 
@@ -61,8 +61,8 @@ echo "----------------------------------------------------"
 echo " Setting executable permissions for scripts... "
 echo "----------------------------------------------------"
 
-# Set executable permissions on all shell scripts within the plugin's script directory (recursively, safely).
-find /usr/local/emhttp/plugins/&name;/scripts -type f -name "*.sh" -exec chmod +x {} \;
+# Set executable permissions on all scripts within the plugin's script directory (recursively, safely).
+find /usr/local/emhttp/plugins/&name;/scripts -type f \( -name "*.sh" -o -name "*.php" \) -exec chmod +x {} \;
 
 echo ""
 echo "----------------------------------------------------"
