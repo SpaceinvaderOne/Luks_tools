@@ -18,7 +18,7 @@ if (empty($passphrase)) {
 
 // --- Build the Shell Command Arguments ---
 $args = "";
-if ($backup_headers_option === 'yes') {
+if ($backup_headers_option === 'yes' || $backup_headers_option === 'download') {
     $args .= " -b";
 }
 if ($dry_run_option === 'yes') {

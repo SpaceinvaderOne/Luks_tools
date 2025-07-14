@@ -26,9 +26,10 @@ Icon="key"
       <dd>
         <select id="backupHeaders" name="backupHeaders">
           <option value="no" selected>No</option>
-          <option value="yes">Yes</option>
+          <option value="yes">Yes (save to server)</option>
+          <option value="download">Yes (download to browser)</option>
         </select>
-        <div class="description">Recommended. Creates a password-protected backup of all LUKS headers on your boot drive.</div>
+        <div class="description">Recommended. Creates a password-protected backup of all LUKS headers. Choose to save on server or download to your computer.</div>
       </dd>
 
       <dt><strong>Dry Run:</strong></dt>
@@ -91,9 +92,41 @@ Icon="key"
       dryRun: dryRun
     }, function(data) {
       outputDiv.textContent = data;
+      
+      // Check if we need to download a backup file
+      if (backupHeaders === 'download' && dryRun === 'no') {
+        // Look for backup file path in the output
+        const backupMatch = data.match(/Final encrypted archive created at (.+\.zip)/);
+        if (backupMatch) {
+          const backupFile = backupMatch[1];
+          downloadBackupFile(backupFile);
+        }
+      }
     }).fail(function() {
       outputDiv.textContent = 'Error: Failed to execute the LUKS management script. Check browser console for more details.';
     });
+  }
+
+  function downloadBackupFile(backupFilePath) {
+    // Create a hidden form to trigger the download
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/plugins/luks-key-management/scripts/download_backup.php';
+    form.style.display = 'none';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'backup_file';
+    input.value = backupFilePath;
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    // Update output to inform user
+    const outputDiv = document.getElementById('outputArea');
+    outputDiv.textContent += '\n\nBackup file download initiated. Check your browser\'s download folder.';
   }
 
   function runGoCommand() {
