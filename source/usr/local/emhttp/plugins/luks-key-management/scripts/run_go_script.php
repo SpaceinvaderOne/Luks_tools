@@ -10,24 +10,45 @@ $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/write_go.s
 $action = $_POST['action'] ?? 'add'; // Default to 'add' if nothing is received
 
 // --- Build the Shell Command ---
-$command = $script_path;
+$command = array($script_path);
 
 // If the user selected 'remove', add the -r flag to the command.
 if ($action === 'remove') {
-    $command .= " -r";
+    $command[] = "-r";
 }
 
-// Redirect standard error to standard output (2>&1) so we can capture all output
-$command .= " 2>&1";
+// --- Execute the Command using proc_open ---
+$descriptorspec = array(
+    0 => array("pipe", "r"),  // stdin
+    1 => array("pipe", "w"),  // stdout
+    2 => array("pipe", "w"),  // stderr
+);
 
-// --- Execute the Command ---
-$output = shell_exec($command);
+$process = proc_open($command, $descriptorspec, $pipes);
 
-// --- Return the Output ---
-if ($output === null) {
+if (is_resource($process)) {
+    // Close stdin as we don't need to send input
+    fclose($pipes[0]);
+    
+    // Read stdout and stderr
+    $output = stream_get_contents($pipes[1]);
+    $errors = stream_get_contents($pipes[2]);
+    
+    // Close pipes
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    
+    // Wait for the process to terminate and get return code
+    $return_code = proc_close($process);
+    
+    // Combine output and errors if needed
+    if (!empty($errors)) {
+        $output .= "\n--- SCRIPT ERRORS ---\n" . $errors;
+    }
+    
+    echo $output;
+} else {
     echo "Error: Failed to execute the script. Check permissions and paths.";
     exit(1);
 }
-
-echo $output;
 ?>
