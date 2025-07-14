@@ -95,11 +95,12 @@ Icon="key"
       
       // Check if we need to download a backup file
       if (backupHeaders === 'download' && dryRun === 'no') {
-        // Look for backup file path in the output
-        const backupMatch = data.match(/Final encrypted archive created at (.+\.zip)/);
-        if (backupMatch) {
-          const backupFile = backupMatch[1];
-          downloadBackupFile(backupFile);
+        // Look for download ready indicator in the output
+        const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+        if (downloadMatch) {
+          const downloadPath = downloadMatch[1];
+          const filename = downloadPath.split('/').pop();
+          downloadBackupFile(filename);
         }
       }
     }).fail(function() {
@@ -107,26 +108,34 @@ Icon="key"
     });
   }
 
-  function downloadBackupFile(backupFilePath) {
-    // Create a hidden form to trigger the download
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/plugins/luks-key-management/scripts/download_backup.php';
-    form.style.display = 'none';
+  function downloadBackupFile(filename) {
+    // Create direct download link - file is accessible via plugin downloads directory
+    const downloadUrl = '/plugins/luks-key-management/downloads/' + filename;
     
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'backup_file';
-    input.value = backupFilePath;
+    // Create a temporary anchor element to trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
     
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
     // Update output to inform user
     const outputDiv = document.getElementById('outputArea');
     outputDiv.textContent += '\n\nBackup file download initiated. Check your browser\'s download folder.';
+    
+    // Clean up the temporary file after a delay
+    setTimeout(function() {
+      fetch('/plugins/luks-key-management/scripts/cleanup_download.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'filename=' + encodeURIComponent(filename)
+      });
+    }, 5000); // 5 second delay to ensure download completes
   }
 
   function runGoCommand() {

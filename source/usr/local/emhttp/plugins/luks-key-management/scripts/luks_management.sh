@@ -15,6 +15,7 @@ set -e
 # Default values for script options
 DRY_RUN="no"
 BACKUP_HEADERS="no"
+DOWNLOAD_MODE="no"
 PASSPHRASE=""
 
 # Locations
@@ -22,8 +23,9 @@ PASSPHRASE=""
 TEMP_WORK_DIR="/tmp/luks_mgt_temp_$$" # $$ makes it unique per script run
 KEYFILE="$TEMP_WORK_DIR/hardware_tied.key"
 HEADER_BACKUP_DIR="$TEMP_WORK_DIR/header_backups"
-# Final backup location on the boot flash drive
+# Final backup location - changes based on download mode
 ZIPPED_HEADER_BACKUP_LOCATION="/boot/config/luksheaders"
+DOWNLOAD_TEMP_DIR="/tmp/luksheaders"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # --- Functions ---
@@ -49,7 +51,7 @@ parse_args() {
         usage
     fi
 
-    # Process command-line flags (-d, -b)
+    # Process command-line flags (-d, -b, --download-mode)
     for arg in "$@"; do
         case "$arg" in
             -d)
@@ -59,6 +61,11 @@ parse_args() {
             -b)
                 BACKUP_HEADERS="yes"
                 echo "Header backup enabled."
+                ;;
+            --download-mode)
+                DOWNLOAD_MODE="yes"
+                ZIPPED_HEADER_BACKUP_LOCATION="$DOWNLOAD_TEMP_DIR"
+                echo "Download mode enabled - backups will be prepared for browser download."
                 ;;
         esac
     done

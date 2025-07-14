@@ -24,6 +24,10 @@ if ($backup_headers_option === 'yes' || $backup_headers_option === 'download') {
 if ($dry_run_option === 'yes') {
     $args .= " -d";
 }
+// Pass the backup option to the script so it knows where to save
+if ($backup_headers_option === 'download') {
+    $args .= " --download-mode";
+}
 
 $command = $script_path . $args;
 
@@ -64,6 +68,35 @@ if (is_resource($process)) {
     // Combine output and errors for display
     if (!empty($errors)) {
         $output .= "\n--- SCRIPT ERRORS ---\n" . $errors;
+    }
+
+    // Handle symlink creation for download mode
+    if ($backup_headers_option === 'download' && $dry_run_option === 'no') {
+        // Look for the backup file path in the output
+        if (preg_match('/Final encrypted archive created at (.+\.zip)/', $output, $matches)) {
+            $backup_file = $matches[1];
+            $filename = basename($backup_file);
+            
+            // Create symlink in plugin directory for browser access
+            $plugin_download_dir = "/usr/local/emhttp/plugins/luks-key-management/downloads";
+            $symlink_path = "$plugin_download_dir/$filename";
+            
+            // Ensure download directory exists
+            if (!is_dir($plugin_download_dir)) {
+                mkdir($plugin_download_dir, 0755, true);
+            }
+            
+            // Remove any existing symlink and create new one
+            if (file_exists($symlink_path)) {
+                unlink($symlink_path);
+            }
+            
+            if (symlink($backup_file, $symlink_path)) {
+                $output .= "\nDOWNLOAD_READY: $symlink_path";
+            } else {
+                $output .= "\nWarning: Could not create download link.";
+            }
+        }
     }
 
     echo $output;
