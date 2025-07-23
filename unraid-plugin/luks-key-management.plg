@@ -72,7 +72,10 @@ echo " Uninstalling luks-key-management... "
 echo "----------------------------------------------------"
 
 # Remove the plugin package from the system first
-removepkg luks-key-management-&plugin_version;-x86_64 2>/dev/null || true
+# Try to find and remove any version of the plugin package
+for pkg in $(ls /var/log/packages/ | grep "^luks-key-management-" 2>/dev/null); do
+    removepkg "$pkg" 2>/dev/null || true
+done
 
 # Clean up plugin directory 
 PLUGIN_DIR="/usr/local/emhttp/plugins/luks-key-management"
