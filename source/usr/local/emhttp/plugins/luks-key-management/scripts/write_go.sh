@@ -12,6 +12,7 @@
 # --- Configuration ---
 GO_FILE="/boot/config/go"
 SCRIPT_SOURCE_DIR="/boot/config/driveunlock" # The location of your fetch_key and delete_key scripts
+PLUGIN_SCRIPT_DIR="/usr/local/emhttp/plugins/luks-key-management/scripts" # The source location of scripts
 START_MARKER="# auto unlock block start"
 END_MARKER="# auto unlock block end"
 SHEBANG="#!/bin/bash"
@@ -30,10 +31,48 @@ EOF
 
 # --- Functions ---
 
+setup_driveunlock_directory() {
+    echo "Setting up driveunlock directory and scripts..."
+    
+    # Create the directory if it doesn't exist
+    if [[ ! -d "$SCRIPT_SOURCE_DIR" ]]; then
+        mkdir -p "$SCRIPT_SOURCE_DIR"
+        echo "Created directory: $SCRIPT_SOURCE_DIR"
+    fi
+    
+    # Copy the required scripts from the plugin directory
+    if [[ -f "$PLUGIN_SCRIPT_DIR/fetch_key.sh" ]]; then
+        cp "$PLUGIN_SCRIPT_DIR/fetch_key.sh" "$SCRIPT_SOURCE_DIR/fetch_key"
+        chmod +x "$SCRIPT_SOURCE_DIR/fetch_key"
+        echo "Copied and set permissions for fetch_key script"
+    else
+        echo "Error: fetch_key.sh not found in $PLUGIN_SCRIPT_DIR" >&2
+        return 1
+    fi
+    
+    if [[ -f "$PLUGIN_SCRIPT_DIR/delete_key.sh" ]]; then
+        cp "$PLUGIN_SCRIPT_DIR/delete_key.sh" "$SCRIPT_SOURCE_DIR/delete_key"
+        chmod +x "$SCRIPT_SOURCE_DIR/delete_key"
+        echo "Copied and set permissions for delete_key script"
+    else
+        echo "Error: delete_key.sh not found in $PLUGIN_SCRIPT_DIR" >&2
+        return 1
+    fi
+    
+    echo "Driveunlock directory setup completed successfully."
+    return 0
+}
+
 add_block() {
     echo "Checking status of auto-unlock block in $GO_FILE..."
 
-    # First, ensure the go file exists and has a shebang.
+    # First, set up the driveunlock directory and copy scripts
+    if ! setup_driveunlock_directory; then
+        echo "Error: Failed to set up driveunlock directory. Aborting." >&2
+        return 1
+    fi
+
+    # Ensure the go file exists and has a shebang.
     if [[ ! -f "$GO_FILE" ]] || ! grep -qF "$SHEBANG" "$GO_FILE"; then
         echo "$SHEBANG" > "$GO_FILE"
         echo "Created or repaired $GO_FILE with shebang."
@@ -85,6 +124,12 @@ remove_block() {
     
     echo "Auto-unlock block successfully removed."
     echo "A backup of the original file has been saved to ${GO_FILE}.bak"
+    
+    # Ask user if they want to remove the driveunlock directory
+    echo ""
+    echo "Note: The driveunlock directory ($SCRIPT_SOURCE_DIR) still contains the unlock scripts."
+    echo "You can manually remove it if you no longer need auto-unlock functionality."
+    echo "The scripts will remain available for manual use if needed."
 }
 
 # --- Main Execution ---

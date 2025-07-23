@@ -5,7 +5,7 @@
 <!ENTITY plugin_version       "2025.07.23">
 <!ENTITY launch_page          "Settings/&name;">
 <!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.23-x86_64.txz">
-<!ENTITY plugin_md5           "87eb40e5d64a4a7a868ac47c8eef7805">
+<!ENTITY plugin_md5           "819009d8ce1d1c2233ac5eff277b033c">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
@@ -57,27 +57,45 @@ echo ""
 
 <!-- UNINSTALL: Removes the plugin and its files. -->
 <FILE Run="/bin/bash" Method="remove">
-<INLINE><![CDATA[
+<INLINE>
 echo ""
 echo "----------------------------------------------------"
-echo " Uninstalling &name;... "
+echo " Uninstalling luks-key-management... "
 echo "----------------------------------------------------"
 
 # Remove the plugin package from the system first
-removepkg &name; 2>/dev/null || true
+# Try different package name variations to ensure removal
+removepkg luks-key-management 2>/dev/null || true
+removepkg luks-key-management-&plugin_version;-x86_64 2>/dev/null || true
 
 # Clean up plugin directory 
-PLUGIN_DIR="/usr/local/emhttp/plugins/&name;"
-if [[ -n "&name;" && "$PLUGIN_DIR" != "/usr/local/emhttp/plugins/" && -d "$PLUGIN_DIR" ]]; then
+PLUGIN_DIR="/usr/local/emhttp/plugins/luks-key-management"
+if [[ -d "$PLUGIN_DIR" ]]; then
   echo " Removing plugin files from $PLUGIN_DIR"
   rm -rf "$PLUGIN_DIR" 2>/dev/null || true
 fi
 
 # Clean up config directory
-CONFIG_DIR="/boot/config/plugins/&name;"
-if [[ -n "&name;" && "$CONFIG_DIR" != "/boot/config/plugins/" && -d "$CONFIG_DIR" ]]; then
+CONFIG_DIR="/boot/config/plugins/luks-key-management"
+if [[ -d "$CONFIG_DIR" ]]; then
   echo " Removing config files from $CONFIG_DIR"
   rm -rf "$CONFIG_DIR" 2>/dev/null || true
+fi
+
+# Clean up driveunlock directory and go file modifications
+echo " Checking for auto-unlock configuration..."
+GO_FILE="/boot/config/go"
+if [[ -f "$GO_FILE" ]] && grep -q "# auto unlock block start" "$GO_FILE"; then
+  echo " Removing auto-unlock block from go file..."
+  sed -i.bak '/# auto unlock block start/,/# auto unlock block end/d' "$GO_FILE"
+  echo " Auto-unlock block removed (backup saved as ${GO_FILE}.bak)"
+fi
+
+# Optionally remove driveunlock directory
+DRIVEUNLOCK_DIR="/boot/config/driveunlock"
+if [[ -d "$DRIVEUNLOCK_DIR" ]]; then
+  echo " Removing driveunlock directory: $DRIVEUNLOCK_DIR"
+  rm -rf "$DRIVEUNLOCK_DIR" 2>/dev/null || true
 fi
 
 # Clean up any LUKS header backups if they exist
@@ -88,10 +106,10 @@ fi
 
 echo ""
 echo "----------------------------------------------------"
-echo " &name; has been successfully removed."
+echo " luks-key-management has been successfully removed."
 echo "----------------------------------------------------"
 echo ""
-]]></INLINE>
+</INLINE>
 </FILE>
 
 </PLUGIN>
