@@ -2,10 +2,10 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.14">
+<!ENTITY plugin_version       "2025.07.23">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.14-x86_64.txz">
-<!ENTITY plugin_md5           "e479c4a31f084b0469d8a81f8a44e755">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.23-x86_64.txz">
+<!ENTITY plugin_md5           "87eb40e5d64a4a7a868ac47c8eef7805">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
@@ -20,23 +20,6 @@
   which contains all the necessary PHP, HTML, and Shell scripts, and installs
   them to the correct locations on your Unraid server.
 -->
-
-<!-- COMPATIBILITY CHECK: Ensures user is on a compatible Unraid version. -->
-<FILE Run="/usr/bin/php">
-<INLINE><![CDATA[
-<?php
-  // This script is deprecated in favor of the min="" attribute in the <PLUGIN> tag,
-  // but is kept for an extra layer of safety on older systems.
-  $unraid_version = parse_ini_file("/etc/unraid-version");
-  if (version_compare($unraid_version['version'], "6.9.0", "<")) {
-    echo "********************************************************************\n";
-    echo "This Plugin requires Unraid version 6.9.0 or greater.\n";
-    echo "********************************************************************\n";
-    exit(1);
-  }
-?>
-]]></INLINE>
-</FILE>
 
 <!-- INSTALLATION: Downloads and installs the main plugin package. -->
 
@@ -62,7 +45,7 @@ echo " Setting executable permissions for scripts... "
 echo "----------------------------------------------------"
 
 # Set executable permissions on all scripts within the plugin's script directory (recursively, safely).
-find /usr/local/emhttp/plugins/&name;/scripts -type f \( -name "*.sh" -o -name "*.php" \) -exec chmod +x {} \;
+find /usr/local/emhttp/plugins/&name;/scripts -type f \( -name "*.sh" -o -name "*.php" \) -exec chmod +x {} \; 2>/dev/null
 
 echo ""
 echo "----------------------------------------------------"
@@ -80,17 +63,28 @@ echo "----------------------------------------------------"
 echo " Uninstalling &name;... "
 echo "----------------------------------------------------"
 
+# Remove the plugin package from the system first
+removepkg &name; 2>/dev/null || true
+
+# Clean up plugin directory 
 PLUGIN_DIR="/usr/local/emhttp/plugins/&name;"
-CONFIG_DIR="/boot/config/plugins/&name;"
-if [[ "$PLUGIN_DIR" != "/usr/local/emhttp/plugins/" && -d "$PLUGIN_DIR" ]]; then
-  rm -rf "$PLUGIN_DIR"
-fi
-if [[ "$CONFIG_DIR" != "/boot/config/plugins/" && -d "$CONFIG_DIR" ]]; then
-  rm -rf "$CONFIG_DIR"
+if [[ -n "&name;" && "$PLUGIN_DIR" != "/usr/local/emhttp/plugins/" && -d "$PLUGIN_DIR" ]]; then
+  echo " Removing plugin files from $PLUGIN_DIR"
+  rm -rf "$PLUGIN_DIR" 2>/dev/null || true
 fi
 
-# Remove the plugin package from the system.
-removepkg &name;-&plugin_version;-x86_64
+# Clean up config directory
+CONFIG_DIR="/boot/config/plugins/&name;"
+if [[ -n "&name;" && "$CONFIG_DIR" != "/boot/config/plugins/" && -d "$CONFIG_DIR" ]]; then
+  echo " Removing config files from $CONFIG_DIR"
+  rm -rf "$CONFIG_DIR" 2>/dev/null || true
+fi
+
+# Clean up any LUKS header backups if they exist
+LUKS_BACKUP_DIR="/boot/config/luksheaders"
+if [[ -d "$LUKS_BACKUP_DIR" ]]; then
+  echo " Note: LUKS header backups remain in $LUKS_BACKUP_DIR for security"
+fi
 
 echo ""
 echo "----------------------------------------------------"

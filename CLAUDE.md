@@ -14,6 +14,7 @@ This is an Unraid plugin for LUKS key management that provides secure auto-unloc
 ```
 This script:
 - Creates a `.txz` package from the `source/` directory
+- Excludes macOS metadata files (`.DS_Store`, `._*`, etc.) during packaging
 - Archives old packages to `packages/archive/`
 - Calculates MD5 checksum
 - Updates the `.plg` installer file with new version, URL, and MD5
@@ -29,7 +30,9 @@ source/usr/local/emhttp/plugins/luks-key-management/
 │   ├── delete_key.sh            # Key removal
 │   ├── write_go.sh              # Boot integration
 │   ├── run_luks_script.php      # LUKS script executor
-│   └── run_go_script.php        # Go script executor
+│   ├── run_go_script.php        # Go script executor
+│   ├── download_backup.php      # LUKS header backup download
+│   └── cleanup_download.php     # Temporary file cleanup
 └── images/                      # Plugin icons/assets
 ```
 
@@ -59,6 +62,12 @@ source/usr/local/emhttp/plugins/luks-key-management/
 - Two-step process: Add derived key → Enable auto-unlock
 - AJAX communication with PHP backends
 - Form validation and user feedback
+- LUKS header backup download functionality
+
+#### Backup Management
+- Headers stored in `/boot/config/luksheaders/`
+- Download via `download_backup.php` with security validation
+- Temporary file cleanup via `cleanup_download.php`
 
 ## Error Handling Patterns
 

@@ -101,7 +101,8 @@ echo
 echo "Creating new plugin package..."
 # Create the .txz archive. The -C flag changes to the source directory,
 # which prevents 'source/' from being included in the archive's path structure.
-tar -cJf "$FULL_OUTPUT_PATH" -C "$SOURCE_ROOT" usr
+# Exclude macOS metadata files and other unwanted files
+tar -cJf "$FULL_OUTPUT_PATH" -C "$SOURCE_ROOT" --exclude='.DS_Store' --exclude='._*' --exclude='.AppleDouble' --exclude='.LSOverride' usr
 if [ $? -ne 0 ]; then
     echo "Error: Failed to create tar archive."
     exit 1
