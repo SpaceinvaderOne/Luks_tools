@@ -37,6 +37,334 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # --- Functions ---
 
 #
+# Get LUKS version for a device
+#
+get_luks_version() {
+    local device="$1"
+    cryptsetup luksDump "$device" | grep 'Version:' | awk '{print $2}'
+}
+
+#
+# Check if device supports tokens (LUKS2 only)
+#
+supports_tokens() {
+    local device="$1"
+    local version
+    version=$(get_luks_version "$device")
+    [[ "$version" == "2" ]]
+}
+
+#
+# Parse JSON to extract unraid-derived token slots using awk for better JSON handling
+#
+extract_derived_slots() {
+    local json_file="$1"
+    
+    # Use awk to properly parse the JSON structure
+    awk '
+    BEGIN { in_unraid_token = 0; collecting_slots = 0 }
+    
+    # Found unraid-derived token
+    /"type"[[:space:]]*:[[:space:]]*"unraid-derived"/ {
+        in_unraid_token = 1
+        next
+    }
+    
+    # If we are in an unraid-derived token
+    in_unraid_token == 1 {
+        # Look for keyslots line
+        if (/"keyslots"[[:space:]]*:[[:space:]]*\[/) {
+            # Extract slots from current line if they are all on one line
+            if (/\]/) {
+                # Single line format: "keyslots": ["3", "5"],
+                gsub(/.*"keyslots"[^[]*\[/, "")
+                gsub(/\].*/, "")
+                gsub(/"/, "")
+                gsub(/[[:space:]]/, "")
+                split($0, slots, ",")
+                for (i in slots) {
+                    if (slots[i] ~ /^[0-9]+$/) print slots[i]
+                }
+            } else {
+                collecting_slots = 1
+            }
+            next
+        }
+        
+        # If collecting multi-line slots
+        if (collecting_slots == 1) {
+            if (/\]/) {
+                collecting_slots = 0
+            } else if (/"[0-9]+"/) {
+                gsub(/"/, "")
+                gsub(/[^0-9]/, "")
+                if ($0 ~ /^[0-9]+$/) print $0
+            }
+            next
+        }
+        
+        # End of token (closing brace with optional comma)
+        if (/^[[:space:]]*}[[:space:]]*,?[[:space:]]*$/) {
+            in_unraid_token = 0
+            next
+        }
+    }
+    ' "$json_file"
+}
+
+#
+# Clean up old derived slots from LUKS device
+#
+cleanup_old_derived_slots() {
+    local device="$1"
+    local temp_token_file="/tmp/luks_tokens_$$.json"
+    local cleaned_slots=0
+    
+    echo "  - Cleaning old derived slots..."
+    
+    # Only proceed if device supports tokens
+    if ! supports_tokens "$device"; then
+        echo "    LUKS1 device - no token cleanup needed"
+        return 0
+    fi
+    
+    # Export all tokens to temporary file
+    if ! cryptsetup token export --token-id all "$device" > "$temp_token_file" 2>/dev/null; then
+        echo "    No existing tokens found"
+        rm -f "$temp_token_file"
+        return 0
+    fi
+    
+    # Extract slots from unraid-derived tokens
+    local old_slots
+    mapfile -t old_slots < <(extract_derived_slots "$temp_token_file")
+    
+    if [[ ${#old_slots[@]} -eq 0 ]]; then
+        echo "    No old derived slots found"
+        rm -f "$temp_token_file"
+        return 0
+    fi
+    
+    # Remove old slots and their tokens
+    for slot in "${old_slots[@]}"; do
+        if [[ "$DRY_RUN" == "yes" ]]; then
+            echo "    [DRY RUN] Would remove slot $slot"
+            cleaned_slots=$((cleaned_slots + 1))
+        else
+            if echo -n "$PASSPHRASE" | cryptsetup luksKillSlot "$device" "$slot" --key-file=- 2>/dev/null; then
+                echo "    Removed old slot $slot"
+                cleaned_slots=$((cleaned_slots + 1))
+            else
+                echo "    Warning: Could not remove slot $slot (may already be gone)"
+            fi
+        fi
+    done
+    
+    # Remove all unraid-derived tokens
+    if [[ "$DRY_RUN" != "yes" && $cleaned_slots -gt 0 ]]; then
+        cryptsetup token remove --token-type unraid-derived "$device" 2>/dev/null || true
+    fi
+    
+    rm -f "$temp_token_file"
+    echo "    Cleaned $cleaned_slots old derived slot(s)"
+    return 0
+}
+
+#
+# Add token metadata for newly added slot
+#
+add_token_metadata() {
+    local device="$1" 
+    local new_slot="$2"
+    local temp_token_file="/tmp/luks_token_$$.json"
+    
+    # Only add tokens for LUKS2 devices
+    if ! supports_tokens "$device"; then
+        echo "    LUKS1 device - skipping token metadata"
+        return 0
+    fi
+    
+    # Create token JSON structure
+    cat > "$temp_token_file" << EOF
+{
+  "type": "unraid-derived",
+  "keyslots": ["$new_slot"],
+  "version": "1.0",
+  "metadata": {
+    "motherboard_id": "$MOTHERBOARD_ID",
+    "gateway_mac": "$GATEWAY_MAC", 
+    "generation_time": "$KEY_GENERATION_TIME",
+    "key_hash": "sha256:$(echo -n "$DERIVED_KEY" | cut -c1-32)"
+  }
+}
+EOF
+
+    if [[ "$DRY_RUN" == "yes" ]]; then
+        echo "    [DRY RUN] Would add token metadata for slot $new_slot"
+    else
+        if cryptsetup token import --token-id "$new_slot" "$device" < "$temp_token_file" 2>/dev/null; then
+            echo "    Added token metadata for slot $new_slot"
+        else
+            echo "    Warning: Could not add token metadata (operation still successful)"
+        fi
+    fi
+    
+    rm -f "$temp_token_file"
+}
+
+#
+# Get the slot number that was just used by luksAddKey
+#
+get_last_added_slot() {
+    local device="$1"
+    local dump_output
+    
+    # Get fresh dump after key addition
+    dump_output=$(cryptsetup luksDump "$device")
+    
+    # For LUKS2, find the highest numbered slot that accepts our key
+    if supports_tokens "$device"; then
+        local slot
+        for slot in {0..31}; do
+            if echo -n "$DERIVED_KEY" | cryptsetup luksOpen --test-passphrase --key-slot "$slot" --key-file=- "$device" &>/dev/null; then
+                echo "$slot"
+                return 0
+            fi
+        done
+    else
+        # For LUKS1, check slots 0-7
+        local slot
+        for slot in {0..7}; do
+            if echo -n "$DERIVED_KEY" | cryptsetup luksOpen --test-passphrase --key-slot "$slot" --key-file=- "$device" &>/dev/null; then
+                echo "$slot"
+                return 0
+            fi
+        done
+    fi
+    
+    echo ""
+    return 1
+}
+
+#
+# Emergency rollback function - removes newly added slot if something goes wrong
+#
+rollback_slot_addition() {
+    local device="$1"
+    local slot="$2"
+    
+    echo "    ERROR: Rolling back slot $slot addition..."
+    if echo -n "$PASSPHRASE" | cryptsetup luksKillSlot "$device" "$slot" --key-file=- 2>/dev/null; then
+        echo "    Rollback successful - removed slot $slot"
+    else
+        echo "    Warning: Rollback failed - slot $slot may still exist"
+    fi
+}
+
+#
+# Enhanced device processing with better error handling
+#
+process_single_device() {
+    local luks_device="$1"
+    local dump_output
+    
+    echo
+    echo "--- Processing device: $luks_device ---"
+
+    # Get and display key slot info
+    dump_output=$(cryptsetup luksDump "$luks_device")
+    
+    # Correctly determine used and total slots for LUKS1 and LUKS2
+    local luks_version used_slots total_slots
+    luks_version=$(echo "$dump_output" | grep 'Version:' | awk '{print $2}')
+    if [[ "$luks_version" == "1" ]]; then
+        used_slots=$(echo "$dump_output" | grep -c 'Key Slot [0-7]: ENABLED')
+        total_slots=8
+    else # Assuming LUKS2
+        used_slots=$(echo "$dump_output" | grep -cE '^[[:space:]]+[0-9]+: luks2')
+        total_slots=32
+    fi
+    echo "  - LUKS Version:     $luks_version"
+    echo "  - Key Slots Used:   $used_slots / $total_slots"
+
+    # 1. Check if the user-provided passphrase unlocks the device
+    if ! echo -n "$PASSPHRASE" | cryptsetup luksOpen --test-passphrase --key-file=- "$luks_device" &>/dev/null; then
+        echo "  - Passphrase Check: FAILED. Skipping this device."
+        failed_devices+=("$luks_device: Invalid passphrase")
+        return 1
+    fi
+    echo "  - Passphrase Check: OK"
+
+    # 2. Perform header backup if requested
+    if [[ "$BACKUP_HEADERS" == "yes" ]]; then
+        local luks_uuid backup_file
+        luks_uuid=$(echo "$dump_output" | grep UUID | awk '{print $2}')
+        if [[ -z "$luks_uuid" ]]; then
+            echo "  - Header Backup:    SKIPPED (Could not retrieve UUID)."
+        else
+            backup_file="${HEADER_BACKUP_DIR}/HEADER_UUID_${luks_uuid}_DEVICE_$(basename "$luks_device").img"
+            if [[ "$DRY_RUN" == "yes" ]]; then
+                echo "  - Header Backup:    [DRY RUN] Would be backed up."
+                headers_found=$((headers_found + 1))
+            else
+                echo "  - Header Backup:    Backing up..."
+                if echo -n "$PASSPHRASE" | cryptsetup luksHeaderBackup "$luks_device" --header-backup-file "$backup_file"; then
+                    echo "    ...Success."
+                    headers_found=$((headers_found + 1))
+                else
+                    echo "    ...Error."
+                    failed_devices+=("$luks_device: Header backup failed")
+                    return 1
+                fi
+            fi
+        fi
+    fi
+
+    # 3. Clean up old derived slots (LUKS2 only)
+    if ! cleanup_old_derived_slots "$luks_device"; then
+        echo "  - Cleanup:          Failed. Continuing anyway..."
+    fi
+
+    # 4. Check if current hardware key already exists
+    if cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE" "$luks_device" &>/dev/null; then
+        echo "  - Current Hardware Key: Present. No addition needed."
+        skipped_devices+=("$luks_device")
+        return 0
+    fi
+    echo "  - Current Hardware Key: Not present."
+
+    # 5. Add the new derived key
+    if [[ "$DRY_RUN" == "yes" ]]; then
+        echo "  - Key Addition:     [DRY RUN] Would be added."
+        added_keys+=("$luks_device")
+        return 0
+    fi
+    
+    echo "  - Key Addition:     Adding key..."
+    if echo -n "$PASSPHRASE" | cryptsetup luksAddKey "$luks_device" "$KEYFILE" --key-file=-; then
+        echo "    ...Success."
+        
+        # 6. Add token metadata for the new slot
+        local new_slot
+        new_slot=$(get_last_added_slot "$luks_device")
+        if [[ -n "$new_slot" ]]; then
+            if ! add_token_metadata "$luks_device" "$new_slot"; then
+                echo "    Warning: Token metadata failed but key addition successful"
+            fi
+        else
+            echo "    Warning: Could not determine new slot number"
+        fi
+        
+        added_keys+=("$luks_device")
+        return 0
+    else
+        echo "    ...Error."
+        failed_devices+=("$luks_device: luksAddKey command failed")
+        return 1
+    fi
+}
+
+#
 # Display script usage information and exit
 #
 usage() {
@@ -272,7 +600,7 @@ classify_disks() {
 }
 
 #
-# Process each LUKS device: backup header and add key in a single pass.
+# Process each LUKS device: cleanup old slots, backup header, and add key
 #
 process_devices() {
     echo
@@ -282,7 +610,7 @@ process_devices() {
     added_keys=()
     skipped_devices=()
     failed_devices=()
-    local headers_found=0
+    headers_found=0
 
     # Prepare for header backups if requested
     if [[ "$BACKUP_HEADERS" == "yes" ]]; then
@@ -290,78 +618,7 @@ process_devices() {
     fi
 
     for luks_device in $(get_luks_devices); do
-        echo
-        echo "--- Processing device: $luks_device ---"
-
-        # Get and display key slot info
-        local dump_output
-        dump_output=$(cryptsetup luksDump "$luks_device")
-        
-        # Correctly determine used and total slots for LUKS1 and LUKS2
-        local luks_version used_slots total_slots
-        luks_version=$(echo "$dump_output" | grep 'Version:' | awk '{print $2}')
-        if [[ "$luks_version" == "1" ]]; then
-            used_slots=$(echo "$dump_output" | grep -c 'Key Slot [0-7]: ENABLED')
-            total_slots=8
-        else # Assuming LUKS2
-            used_slots=$(echo "$dump_output" | grep -cE '^[[:space:]]+[0-9]+: luks2')
-            total_slots=32
-        fi
-        echo "  - Key Slots Used:   $used_slots / $total_slots"
-
-        # 1. Check if the user-provided passphrase unlocks the device
-        if ! echo -n "$PASSPHRASE" | cryptsetup luksOpen --test-passphrase --key-file=- "$luks_device" &>/dev/null; then
-            echo "  - Passphrase Check: FAILED. Skipping this device."
-            failed_devices+=("$luks_device: Invalid passphrase")
-            continue
-        fi
-        echo "  - Passphrase Check: OK"
-
-        # 2. Perform header backup if requested
-        if [[ "$BACKUP_HEADERS" == "yes" ]]; then
-            local luks_uuid backup_file
-            luks_uuid=$(echo "$dump_output" | grep UUID | awk '{print $2}')
-            if [[ -z "$luks_uuid" ]]; then
-                echo "  - Header Backup:    SKIPPED (Could not retrieve UUID)."
-            else
-                backup_file="${HEADER_BACKUP_DIR}/HEADER_UUID_${luks_uuid}_DEVICE_$(basename "$luks_device").img"
-                if [[ "$DRY_RUN" == "yes" ]]; then
-                    echo "  - Header Backup:    [DRY RUN] Would be backed up."
-                    headers_found=$((headers_found + 1))
-                else
-                    echo "  - Header Backup:    Backing up..."
-                    if echo -n "$PASSPHRASE" | cryptsetup luksHeaderBackup "$luks_device" --header-backup-file "$backup_file"; then
-                        echo "    ...Success."
-                        headers_found=$((headers_found + 1))
-                    else
-                        echo "    ...Error."
-                    fi
-                fi
-            fi
-        fi
-
-        # 3. Check if the new hardware key *already* exists on the device
-        if cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE" "$luks_device" &>/dev/null; then
-            echo "  - Hardware Key:     Present. No action needed."
-            skipped_devices+=("$luks_device")
-            continue
-        fi
-        echo "  - Hardware Key:     Not Present."
-
-        # 4. Add the new key
-        if [[ "$DRY_RUN" == "yes" ]]; then
-            echo "  - Key Addition:     [DRY RUN] Would be added."
-            added_keys+=("$luks_device")
-        else
-            echo "  - Key Addition:     Adding key..."
-            if echo -n "$PASSPHRASE" | cryptsetup luksAddKey "$luks_device" "$KEYFILE" --key-file=-; then
-                echo "    ...Success."
-                added_keys+=("$luks_device")
-            else
-                echo "    ...Error."
-                failed_devices+=("$luks_device: luksAddKey command failed")
-            fi
-        fi
+        process_single_device "$luks_device"
     done
     
     # 5. Create the final encrypted archive if headers were backed up
@@ -441,11 +698,11 @@ generate_summary() {
     fi
     echo
 
-    echo "--- Key Addition Results ---"
+    echo "--- Hardware Key Management Results ---"
     if [[ "$DRY_RUN" == "yes" ]]; then
-        echo "Keys WOULD HAVE BEEN ADDED to (${#added_keys[@]}) devices:"
+        echo "Hardware keys WOULD HAVE BEEN REFRESHED on (${#added_keys[@]}) devices:"
     else
-        echo "Keys SUCCESSFULLY ADDED to (${#added_keys[@]}) devices:"
+        echo "Hardware keys SUCCESSFULLY REFRESHED on (${#added_keys[@]}) devices:"
     fi
     if [ ${#added_keys[@]} -gt 0 ]; then
         for disk in "${added_keys[@]}"; do echo "  - $disk"; done
@@ -454,7 +711,7 @@ generate_summary() {
     fi
     echo
 
-    echo "Keys SKIPPED on (${#skipped_devices[@]}) devices (key already exists):"
+    echo "Devices SKIPPED (current hardware key already present) (${#skipped_devices[@]}):"
     if [ ${#skipped_devices[@]} -gt 0 ]; then
         for disk in "${skipped_devices[@]}"; do echo "  - $disk"; done
     else
