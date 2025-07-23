@@ -44,8 +44,16 @@ echo "----------------------------------------------------"
 echo " Setting executable permissions for scripts... "
 echo "----------------------------------------------------"
 
-# Set executable permissions on all scripts within the plugin's script directory (recursively, safely).
-find /usr/local/emhttp/plugins/&name;/scripts -type f \( -name "*.sh" -o -name "*.php" \) -exec chmod +x {} \; 2>/dev/null
+# Set executable permissions explicitly on each script file
+PLUGIN_SCRIPTS_DIR="/usr/local/emhttp/plugins/&name;/scripts"
+
+if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
+    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.sh 2>/dev/null || true
+    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.php 2>/dev/null || true
+    echo " Permissions set for script files in $PLUGIN_SCRIPTS_DIR"
+else
+    echo " Warning: Scripts directory not found at $PLUGIN_SCRIPTS_DIR"
+fi
 
 echo ""
 echo "----------------------------------------------------"
