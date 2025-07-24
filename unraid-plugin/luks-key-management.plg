@@ -44,8 +44,8 @@ echo "----------------------------------------------------"
 echo " Setting up plugin scripts and persistent files..."
 echo "----------------------------------------------------"
 
-PLUGIN_SCRIPTS_DIR="/usr/local/emhttp/plugins/&name;/scripts"
-PERSISTENT_DIR="/boot/config/plugins/&name;"
+PLUGIN_SCRIPTS_DIR="/usr/local/emhttp/plugins/luks-key-management/scripts"
+PERSISTENT_DIR="/boot/config/plugins/luks-key-management"
 
 # Create persistent directory
 mkdir -p "$PERSISTENT_DIR"
@@ -89,7 +89,7 @@ ls -la "$PERSISTENT_DIR/" 2>/dev/null || echo " Could not list persistent direct
 
 echo ""
 echo "----------------------------------------------------"
-echo " &name; version &plugin_version; has been installed."
+echo " luks-key-management version &plugin_version; has been installed."
 echo " Scripts are available at: $PERSISTENT_DIR"
 echo "----------------------------------------------------"
 echo ""
