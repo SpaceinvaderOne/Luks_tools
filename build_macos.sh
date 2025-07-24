@@ -70,7 +70,7 @@ fi
 # --- Set Version and Filenames ---
 
 # Set the new version to the current date in YYYY.MM.DD format.
-NEW_VERSION=$(date +%Y.%m.%d)
+NEW_VERSION=$(date +%Y.%m.%d.%H%M)
 echo "New Version: $NEW_VERSION"
 
 # Define the final output filename for the package.
