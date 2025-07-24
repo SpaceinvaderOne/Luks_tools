@@ -112,29 +112,52 @@ get_token_info() {
         return
     fi
     
-    # Export token information for the specific slot
-    local token_json=""
-    if token_json=$(cryptsetup token export --token-id "$slot" "$device" 2>/dev/null); then
-        # Check if this is our unraid-derived token
-        if echo "$token_json" | grep -q '"type": "unraid-derived"'; then
+    # Export all tokens and look for ones that reference this slot
+    local all_tokens=""
+    if all_tokens=$(cryptsetup token export --token-id all "$device" 2>/dev/null); then
+        # Look for unraid-derived token that includes this slot
+        local token_data=$(echo "$all_tokens" | awk -v slot="$slot" '
+            BEGIN { in_token = 0; found_slot = 0; token_content = "" }
+            /"type": "unraid-derived"/ { in_token = 1; token_content = "" }
+            in_token == 1 {
+                token_content = token_content $0 "\n"
+                if (/"keyslots":/) {
+                    # Check if this slot is in the keyslots array
+                    if ($0 ~ "\"" slot "\"") {
+                        found_slot = 1
+                    }
+                }
+                if (/^}/) {
+                    if (found_slot == 1) {
+                        print token_content
+                        exit
+                    }
+                    in_token = 0
+                    found_slot = 0
+                    token_content = ""
+                }
+            }
+        ')
+        
+        if [[ -n "$token_data" ]]; then
             # Extract generation time from metadata
-            local gen_time=$(echo "$token_json" | grep -o '"generation_time": "[^"]*"' | cut -d'"' -f4)
+            local gen_time=$(echo "$token_data" | grep -o '"generation_time": "[^"]*"' | cut -d'"' -f4)
             if [[ -n "$gen_time" ]]; then
                 echo "⭐ Hardware-derived ($gen_time)"
             else
                 echo "⭐ Hardware-derived (unraid-derived)"
             fi
         else
-            # Check token type
-            local token_type=$(echo "$token_json" | grep -o '"type": "[^"]*"' | cut -d'"' -f4)
-            if [[ -n "$token_type" ]]; then
-                echo "Token ($token_type)"
-            else
+            # Check if there are any other tokens for this slot
+            local has_token=$(echo "$all_tokens" | grep -o "\"$slot\"" | head -1)
+            if [[ -n "$has_token" ]]; then
                 echo "Token present"
+            else
+                echo "Standard slot"
             fi
         fi
     else
-        # No token for this slot - this is a standard passphrase slot
+        # No tokens at all
         echo "Standard slot"
     fi
 }
