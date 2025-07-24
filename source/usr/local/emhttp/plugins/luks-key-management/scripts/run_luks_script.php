@@ -2,8 +2,9 @@
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
 
-// Define the absolute path to your main LUKS management script
-$script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh";
+// Define the absolute paths to the LUKS scripts
+$main_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh";
+$headers_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_headers_backup.sh";
 
 // --- Get POST data from the UI ---
 $passphrase = $_POST['passphrase'] ?? '';
@@ -17,17 +18,29 @@ if (empty($passphrase)) {
     exit(1);
 }
 
-// --- Build the Shell Command Arguments ---
-$args = "";
-if ($backup_headers_option === 'yes' || $backup_headers_option === 'download') {
-    $args .= " -b";
-}
-if ($dry_run_option === 'yes') {
-    $args .= " -d";
-}
-// Pass the backup option to the script so it knows where to save
-if ($backup_headers_option === 'download') {
-    $args .= " --download-mode";
+// --- Determine which script to use and build arguments ---
+if ($headers_only === 'true') {
+    // Headers-only operation - use dedicated backup script
+    $script_path = $headers_script_path;
+    $args = "";
+    if ($dry_run_option === 'yes') {
+        $args .= " -d";
+    }
+    if ($backup_headers_option === 'download') {
+        $args .= " --download-mode";
+    }
+    $args .= " -p \"$passphrase\"";
+} else {
+    // Full auto-start setup - use main management script
+    $script_path = $main_script_path;
+    $args = "";
+    if ($dry_run_option === 'yes') {
+        $args .= " -d";
+    }
+    // Headers are always backed up now, so pass download mode if needed
+    if ($backup_headers_option === 'download') {
+        $args .= " --download-mode";
+    }
 }
 
 $command = $script_path . $args;
@@ -41,12 +54,21 @@ $descriptorspec = array(
    2 => array("pipe", "w")   // stderr
 );
 
-// THE FIX: Pass the passphrase securely as an environment variable.
+// Pass the passphrase securely as an environment variable (for main script)
+// or via command line (for headers script)
 // We also explicitly provide a standard PATH to ensure the script can find system commands.
-$env = array(
-    'LUKS_PASSPHRASE' => $passphrase,
-    'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
-);
+if ($headers_only === 'true') {
+    // Headers script gets passphrase via command line (already added above)
+    $env = array(
+        'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
+    );
+} else {
+    // Main script gets passphrase via environment variable
+    $env = array(
+        'LUKS_PASSPHRASE' => $passphrase,
+        'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
+    );
+}
 
 // Start the process with the explicit environment
 $process = proc_open($command, $descriptorspec, $pipes, null, $env);

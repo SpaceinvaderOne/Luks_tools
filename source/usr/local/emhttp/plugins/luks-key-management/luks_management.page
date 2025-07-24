@@ -15,6 +15,7 @@ Icon="key"
     <div class="tab-buttons" style="border-bottom: 1px solid #444; margin-bottom: 20px;">
       <button class="tab-btn active" data-tab="autostart" style="background: #333; color: #fff; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Auto Start</button>
       <button class="tab-btn" data-tab="headers" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">LUKS Headers</button>
+      <button class="tab-btn" data-tab="gofile" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Go File</button>
       <button class="tab-btn" data-tab="status" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; cursor: pointer;">Status</button>
     </div>
 
@@ -22,12 +23,12 @@ Icon="key"
     <div class="tab-content">
       <!-- Auto Start Tab -->
       <div id="autostart-tab" class="tab-pane active">
-        <p>Each time you run this tool, it automatically cleans up old hardware keys and adds a fresh one for the current hardware. This ensures only one hardware-derived key exists at any time.</p>
+        <p>This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.</p>
         <p>Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
         
         <form id="autostartForm">
           <!-- LUKS Management Section -->
-          <h3>Step 1 - Refresh Hardware Key</h3>
+          <h3>Complete Auto-Unlock Setup</h3>
           <dl>
             <dt><strong>Passphrase:</strong></dt>
             <dd>
@@ -35,14 +36,13 @@ Icon="key"
               <div class="description">Enter your original LUKS encryption key.</div>
             </dd>
 
-            <dt><strong>Backup Headers:</strong></dt>
+            <dt><strong>Header Backup Location:</strong></dt>
             <dd>
-              <select id="backupHeaders" name="backupHeaders">
-                <option value="no" selected>No</option>
-                <option value="yes">Yes (save to server)</option>
-                <option value="download">Yes (download to browser)</option>
+              <select id="backupLocation" name="backupLocation">
+                <option value="download" selected>Download to PC</option>
+                <option value="yes">Save to server</option>
               </select>
-              <div class="description">Recommended. Creates a password-protected backup of all LUKS headers. Choose to save on server or download to your computer.</div>
+              <div class="description">LUKS headers will always be backed up for safety. Choose where to save the encrypted backup.</div>
             </dd>
 
             <dt><strong>Dry Run:</strong></dt>
@@ -55,28 +55,17 @@ Icon="key"
             </dd>
           </dl>
           <p>
-            <button type="button" onclick="runLUKSCommand()">Refresh Hardware Key</button>
+            <button type="button" onclick="runAutoStartSetup()">Enable Auto-Unlock</button>
           </p>
-
-          <hr>
-
-          <!-- Go File Configuration Section -->
-          <h3>Step 2 - Enable Auto-Unlock at Boot</h3>
-          <p>Once you've added the derived key, you need to update the go file so the server can recalculate the key and unlock the drives during boot.</p>
-          <p>This section allows you to add or remove the required auto-unlock commands from <code>/boot/config/go</code>. This ensures the key is generated automatically each time the system starts.</p>
-          <dl>
-              <dt><strong>Action:</strong></dt>
-              <dd>
-                  <select id="goAction" name="goAction">
-                      <option value="add" selected>Add to go file</option>
-                      <option value="remove">Remove from go file</option>
-                  </select>
-                  <div class="description">Select whether to add or remove the auto-unlock block from your startup script.</div>
-              </dd>
-          </dl>
-          <p>
-            <button type="button" onclick="runGoCommand()">Update Go file</button>
-          </p>
+          
+          <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #4CAF50;">
+            <strong>This will:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              <li>Backup LUKS headers to your chosen location</li>
+              <li>Refresh hardware-derived key on all devices</li>
+              <li>Automatically enable auto-unlock in go file</li>
+            </ul>
+          </div>
         </form>
       </div>
 
@@ -114,6 +103,32 @@ Icon="key"
           <p>
             <button type="button" onclick="runHeadersBackup()">Backup Headers</button>
           </p>
+        </form>
+      </div>
+
+      <!-- Go File Tab -->
+      <div id="gofile-tab" class="tab-pane" style="display: none;">
+        <p>Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.</p>
+        
+        <form id="gofileForm">
+          <h3>Boot Auto-Unlock Control</h3>
+          <dl>
+            <dt><strong>Action:</strong></dt>
+            <dd>
+              <select id="goAction" name="goAction">
+                <option value="add" selected>Enable auto-unlock at boot</option>
+                <option value="remove">Disable auto-unlock at boot</option>
+              </select>
+              <div class="description">Choose whether to enable or disable automatic LUKS unlocking during system startup.</div>
+            </dd>
+          </dl>
+          <p>
+            <button type="button" onclick="runGoCommand()">Update Boot Configuration</button>
+          </p>
+          
+          <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
+            <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
+          </div>
         </form>
       </div>
 
@@ -183,9 +198,9 @@ Icon="key"
     document.getElementById('statusOutput').textContent = 'Output cleared.\n';
   }
 
-  function runLUKSCommand() {
+  function runAutoStartSetup() {
     const passphrase = document.getElementById('passphrase').value;
-    const backupHeaders = document.getElementById('backupHeaders').value;
+    const backupLocation = document.getElementById('backupLocation').value;
     const dryRun = document.getElementById('dryRun').value;
 
     if (!passphrase) {
@@ -195,7 +210,10 @@ Icon="key"
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
-    setStatus('Starting LUKS hardware key refresh operation...\nExecuting LUKS management script, please wait...');
+    setStatus('Starting complete auto-unlock setup...\nThis will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...');
+
+    // Convert backupLocation to the format expected by the backend
+    const backupHeaders = backupLocation === 'download' ? 'download' : 'yes';
 
     $.post('/plugins/luks-key-management/scripts/run_luks_script.php', {
       passphrase: passphrase,
@@ -205,7 +223,7 @@ Icon="key"
       setStatus(data);
       
       // Check if we need to download a backup file
-      if (backupHeaders === 'download' && dryRun === 'no') {
+      if (backupLocation === 'download' && dryRun === 'no') {
         // Look for download ready indicator in the output
         const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
         if (downloadMatch) {
@@ -215,7 +233,7 @@ Icon="key"
         }
       }
     }).fail(function() {
-      setStatus('Error: Failed to execute the LUKS management script. Check browser console for more details.');
+      setStatus('Error: Failed to execute the auto-unlock setup. Check browser console for more details.');
     });
   }
 
