@@ -51,6 +51,19 @@ PERSISTENT_DIR="/boot/config/plugins/&name;"
 mkdir -p "$PERSISTENT_DIR"
 echo " Created persistent directory: $PERSISTENT_DIR"
 
+# First, set executable permissions on plugin scripts
+if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
+    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.sh 2>/dev/null || true
+    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.php 2>/dev/null || true
+    echo " Set permissions for plugin script files"
+    
+    # Debug: List what's actually in the plugin directory
+    echo " Debug: Contents of $PLUGIN_SCRIPTS_DIR:"
+    ls -la "$PLUGIN_SCRIPTS_DIR/" || echo " Failed to list plugin directory"
+else
+    echo " Warning: Scripts directory not found at $PLUGIN_SCRIPTS_DIR"
+fi
+
 # Copy scripts to persistent location (without .sh extension for go file compatibility)
 if [[ -f "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" ]]; then
     cp "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" "$PERSISTENT_DIR/fetch_key"
@@ -58,6 +71,8 @@ if [[ -f "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" ]]; then
     echo " Copied fetch_key script to persistent location"
 else
     echo " Warning: fetch_key.sh not found in $PLUGIN_SCRIPTS_DIR"
+    echo " Debug: Attempting to list plugin scripts directory..."
+    ls -la "$PLUGIN_SCRIPTS_DIR/" 2>/dev/null || echo " Could not list directory"
 fi
 
 if [[ -f "$PLUGIN_SCRIPTS_DIR/delete_key.sh" ]]; then
@@ -68,14 +83,9 @@ else
     echo " Warning: delete_key.sh not found in $PLUGIN_SCRIPTS_DIR"
 fi
 
-# Set executable permissions on plugin scripts
-if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
-    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.sh 2>/dev/null || true
-    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.php 2>/dev/null || true
-    echo " Set permissions for plugin script files"
-else
-    echo " Warning: Scripts directory not found at $PLUGIN_SCRIPTS_DIR"
-fi
+# Final verification
+echo " Final verification - contents of $PERSISTENT_DIR:"
+ls -la "$PERSISTENT_DIR/" 2>/dev/null || echo " Could not list persistent directory"
 
 echo ""
 echo "----------------------------------------------------"
