@@ -37,6 +37,23 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # --- Functions ---
 
 #
+# Validate hardware fingerprint components (fail fast if hardware detection fails)
+#
+validate_hardware_fingerprint() {
+    if [[ -z "$MOTHERBOARD_ID" ]] || [[ -z "$GATEWAY_MAC" ]]; then
+        echo "ERROR: Cannot detect hardware fingerprint"
+        echo "  Motherboard ID: '$MOTHERBOARD_ID'"
+        echo "  Gateway MAC: '$GATEWAY_MAC'"
+        echo "Hardware-based auto-unlock not possible on this system."
+        return 1
+    fi
+    echo "Hardware fingerprint detected successfully:"
+    echo "  Motherboard ID: $MOTHERBOARD_ID"
+    echo "  Gateway MAC: $GATEWAY_MAC"
+    return 0
+}
+
+#
 # Get LUKS version for a device
 #
 get_luks_version() {
@@ -55,125 +72,92 @@ supports_tokens() {
 }
 
 #
-# Parse JSON to extract unraid-derived token slots using awk for better JSON handling
+# Find all unraid-derived slots using proven luksDump + token export method
+# This replaces the complex AWK JSON parsing with a reliable approach
 #
-extract_derived_slots() {
-    local json_file="$1"
+find_unraid_derived_slots() {
+    local device="$1"
+    local found_slots=()
     
-    # Use awk to properly parse the JSON structure
-    awk '
-    BEGIN { in_unraid_token = 0; collecting_slots = 0 }
+    # Only works with LUKS2
+    local luks_version=$(get_luks_version "$device")
+    if [[ "$luks_version" != "2" ]]; then
+        return 0  # No slots found for LUKS1
+    fi
     
-    # Found unraid-derived token
-    /"type"[[:space:]]*:[[:space:]]*"unraid-derived"/ {
-        in_unraid_token = 1
-        next
-    }
+    # Get luksDump output and extract tokens section
+    local dump_info=$(cryptsetup luksDump "$device" 2>/dev/null)
+    local tokens_section=$(echo "$dump_info" | awk '/^Tokens:$/,/^Digests:$/' | grep -v "^Tokens:$" | grep -v "^Digests:$")
     
-    # If we are in an unraid-derived token
-    in_unraid_token == 1 {
-        # Look for keyslots line
-        if (/"keyslots"[[:space:]]*:[[:space:]]*\[/) {
-            # Extract slots from current line if they are all on one line
-            if (/\]/) {
-                # Single line format: "keyslots": ["3", "5"],
-                gsub(/.*"keyslots"[^[]*\[/, "")
-                gsub(/\].*/, "")
-                gsub(/"/, "")
-                gsub(/[[:space:]]/, "")
-                split($0, slots, ",")
-                for (i in slots) {
-                    if (slots[i] ~ /^[0-9]+$/) print slots[i]
-                }
-            } else {
-                collecting_slots = 1
-            }
-            next
-        }
-        
-        # If collecting multi-line slots
-        if (collecting_slots == 1) {
-            if (/\]/) {
-                collecting_slots = 0
-            } else if (/"[0-9]+"/) {
-                gsub(/"/, "")
-                gsub(/[^0-9]/, "")
-                if ($0 ~ /^[0-9]+$/) print $0
-            }
-            next
-        }
-        
-        # End of token (closing brace with optional comma)
-        if (/^[[:space:]]*}[[:space:]]*,?[[:space:]]*$/) {
-            in_unraid_token = 0
-            next
-        }
-    }
-    ' "$json_file"
+    # Parse tokens section to find token IDs and their corresponding keyslots
+    local token_id=""
+    local current_token_id=""
+    
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^[[:space:]]*([0-9]+):[[:space:]]*(.*) ]]; then
+            current_token_id="${BASH_REMATCH[1]}"
+            token_type="${BASH_REMATCH[2]}"
+        elif [[ "$line" =~ ^[[:space:]]*Keyslot:[[:space:]]*([0-9]+) ]]; then
+            keyslot_num="${BASH_REMATCH[1]}"
+            
+            # Export this token to check if it's unraid-derived
+            local token_json=$(cryptsetup token export --token-id "$current_token_id" "$device" 2>/dev/null)
+            if [[ -n "$token_json" ]]; then
+                local token_type_check=$(echo "$token_json" | grep -o '"type":"[^"]*"' | cut -d'"' -f4)
+                if [[ "$token_type_check" == "unraid-derived" ]]; then
+                    found_slots+=("$keyslot_num")
+                fi
+            fi
+        fi
+    done <<< "$tokens_section"
+    
+    # Output found slots (one per line)
+    printf '%s\n' "${found_slots[@]}"
 }
 
 #
-# Clean up old derived slots from LUKS device
+# Remove all unraid-derived slots from LUKS device (used when hardware changes)
+# Uses our proven token detection method for reliability
 #
-cleanup_old_derived_slots() {
+remove_unraid_derived_slots() {
     local device="$1"
-    local temp_token_file="/tmp/luks_tokens_$$.json"
     local cleaned_slots=0
     
-    echo "  - Cleaning old derived slots..."
-    
-    # Only proceed if device supports tokens
-    if ! supports_tokens "$device"; then
-        echo "    LUKS1 device - no token cleanup needed"
-        return 0
-    fi
-    
-    # Export all tokens to temporary file
-    if ! cryptsetup token export --token-id all "$device" > "$temp_token_file" 2>/dev/null; then
-        echo "    No existing tokens found"
-        rm -f "$temp_token_file"
-        return 0
-    fi
-    
-    # Extract slots from unraid-derived tokens
+    # Find all unraid-derived slots using our proven method
     local old_slots
-    mapfile -t old_slots < <(extract_derived_slots "$temp_token_file")
+    mapfile -t old_slots < <(find_unraid_derived_slots "$device")
     
     if [[ ${#old_slots[@]} -eq 0 ]]; then
-        echo "    No old derived slots found"
-        rm -f "$temp_token_file"
+        echo "    No unraid-derived slots found"
         return 0
     fi
     
-    # Remove old slots and their tokens
+    echo "    Found unraid-derived slots: ${old_slots[*]}"
+    
+    # Remove old slots one by one (more robust than batch removal)
     for slot in "${old_slots[@]}"; do
         if [[ "$DRY_RUN" == "yes" ]]; then
             echo "    [DRY RUN] Would remove slot $slot"
             cleaned_slots=$((cleaned_slots + 1))
         else
-            if echo -n "$PASSPHRASE" | cryptsetup luksKillSlot "$device" "$slot" --key-file=- 2>/dev/null; then
-                echo "    Removed old slot $slot"
+            if echo "$PASSPHRASE" | cryptsetup luksKillSlot "$device" "$slot" --stdin 2>/dev/null; then
+                echo "    ✅ Removed old hardware key from slot $slot"
                 cleaned_slots=$((cleaned_slots + 1))
             else
-                echo "    Warning: Could not remove slot $slot (may already be gone)"
+                echo "    ERROR: Failed to remove old hardware key from slot $slot, but continuing..."
             fi
         fi
     done
     
-    # Remove all unraid-derived tokens
-    if [[ "$DRY_RUN" != "yes" && $cleaned_slots -gt 0 ]]; then
-        cryptsetup token remove --token-type unraid-derived "$device" 2>/dev/null || true
-    fi
-    
-    rm -f "$temp_token_file"
     echo "    Cleaned $cleaned_slots old derived slot(s)"
     return 0
 }
 
 #
-# Add token metadata for newly added slot
+# Add secure token metadata for newly added slot
+# Only stores safe information that cannot be used to regenerate the key
 #
-add_token_metadata() {
+add_secure_token_metadata() {
     local device="$1" 
     local new_slot="$2"
     local temp_token_file="/tmp/luks_token_$$.json"
@@ -184,17 +168,14 @@ add_token_metadata() {
         return 0
     fi
     
-    # Create token JSON structure
+    # Create secure token JSON structure - NO SENSITIVE DATA
     cat > "$temp_token_file" << EOF
 {
   "type": "unraid-derived",
   "keyslots": ["$new_slot"],
   "version": "1.0",
   "metadata": {
-    "motherboard_id": "$MOTHERBOARD_ID",
-    "gateway_mac": "$GATEWAY_MAC", 
-    "generation_time": "$KEY_GENERATION_TIME",
-    "key_hash": "sha256:$(echo -n "$DERIVED_KEY" | cut -c1-32)"
+    "generation_time": "$KEY_GENERATION_TIME"
   }
 }
 EOF
@@ -318,35 +299,57 @@ process_single_device() {
         fi
     fi
 
-    # 3. Clean up old derived slots (LUKS2 only)
-    if ! cleanup_old_derived_slots "$luks_device"; then
-        echo "  - Cleanup:          Failed. Continuing anyway..."
-    fi
-
-    # 4. Check if current hardware key already exists
+    # 3. Secure Hardware Key Management
+    echo "  - Hardware Key Check: Testing if current hardware key works..."
+    
+    # Step 1: Test if current hardware key can unlock the device
     if cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE" "$luks_device" &>/dev/null; then
-        echo "  - Current Hardware Key: Present. No addition needed."
+        echo "    ✅ Current hardware key works - no changes needed"
         skipped_devices+=("$luks_device")
         return 0
     fi
-    echo "  - Current Hardware Key: Not present."
+    
+    # Step 2: Hardware key doesn't work - hardware must have changed
+    echo "    ❌ Current hardware key doesn't work - hardware likely changed"
+    echo "  - Slot Cleanup:     Removing old hardware-derived keys..."
+    
+    # Step 3: Remove all unraid-derived slots using proven method
+    if ! remove_unraid_derived_slots "$luks_device"; then
+        echo "    Warning: Slot cleanup had issues, but continuing..."
+    fi
 
-    # 5. Add the new derived key
+    # Step 4: Add new hardware key with retry logic
+    echo "  - Key Addition:     Adding new hardware key..."
+    
     if [[ "$DRY_RUN" == "yes" ]]; then
-        echo "  - Key Addition:     [DRY RUN] Would be added."
+        echo "    [DRY RUN] Would add new hardware key"
         added_keys+=("$luks_device")
         return 0
     fi
     
-    echo "  - Key Addition:     Adding key..."
-    if echo -n "$PASSPHRASE" | cryptsetup luksAddKey "$luks_device" "$KEYFILE" --key-file=-; then
-        echo "    ...Success."
-        
-        # 6. Add token metadata for the new slot
+    # Try adding the key with retry logic (attempt 1/2)
+    local success=0
+    for attempt in 1 2; do
+        if echo "$PASSPHRASE" | cryptsetup luksAddKey "$luks_device" "$KEYFILE" --stdin 2>/dev/null; then
+            echo "    ✅ Added new hardware key for current hardware"
+            success=1
+            break
+        else
+            echo "    ERROR: Failed to add new hardware key (attempt $attempt/2)"
+            if [[ $attempt -eq 2 ]]; then
+                echo "    FATAL: Could not add hardware key after 2 attempts. Device will not auto-unlock."
+                failed_devices+=("$luks_device: Failed to add hardware key after 2 attempts")
+                return 1
+            fi
+        fi
+    done
+    
+    # Step 5: Add secure token metadata for the new slot
+    if [[ $success -eq 1 ]]; then
         local new_slot
         new_slot=$(get_last_added_slot "$luks_device")
         if [[ -n "$new_slot" ]]; then
-            if ! add_token_metadata "$luks_device" "$new_slot"; then
+            if ! add_secure_token_metadata "$luks_device" "$new_slot"; then
                 echo "    Warning: Token metadata failed but key addition successful"
             fi
         else
@@ -355,10 +358,6 @@ process_single_device() {
         
         added_keys+=("$luks_device")
         return 0
-    else
-        echo "    ...Error."
-        failed_devices+=("$luks_device: luksAddKey command failed")
-        return 1
     fi
 }
 
@@ -446,15 +445,12 @@ generate_keyfile() {
     # Store generation time
     KEY_GENERATION_TIME=$(date '+%Y-%m-%d %H:%M:%S %Z')
 
+    # Collect hardware identifiers
     MOTHERBOARD_ID=$(get_motherboard_id)
-    if [[ -z "$MOTHERBOARD_ID" ]]; then
-        echo "Error: Could not retrieve motherboard serial number." >&2
-        exit 1
-    fi
-
     GATEWAY_MAC=$(get_gateway_mac)
-    if [[ -z "$GATEWAY_MAC" ]]; then
-        echo "Error: Could not retrieve gateway MAC address." >&2
+    
+    # Step 1: Validate hardware fingerprint (fail fast with clear messaging)
+    if ! validate_hardware_fingerprint; then
         exit 1
     fi
 
