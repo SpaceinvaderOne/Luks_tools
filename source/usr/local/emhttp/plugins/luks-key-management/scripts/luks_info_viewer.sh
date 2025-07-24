@@ -115,50 +115,31 @@ get_token_info() {
     # Export all tokens and look for ones that reference this slot
     local all_tokens=""
     if all_tokens=$(cryptsetup token export --token-id all "$device" 2>/dev/null); then
-        # Look for unraid-derived token that includes this slot
-        local token_data=$(echo "$all_tokens" | awk -v slot="$slot" '
-            BEGIN { in_token = 0; found_slot = 0; token_content = "" }
-            /"type": "unraid-derived"/ { in_token = 1; token_content = "" }
-            in_token == 1 {
-                token_content = token_content $0 "\n"
-                if (/"keyslots":/) {
-                    # Check if this slot is in the keyslots array
-                    if ($0 ~ "\"" slot "\"") {
-                        found_slot = 1
-                    }
-                }
-                if (/^}/) {
-                    if (found_slot == 1) {
-                        print token_content
-                        exit
-                    }
-                    in_token = 0
-                    found_slot = 0
-                    token_content = ""
-                }
-            }
-        ')
-        
-        if [[ -n "$token_data" ]]; then
-            # Extract generation time from metadata
-            local gen_time=$(echo "$token_data" | grep -o '"generation_time": "[^"]*"' | cut -d'"' -f4)
+        # Simple approach: check if this slot appears in any unraid-derived token
+        if echo "$all_tokens" | grep -q '"type": "unraid-derived"' && echo "$all_tokens" | grep -q "\"$slot\""; then
+            # This slot is referenced in an unraid-derived token
+            local gen_time=$(echo "$all_tokens" | grep -A 20 '"type": "unraid-derived"' | grep -o '"generation_time": "[^"]*"' | cut -d'"' -f4 | head -1)
             if [[ -n "$gen_time" ]]; then
                 echo "⭐ Hardware-derived ($gen_time)"
             else
                 echo "⭐ Hardware-derived (unraid-derived)"
             fi
+        elif echo "$all_tokens" | grep -q "\"$slot\""; then
+            # Slot is in some other token
+            echo "Token present"
         else
-            # Check if there are any other tokens for this slot
-            local has_token=$(echo "$all_tokens" | grep -o "\"$slot\"" | head -1)
-            if [[ -n "$has_token" ]]; then
-                echo "Token present"
-            else
-                echo "Standard slot"
-            fi
+            # No token references this slot
+            echo "Standard slot"
         fi
     else
-        # No tokens at all
-        echo "Standard slot"
+        # No tokens at all - try a different approach to debug
+        # Let's see if luksDump shows token information
+        local dump_info=$(cryptsetup luksDump "$device" 2>/dev/null)
+        if echo "$dump_info" | grep -q "Tokens:"; then
+            echo "Token present (dump detected)"
+        else
+            echo "Standard slot"
+        fi
     fi
 }
 
