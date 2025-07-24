@@ -112,18 +112,29 @@ get_token_info() {
         return
     fi
     
-    # Try to get token information
-    local token_info=$(cryptsetup luksDump "$device" | grep -A 10 "Tokens:" | grep -A 5 "keyslot.*$slot" 2>/dev/null || echo "")
-    
-    if [[ -n "$token_info" ]]; then
-        # Look for our hardware-bound token pattern
-        if echo "$token_info" | grep -q "hw-bound"; then
-            local token_date=$(echo "$token_info" | grep -o "hw-bound-[0-9.-]*" | head -1)
-            echo "⭐ Hardware-derived ($token_date)"
+    # Export token information for the specific slot
+    local token_json=""
+    if token_json=$(cryptsetup token export --token-id "$slot" "$device" 2>/dev/null); then
+        # Check if this is our unraid-derived token
+        if echo "$token_json" | grep -q '"type": "unraid-derived"'; then
+            # Extract generation time from metadata
+            local gen_time=$(echo "$token_json" | grep -o '"generation_time": "[^"]*"' | cut -d'"' -f4)
+            if [[ -n "$gen_time" ]]; then
+                echo "⭐ Hardware-derived ($gen_time)"
+            else
+                echo "⭐ Hardware-derived (unraid-derived)"
+            fi
         else
-            echo "Token present"
+            # Check token type
+            local token_type=$(echo "$token_json" | grep -o '"type": "[^"]*"' | cut -d'"' -f4)
+            if [[ -n "$token_type" ]]; then
+                echo "Token ($token_type)"
+            else
+                echo "Token present"
+            fi
         fi
     else
+        # No token for this slot - this is a standard passphrase slot
         echo "Standard slot"
     fi
 }
