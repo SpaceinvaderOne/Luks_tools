@@ -37,7 +37,8 @@ get_luks_version() {
 # Find all LUKS encrypted devices in the system
 #
 get_luks_devices() {
-    lsblk -f | grep crypto_LUKS | awk '{print "/dev/" $1}' | sort
+    # Use the same proven method as the main script
+    lsblk --noheadings --pairs --output NAME,TYPE | grep 'TYPE="crypt"' | awk -F'"' '{print "/dev/" $2}' | sort
 }
 
 #
