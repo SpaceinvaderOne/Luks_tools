@@ -11,8 +11,7 @@
 
 # --- Configuration ---
 GO_FILE="/boot/config/go"
-SCRIPT_SOURCE_DIR="/boot/config/driveunlock" # The location of your fetch_key and delete_key scripts
-PLUGIN_SCRIPT_DIR="/usr/local/emhttp/plugins/luks-key-management/scripts" # The source location of scripts
+SCRIPT_SOURCE_DIR="/boot/config/plugins/luks-key-management" # Persistent location for fetch_key and delete_key scripts
 START_MARKER="# auto unlock block start"
 END_MARKER="# auto unlock block end"
 SHEBANG="#!/bin/bash"
@@ -31,44 +30,32 @@ EOF
 
 # --- Functions ---
 
-setup_driveunlock_directory() {
-    echo "Setting up driveunlock directory and scripts..."
+verify_scripts_exist() {
+    echo "Verifying required scripts exist in persistent location..."
     
-    # Create the directory if it doesn't exist
-    if [[ ! -d "$SCRIPT_SOURCE_DIR" ]]; then
-        mkdir -p "$SCRIPT_SOURCE_DIR"
-        echo "Created directory: $SCRIPT_SOURCE_DIR"
-    fi
-    
-    # Copy the required scripts from the plugin directory
-    if [[ -f "$PLUGIN_SCRIPT_DIR/fetch_key.sh" ]]; then
-        cp "$PLUGIN_SCRIPT_DIR/fetch_key.sh" "$SCRIPT_SOURCE_DIR/fetch_key"
-        chmod +x "$SCRIPT_SOURCE_DIR/fetch_key"
-        echo "Copied and set permissions for fetch_key script"
-    else
-        echo "Error: fetch_key.sh not found in $PLUGIN_SCRIPT_DIR" >&2
+    # Check if the scripts exist in the persistent directory
+    if [[ ! -f "$SCRIPT_SOURCE_DIR/fetch_key" ]]; then
+        echo "Error: fetch_key script not found at $SCRIPT_SOURCE_DIR/fetch_key" >&2
+        echo "       Please ensure the plugin is properly installed." >&2
         return 1
     fi
     
-    if [[ -f "$PLUGIN_SCRIPT_DIR/delete_key.sh" ]]; then
-        cp "$PLUGIN_SCRIPT_DIR/delete_key.sh" "$SCRIPT_SOURCE_DIR/delete_key"
-        chmod +x "$SCRIPT_SOURCE_DIR/delete_key"
-        echo "Copied and set permissions for delete_key script"
-    else
-        echo "Error: delete_key.sh not found in $PLUGIN_SCRIPT_DIR" >&2
+    if [[ ! -f "$SCRIPT_SOURCE_DIR/delete_key" ]]; then
+        echo "Error: delete_key script not found at $SCRIPT_SOURCE_DIR/delete_key" >&2
+        echo "       Please ensure the plugin is properly installed." >&2
         return 1
     fi
     
-    echo "Driveunlock directory setup completed successfully."
+    echo "Required scripts found and ready for use."
     return 0
 }
 
 add_block() {
     echo "Checking status of auto-unlock block in $GO_FILE..."
 
-    # First, set up the driveunlock directory and copy scripts
-    if ! setup_driveunlock_directory; then
-        echo "Error: Failed to set up driveunlock directory. Aborting." >&2
+    # First, verify that the required scripts exist in persistent location
+    if ! verify_scripts_exist; then
+        echo "Error: Required scripts not found. Plugin may not be properly installed." >&2
         return 1
     fi
 
@@ -125,11 +112,11 @@ remove_block() {
     echo "Auto-unlock block successfully removed."
     echo "A backup of the original file has been saved to ${GO_FILE}.bak"
     
-    # Ask user if they want to remove the driveunlock directory
+    # Note about persistent scripts
     echo ""
-    echo "Note: The driveunlock directory ($SCRIPT_SOURCE_DIR) still contains the unlock scripts."
-    echo "You can manually remove it if you no longer need auto-unlock functionality."
-    echo "The scripts will remain available for manual use if needed."
+    echo "Note: The persistent scripts at $SCRIPT_SOURCE_DIR remain available."
+    echo "These will be removed automatically if you uninstall the plugin."
+    echo "You can re-enable auto-unlock anytime by running this script again."
 }
 
 # --- Main Execution ---
