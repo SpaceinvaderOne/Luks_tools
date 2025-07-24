@@ -112,34 +112,67 @@ get_token_info() {
         return
     fi
     
-    # Export all tokens and look for ones that reference this slot
-    local all_tokens=""
-    if all_tokens=$(cryptsetup token export --token-id all "$device" 2>/dev/null); then
-        # Simple approach: check if this slot appears in any unraid-derived token
-        if echo "$all_tokens" | grep -q '"type": "unraid-derived"' && echo "$all_tokens" | grep -q "\"$slot\""; then
-            # This slot is referenced in an unraid-derived token
-            local gen_time=$(echo "$all_tokens" | grep -A 20 '"type": "unraid-derived"' | grep -o '"generation_time": "[^"]*"' | cut -d'"' -f4 | head -1)
-            if [[ -n "$gen_time" ]]; then
-                echo "⭐ Hardware-derived ($gen_time)"
-            else
-                echo "⭐ Hardware-derived (unraid-derived)"
-            fi
-        elif echo "$all_tokens" | grep -q "\"$slot\""; then
-            # Slot is in some other token
-            echo "Token present"
+    # Parse token information from luksDump output since token export isn't working
+    local dump_info=$(cryptsetup luksDump "$device" 2>/dev/null)
+    
+    # Check if this device has any tokens at all
+    if ! echo "$dump_info" | grep -q "Tokens:"; then
+        echo "Standard slot"
+        return
+    fi
+    
+    # Look for token that references this slot and contains unraid-derived type
+    # Extract the tokens section and look for our pattern
+    local tokens_section=$(echo "$dump_info" | awk '/^Tokens:$/,/^[A-Za-z]/' | grep -v "^[A-Za-z]")
+    
+    # Check if there's a token for this slot that contains unraid-derived
+    local token_for_slot=$(echo "$tokens_section" | awk -v slot="$slot" '
+        /^  [0-9]+: / { 
+            current_token = $1; 
+            gsub(/:/, "", current_token); 
+            in_slot_token = (current_token == slot) 
+        }
+        in_slot_token && /type: unraid-derived/ { 
+            print "unraid-derived"
+            exit 
+        }
+        in_slot_token && /generation_time: / { 
+            gsub(/.*generation_time: /, ""); 
+            gsub(/[",]/, ""); 
+            gen_time = $0; 
+        }
+        /^  [0-9]+: / && current_token == slot && gen_time { 
+            print gen_time; 
+            exit 
+        }
+    ')
+    
+    if [[ "$token_for_slot" == "unraid-derived" ]]; then
+        # Found unraid-derived token for this slot, try to extract timestamp
+        local gen_time=$(echo "$tokens_section" | awk -v slot="$slot" '
+            /^  [0-9]+: / { 
+                current_token = $1; 
+                gsub(/:/, "", current_token) 
+            }
+            current_token == slot && /generation_time:/ { 
+                gsub(/.*generation_time: *"?/, ""); 
+                gsub(/[",].*/, ""); 
+                print $0; 
+                exit 
+            }
+        ')
+        
+        if [[ -n "$gen_time" ]]; then
+            echo "⭐ Hardware-derived ($gen_time)"
         else
-            # No token references this slot
-            echo "Standard slot"
+            echo "⭐ Hardware-derived (unraid-derived)"
         fi
+    elif echo "$tokens_section" | grep -q "^  $slot:"; then
+        # There is a token for this slot, but not unraid-derived
+        echo "Token present"
     else
-        # No tokens at all - try a different approach to debug
-        # Let's see if luksDump shows token information
-        local dump_info=$(cryptsetup luksDump "$device" 2>/dev/null)
-        if echo "$dump_info" | grep -q "Tokens:"; then
-            echo "Token present (dump detected)"
-        else
-            echo "Standard slot"
-        fi
+        # No token for this slot
+        echo "Standard slot"
     fi
 }
 
