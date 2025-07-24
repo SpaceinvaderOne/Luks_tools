@@ -9,89 +9,198 @@ Icon="key"
 <div class="section">
   <h2>LUKS Auto-Unlock for Encrypted Arrays and Pools</h2>
   <p>This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.</p>
-  <p>Each time you run this tool, it automatically cleans up old hardware keys and adds a fresh one for the current hardware. This ensures only one hardware-derived key exists at any time.</p>
-  <p>Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
 
-  <form id="luksToolsForm">
-    <!-- LUKS Management Section -->
-    <h3>Step 1 - Refresh Hardware Key</h3>
-    <dl>
-      <dt><strong>Passphrase:</strong></dt>
-      <dd>
-        <input type="password" id="passphrase" name="passphrase" class="short" required>
-        <div class="description">Enter your original LUKS encryption key.</div>
-      </dd>
+  <!-- Tab Navigation -->
+  <div class="tab-container">
+    <div class="tab-buttons" style="border-bottom: 1px solid #444; margin-bottom: 20px;">
+      <button class="tab-btn active" data-tab="autostart" style="background: #333; color: #fff; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Auto Start</button>
+      <button class="tab-btn" data-tab="headers" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">LUKS Headers</button>
+      <button class="tab-btn" data-tab="status" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; cursor: pointer;">Status</button>
+    </div>
 
-      <dt><strong>Backup Headers:</strong></dt>
-      <dd>
-        <select id="backupHeaders" name="backupHeaders">
-          <option value="no" selected>No</option>
-          <option value="yes">Yes (save to server)</option>
-          <option value="download">Yes (download to browser)</option>
-        </select>
-        <div class="description">Recommended. Creates a password-protected backup of all LUKS headers. Choose to save on server or download to your computer.</div>
-      </dd>
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Auto Start Tab -->
+      <div id="autostart-tab" class="tab-pane active">
+        <p>Each time you run this tool, it automatically cleans up old hardware keys and adds a fresh one for the current hardware. This ensures only one hardware-derived key exists at any time.</p>
+        <p>Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
+        
+        <form id="autostartForm">
+          <!-- LUKS Management Section -->
+          <h3>Step 1 - Refresh Hardware Key</h3>
+          <dl>
+            <dt><strong>Passphrase:</strong></dt>
+            <dd>
+              <input type="password" id="passphrase" name="passphrase" class="short" required>
+              <div class="description">Enter your original LUKS encryption key.</div>
+            </dd>
 
-      <dt><strong>Dry Run:</strong></dt>
-      <dd>
-        <select id="dryRun" name="dryRun">
-          <option value="yes" selected>Yes</option>
-          <option value="no">No</option>
-        </select>
-        <div class="description">Simulates the process without making changes. Select 'No' to apply changes.</div>
-      </dd>
-    </dl>
-    <p>
-      <button type="button" onclick="runLUKSCommand()">Refresh Hardware Key</button>
-    </p>
+            <dt><strong>Backup Headers:</strong></dt>
+            <dd>
+              <select id="backupHeaders" name="backupHeaders">
+                <option value="no" selected>No</option>
+                <option value="yes">Yes (save to server)</option>
+                <option value="download">Yes (download to browser)</option>
+              </select>
+              <div class="description">Recommended. Creates a password-protected backup of all LUKS headers. Choose to save on server or download to your computer.</div>
+            </dd>
 
-    <hr>
+            <dt><strong>Dry Run:</strong></dt>
+            <dd>
+              <select id="dryRun" name="dryRun">
+                <option value="yes" selected>Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="description">Simulates the process without making changes. Select 'No' to apply changes.</div>
+            </dd>
+          </dl>
+          <p>
+            <button type="button" onclick="runLUKSCommand()">Refresh Hardware Key</button>
+          </p>
 
-    <!-- Go File Configuration Section -->
-    <h3>Step 2 - Enable Auto-Unlock at Boot</h3>
-    <p>Once you’ve added the derived key, you need to update the go file so the server can recalculate the key and unlock the drives during boot.</p>
-    <p>This section allows you to add or remove the required auto-unlock commands from <code>/boot/config/go</code>. This ensures the key is generated automatically each time the system starts.</p>
-    <dl>
-        <dt><strong>Action:</strong></dt>
-        <dd>
-            <select id="goAction" name="goAction">
-                <option value="add" selected>Add to go file</option>
-                <option value="remove">Remove from go file</option>
-            </select>
-            <div class="description">Select whether to add or remove the auto-unlock block from your startup script.</div>
-        </dd>
-    </dl>
-    <p>
-      <button type="button" onclick="runGoCommand()">Update Go file</button>
-    </p>
-  </form>
+          <hr>
 
-  <hr>
+          <!-- Go File Configuration Section -->
+          <h3>Step 2 - Enable Auto-Unlock at Boot</h3>
+          <p>Once you've added the derived key, you need to update the go file so the server can recalculate the key and unlock the drives during boot.</p>
+          <p>This section allows you to add or remove the required auto-unlock commands from <code>/boot/config/go</code>. This ensures the key is generated automatically each time the system starts.</p>
+          <dl>
+              <dt><strong>Action:</strong></dt>
+              <dd>
+                  <select id="goAction" name="goAction">
+                      <option value="add" selected>Add to go file</option>
+                      <option value="remove">Remove from go file</option>
+                  </select>
+                  <div class="description">Select whether to add or remove the auto-unlock block from your startup script.</div>
+              </dd>
+          </dl>
+          <p>
+            <button type="button" onclick="runGoCommand()">Update Go file</button>
+          </p>
+        </form>
+      </div>
 
-  <h3>Output</h3>
-  <pre id="outputArea" style="background-color: #333; color: #fff; padding: 15px; border-radius: 5px; min-height: 100px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+      <!-- LUKS Headers Tab -->
+      <div id="headers-tab" class="tab-pane" style="display: none;">
+        <p>Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.</p>
+        
+        <form id="headersForm">
+          <h3>Backup LUKS Headers</h3>
+          <dl>
+            <dt><strong>Passphrase:</strong></dt>
+            <dd>
+              <input type="password" id="headersPassphrase" name="headersPassphrase" class="short" required>
+              <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+            </dd>
+
+            <dt><strong>Backup Location:</strong></dt>
+            <dd>
+              <select id="headersBackupLocation" name="headersBackupLocation">
+                <option value="yes" selected>Save to server</option>
+                <option value="download">Download to browser</option>
+              </select>
+              <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
+            </dd>
+
+            <dt><strong>Dry Run:</strong></dt>
+            <dd>
+              <select id="headersDryRun" name="headersDryRun">
+                <option value="yes" selected>Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="description">Simulates the backup process without creating files. Select 'No' to create actual backups.</div>
+            </dd>
+          </dl>
+          <p>
+            <button type="button" onclick="runHeadersBackup()">Backup Headers</button>
+          </p>
+        </form>
+      </div>
+
+      <!-- Status Tab -->
+      <div id="status-tab" class="tab-pane" style="display: none;">
+        <p>Operation output and status information will be displayed here. Switch to this tab during operations to monitor progress.</p>
+        
+        <h3>Current Operation Status</h3>
+        <div style="margin-bottom: 10px;">
+          <button type="button" onclick="clearStatus()" style="background: #444; color: #fff; border: 1px solid #666; padding: 5px 15px; cursor: pointer;">Clear Output</button>
+        </div>
+        <pre id="statusOutput" style="background-color: #1a1a1a; color: #fff; padding: 15px; border-radius: 5px; min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #444;">No operations performed yet. Output from all plugin operations will appear here.</pre>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
+  // Tab switching functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add click listeners to tab buttons
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        switchTab(this.dataset.tab);
+      });
+    });
+  });
+
+  function switchTab(tabName) {
+    // Hide all tab panes
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    tabPanes.forEach(pane => {
+      pane.style.display = 'none';
+    });
+
+    // Remove active class from all buttons
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(button => {
+      button.classList.remove('active');
+      button.style.background = '#222';
+      button.style.color = '#ccc';
+    });
+
+    // Show selected tab and activate button
+    document.getElementById(tabName + '-tab').style.display = 'block';
+    const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+    activeButton.classList.add('active');
+    activeButton.style.background = '#333';
+    activeButton.style.color = '#fff';
+  }
+
+  // Unified status output functions
+  function updateStatus(message) {
+    const statusOutput = document.getElementById('statusOutput');
+    statusOutput.textContent += message + '\n';
+    statusOutput.scrollTop = statusOutput.scrollHeight;
+  }
+
+  function setStatus(message) {
+    const statusOutput = document.getElementById('statusOutput');
+    statusOutput.textContent = message + '\n';
+    statusOutput.scrollTop = statusOutput.scrollHeight;
+  }
+
+  function clearStatus() {
+    document.getElementById('statusOutput').textContent = 'Output cleared.\n';
+  }
+
   function runLUKSCommand() {
     const passphrase = document.getElementById('passphrase').value;
     const backupHeaders = document.getElementById('backupHeaders').value;
     const dryRun = document.getElementById('dryRun').value;
-    const outputDiv = document.getElementById('outputArea'); // Unified output div
 
     if (!passphrase) {
-      outputDiv.textContent = 'Error: Passphrase is required.';
+      setStatus('Error: Passphrase is required.');
       return;
     }
 
-    outputDiv.textContent = 'Executing LUKS management script, please wait...';
+    setStatus('Starting LUKS hardware key refresh operation...\nExecuting LUKS management script, please wait...');
 
     $.post('/plugins/luks-key-management/scripts/run_luks_script.php', {
       passphrase: passphrase,
       backupHeaders: backupHeaders,
       dryRun: dryRun
     }, function(data) {
-      outputDiv.textContent = data;
+      setStatus(data);
       
       // Check if we need to download a backup file
       if (backupHeaders === 'download' && dryRun === 'no') {
@@ -104,7 +213,7 @@ Icon="key"
         }
       }
     }).fail(function() {
-      outputDiv.textContent = 'Error: Failed to execute the LUKS management script. Check browser console for more details.';
+      setStatus('Error: Failed to execute the LUKS management script. Check browser console for more details.');
     });
   }
 
@@ -122,9 +231,8 @@ Icon="key"
     link.click();
     document.body.removeChild(link);
     
-    // Update output to inform user
-    const outputDiv = document.getElementById('outputArea');
-    outputDiv.textContent += '\n\nBackup file download initiated. Check your browser\'s download folder.';
+    // Update status to inform user
+    updateStatus('\nBackup file download initiated. Check your browser\'s download folder.');
     
     // Clean up the temporary file after a delay
     setTimeout(function() {
@@ -140,16 +248,53 @@ Icon="key"
 
   function runGoCommand() {
     const action = document.getElementById('goAction').value;
-    const outputDiv = document.getElementById('outputArea'); // Unified output div
 
-    outputDiv.textContent = 'Executing startup script configuration, please wait...';
+    setStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
 
     $.post('/plugins/luks-key-management/scripts/run_go_script.php', {
       action: action
     }, function(data) {
-      outputDiv.textContent = data;
+      setStatus(data);
     }).fail(function() {
-      outputDiv.textContent = 'Error: Failed to execute the go file script. Check browser console for more details.';
+      setStatus('Error: Failed to execute the go file script. Check browser console for more details.');
+    });
+  }
+
+  function runHeadersBackup() {
+    const passphrase = document.getElementById('headersPassphrase').value;
+    const backupLocation = document.getElementById('headersBackupLocation').value;
+    const dryRun = document.getElementById('headersDryRun').value;
+
+    if (!passphrase) {
+      setStatus('Error: Passphrase is required for LUKS headers backup.');
+      return;
+    }
+
+    setStatus('Starting LUKS headers backup operation...\nExecuting LUKS headers backup script, please wait...');
+
+    // Use the same backend but with headers-only flags
+    const backupMode = backupLocation === 'download' ? 'download' : 'yes';
+    
+    $.post('/plugins/luks-key-management/scripts/run_luks_script.php', {
+      passphrase: passphrase,
+      backupHeaders: backupMode,
+      dryRun: dryRun,
+      headersOnly: 'true' // Flag to indicate this is headers-only operation
+    }, function(data) {
+      setStatus(data);
+      
+      // Check if we need to download a backup file
+      if (backupLocation === 'download' && dryRun === 'no') {
+        // Look for download ready indicator in the output
+        const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+        if (downloadMatch) {
+          const downloadPath = downloadMatch[1];
+          const filename = downloadPath.split('/').pop();
+          downloadBackupFile(filename);
+        }
+      }
+    }).fail(function() {
+      setStatus('Error: Failed to execute the LUKS headers backup script. Check browser console for more details.');
     });
   }
 </script>

@@ -9,6 +9,7 @@ $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_manag
 $passphrase = $_POST['passphrase'] ?? '';
 $backup_headers_option = $_POST['backupHeaders'] ?? 'no';
 $dry_run_option = $_POST['dryRun'] ?? 'yes';
+$headers_only = $_POST['headersOnly'] ?? 'false';
 
 // --- Validate Inputs ---
 if (empty($passphrase)) {
