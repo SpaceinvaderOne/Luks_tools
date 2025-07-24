@@ -52,7 +52,16 @@ validate_passphrase() {
 #
 get_used_slots() {
     local device="$1"
-    cryptsetup luksDump "$device" | grep -E "^[0-9]+:" | grep -v "DISABLED" | awk -F: '{print $1}' | sort -n
+    local dump_output=$(cryptsetup luksDump "$device")
+    local luks_version=$(echo "$dump_output" | grep 'Version:' | awk '{print $2}')
+    
+    if [[ "$luks_version" == "1" ]]; then
+        # LUKS1: Look for enabled slots
+        echo "$dump_output" | grep 'Key Slot [0-7]: ENABLED' | sed 's/Key Slot \([0-7]\): ENABLED/\1/' | sort -n
+    else
+        # LUKS2: Look for active keyslots
+        echo "$dump_output" | grep -E '^[[:space:]]+[0-9]+: luks2' | sed 's/^[[:space:]]*\([0-9]\+\):.*/\1/' | sort -n
+    fi
 }
 
 #
