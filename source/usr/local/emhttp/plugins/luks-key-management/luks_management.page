@@ -16,6 +16,7 @@ Icon="key"
       <button class="tab-btn active" data-tab="autostart" style="background: #333; color: #fff; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Auto Start</button>
       <button class="tab-btn" data-tab="headers" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">LUKS Headers</button>
       <button class="tab-btn" data-tab="gofile" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Go File</button>
+      <button class="tab-btn" data-tab="encinfo" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Encryption Info</button>
       <button class="tab-btn" data-tab="status" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; cursor: pointer;">Status</button>
     </div>
 
@@ -128,6 +129,48 @@ Icon="key"
           
           <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
             <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
+          </div>
+        </form>
+      </div>
+
+      <!-- Encryption Info Tab -->
+      <div id="encinfo-tab" class="tab-pane" style="display: none;">
+        <p>View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.</p>
+        
+        <form id="encinfoForm">
+          <h3>Encryption Analysis</h3>
+          <dl>
+            <dt><strong>Passphrase:</strong></dt>
+            <dd>
+              <input type="password" id="encinfoPassphrase" name="encinfoPassphrase" class="short" required>
+              <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
+            </dd>
+
+            <dt><strong>Detail Level:</strong></dt>
+            <dd>
+              <select id="detailLevel" name="detailLevel">
+                <option value="simple" selected>Simple (drive list only)</option>
+                <option value="detailed">Detailed (slots and metadata)</option>
+              </select>
+              <div class="description">Choose how much information to display about your encrypted drives.</div>
+            </dd>
+
+            <dt><strong>Dry Run:</strong></dt>
+            <dd>
+              <select id="encinfoDryRun" name="encinfoDryRun">
+                <option value="yes" selected>Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="description">Dry run mode for testing - no actual operations performed.</div>
+            </dd>
+          </dl>
+          <p>
+            <button type="button" onclick="runEncryptionInfo()">View Encryption Status</button>
+            <button type="button" onclick="downloadEncryptionInfo()" style="margin-left: 10px; background: #4CAF50; color: white; border: 1px solid #45a049; padding: 8px 16px; cursor: pointer;">Download Analysis</button>
+          </p>
+          
+          <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #FF9800;">
+            <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
           </div>
         </form>
       </div>
@@ -320,5 +363,96 @@ Icon="key"
     }).fail(function() {
       setStatus('Error: Failed to execute the LUKS headers backup script. Check browser console for more details.');
     });
+  }
+
+  function runEncryptionInfo() {
+    const passphrase = document.getElementById('encinfoPassphrase').value;
+    const detailLevel = document.getElementById('detailLevel').value;
+    const dryRun = document.getElementById('encinfoDryRun').value;
+
+    if (!passphrase) {
+      setStatus('Error: Passphrase is required for encryption analysis.');
+      return;
+    }
+
+    // Auto-switch to Status tab to show operation progress
+    switchTab('status');
+    setStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
+
+    $.post('/plugins/luks-key-management/scripts/run_encryption_info.php', {
+      passphrase: passphrase,
+      detailLevel: detailLevel,
+      dryRun: dryRun
+    }, function(data) {
+      setStatus(data);
+    }).fail(function() {
+      setStatus('Error: Failed to execute encryption analysis. Check browser console for more details.');
+    });
+  }
+
+  function downloadEncryptionInfo() {
+    const passphrase = document.getElementById('encinfoPassphrase').value;
+    const detailLevel = document.getElementById('detailLevel').value;
+    const dryRun = document.getElementById('encinfoDryRun').value;
+
+    if (!passphrase) {
+      setStatus('Error: Passphrase is required for encryption analysis download.');
+      return;
+    }
+
+    if (dryRun === 'yes') {
+      setStatus('Error: Cannot download analysis in dry run mode. Set dry run to "No" to download.');
+      return;
+    }
+
+    // Auto-switch to Status tab to show operation progress
+    switchTab('status');
+    setStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
+
+    $.post('/plugins/luks-key-management/scripts/run_encryption_download.php', {
+      passphrase: passphrase,
+      detailLevel: detailLevel
+    }, function(data) {
+      setStatus(data);
+      
+      // Check if we need to download the analysis file
+      const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+      if (downloadMatch) {
+        const downloadPath = downloadMatch[1];
+        const filename = downloadPath.split('/').pop();
+        downloadAnalysisFile(filename);
+      }
+    }).fail(function() {
+      setStatus('Error: Failed to generate encryption analysis download. Check browser console for more details.');
+    });
+  }
+
+  function downloadAnalysisFile(filename) {
+    // Create direct download link - file is accessible via plugin downloads directory
+    const downloadUrl = '/plugins/luks-key-management/downloads/' + filename;
+    
+    // Create a temporary anchor element to trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Update status to inform user
+    updateStatus('\nEncryption analysis download initiated. Check your browser\'s download folder.');
+    
+    // Clean up the temporary file after a delay
+    setTimeout(function() {
+      fetch('/plugins/luks-key-management/scripts/cleanup_download.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'filename=' + encodeURIComponent(filename)
+      });
+    }, 5000); // 5 second delay to ensure download completes
   }
 </script>
