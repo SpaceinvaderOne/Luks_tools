@@ -8,7 +8,6 @@ $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_info_
 // --- Get POST data from the UI ---
 $passphrase = $_POST['passphrase'] ?? '';
 $detail_level = $_POST['detailLevel'] ?? 'simple';
-$dry_run_option = $_POST['dryRun'] ?? 'yes';
 
 // --- Validate Inputs ---
 if (empty($passphrase)) {
@@ -17,18 +16,14 @@ if (empty($passphrase)) {
 }
 
 // Validate detail level
-if (!in_array($detail_level, ['simple', 'detailed'])) {
-    echo "Error: Invalid detail level. Must be 'simple' or 'detailed'.";
+if (!in_array($detail_level, ['simple', 'detailed', 'very_detailed'])) {
+    echo "Error: Invalid detail level. Must be 'simple', 'detailed', or 'very_detailed'.";
     exit(1);
 }
 
 // --- Build the Shell Command Arguments ---
 $args = "";
 $args .= " -d " . escapeshellarg($detail_level);
-
-if ($dry_run_option === 'yes') {
-    $args .= " --dry-run";
-}
 
 $command = $script_path . $args;
 

@@ -18,8 +18,8 @@ if (empty($passphrase)) {
 }
 
 // Validate detail level
-if (!in_array($detail_level, ['simple', 'detailed'])) {
-    echo "Error: Invalid detail level. Must be 'simple' or 'detailed'.";
+if (!in_array($detail_level, ['simple', 'detailed', 'very_detailed'])) {
+    echo "Error: Invalid detail level. Must be 'simple', 'detailed', or 'very_detailed'.";
     exit(1);
 }
 
