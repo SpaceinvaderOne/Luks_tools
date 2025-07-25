@@ -3,8 +3,8 @@ Title="LUKS Key Management"
 Icon="key"
 ---
 <?
-# This space is intentionally left for any future PHP logic if needed.
-# For now, all logic is handled by the backend PHP scripts via AJAX.
+# Get CSRF token from Unraid's variable system
+$csrf_token = $var['csrf_token'] ?? '';
 ?>
 <div class="section">
   
@@ -293,6 +293,10 @@ Icon="key"
 </div>
 
 <script>
+  // Make CSRF token available to JavaScript
+  var csrf_token = '<?=$csrf_token?>';
+  console.log('DEBUG: CSRF token loaded:', csrf_token);
+  
   // Tab switching functionality
   document.addEventListener('DOMContentLoaded', function() {
     // Add click listeners to tab buttons
@@ -400,18 +404,11 @@ Icon="key"
     formData.append('dryRun', dryRun);
     
     // Add CSRF token for Unraid security
-    // Try multiple ways to get the CSRF token in Unraid
-    let csrfToken = '';
-    if (typeof csrf_token !== 'undefined') {
-      csrfToken = csrf_token; // Global variable
-    } else if ($('meta[name="csrf-token"]').length) {
-      csrfToken = $('meta[name="csrf-token"]').attr('content'); // Meta tag
-    } else if ($('input[name="csrf_token"]').length) {
-      csrfToken = $('input[name="csrf_token"]').val(); // Hidden input
-    }
-    console.log('DEBUG: CSRF token found:', csrfToken);
-    if (csrfToken) {
-      formData.append('csrf_token', csrfToken);
+    console.log('DEBUG: Using CSRF token:', csrf_token);
+    if (csrf_token) {
+      formData.append('csrf_token', csrf_token);
+    } else {
+      console.log('WARNING: No CSRF token available');
     }
 
     console.log('DEBUG: Starting AJAX request to /plugins/luks-key-management/scripts/run_luks_script.php');
@@ -486,20 +483,13 @@ Icon="key"
     switchTab('status');
     setStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
 
-    // Get CSRF token using multiple methods
-    let csrfToken = '';
-    if (typeof csrf_token !== 'undefined') {
-      csrfToken = csrf_token;
-    } else if ($('meta[name="csrf-token"]').length) {
-      csrfToken = $('meta[name="csrf-token"]').attr('content');
-    } else if ($('input[name="csrf_token"]').length) {
-      csrfToken = $('input[name="csrf_token"]').val();
-    }
-    console.log('DEBUG: CSRF token for go command:', csrfToken);
+    console.log('DEBUG: CSRF token for go command:', csrf_token);
     
     const postData = { action: action };
-    if (csrfToken) {
-      postData.csrf_token = csrfToken;
+    if (csrf_token) {
+      postData.csrf_token = csrf_token;
+    } else {
+      console.log('WARNING: No CSRF token available for go command');
     }
     
     $.post('/plugins/luks-key-management/scripts/run_go_script.php', postData, function(data) {
@@ -544,18 +534,11 @@ Icon="key"
     formData.append('headersOnly', 'true'); // Flag to indicate this is headers-only operation
     
     // Add CSRF token for Unraid security
-    // Try multiple ways to get the CSRF token in Unraid
-    let csrfToken = '';
-    if (typeof csrf_token !== 'undefined') {
-      csrfToken = csrf_token; // Global variable
-    } else if ($('meta[name="csrf-token"]').length) {
-      csrfToken = $('meta[name="csrf-token"]').attr('content'); // Meta tag
-    } else if ($('input[name="csrf_token"]').length) {
-      csrfToken = $('input[name="csrf_token"]').val(); // Hidden input
-    }
-    console.log('DEBUG: CSRF token found:', csrfToken);
-    if (csrfToken) {
-      formData.append('csrf_token', csrfToken);
+    console.log('DEBUG: Using CSRF token:', csrf_token);
+    if (csrf_token) {
+      formData.append('csrf_token', csrf_token);
+    } else {
+      console.log('WARNING: No CSRF token available');
     }
     
     $.ajax({
@@ -613,18 +596,11 @@ Icon="key"
     formData.append('detailLevel', detailLevel);
     
     // Add CSRF token for Unraid security
-    // Try multiple ways to get the CSRF token in Unraid
-    let csrfToken = '';
-    if (typeof csrf_token !== 'undefined') {
-      csrfToken = csrf_token; // Global variable
-    } else if ($('meta[name="csrf-token"]').length) {
-      csrfToken = $('meta[name="csrf-token"]').attr('content'); // Meta tag
-    } else if ($('input[name="csrf_token"]').length) {
-      csrfToken = $('input[name="csrf_token"]').val(); // Hidden input
-    }
-    console.log('DEBUG: CSRF token found:', csrfToken);
-    if (csrfToken) {
-      formData.append('csrf_token', csrfToken);
+    console.log('DEBUG: Using CSRF token:', csrf_token);
+    if (csrf_token) {
+      formData.append('csrf_token', csrf_token);
+    } else {
+      console.log('WARNING: No CSRF token available');
     }
 
     $.ajax({
@@ -671,18 +647,11 @@ Icon="key"
     formData.append('detailLevel', detailLevel);
     
     // Add CSRF token for Unraid security
-    // Try multiple ways to get the CSRF token in Unraid
-    let csrfToken = '';
-    if (typeof csrf_token !== 'undefined') {
-      csrfToken = csrf_token; // Global variable
-    } else if ($('meta[name="csrf-token"]').length) {
-      csrfToken = $('meta[name="csrf-token"]').attr('content'); // Meta tag
-    } else if ($('input[name="csrf_token"]').length) {
-      csrfToken = $('input[name="csrf_token"]').val(); // Hidden input
-    }
-    console.log('DEBUG: CSRF token found:', csrfToken);
-    if (csrfToken) {
-      formData.append('csrf_token', csrfToken);
+    console.log('DEBUG: Using CSRF token:', csrf_token);
+    if (csrf_token) {
+      formData.append('csrf_token', csrf_token);
+    } else {
+      console.log('WARNING: No CSRF token available');
     }
 
     $.ajax({
