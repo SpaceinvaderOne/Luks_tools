@@ -451,8 +451,10 @@ $csrf_token = $var['csrf_token'] ?? '';
         setStatus(data);
         
         // Check if we need to download a backup file
-        console.log('DEBUG: Checking download - backupLocation:', backupLocation, 'dryRun:', dryRun);
-        if (backupLocation === 'download' && dryRun === 'no') {
+        const finalBackupLocation = document.getElementById('backupLocation').value;
+        const finalDryRun = document.getElementById('dryRun').value;
+        console.log('DEBUG: Checking download - backupLocation:', finalBackupLocation, 'dryRun:', finalDryRun);
+        if (finalBackupLocation === 'download' && finalDryRun === 'no') {
           // Look for download ready indicator in the output
           console.log('DEBUG: Looking for DOWNLOAD_READY in output...');
           const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
@@ -546,43 +548,62 @@ $csrf_token = $var['csrf_token'] ?? '';
 
     // Use the same backend but with headers-only flags
     const backupMode = backupLocation === 'download' ? 'download' : 'yes';
-    
-    // Prepare form data to handle both passphrase and keyfile
-    const formData = new FormData();
     const keyType = document.getElementById('keyType_headers').value;
     
-    formData.append('keyType', keyType);
+    // Prepare data using the same pattern as Auto Start (which works)
+    const postData = {
+      keyType: keyType,
+      backupHeaders: backupMode,
+      dryRun: dryRun,
+      headersOnly: 'true' // Flag to indicate this is headers-only operation
+    };
+    
     if (keyType === 'passphrase') {
       const passphrase = document.getElementById('passphrase_headers').value;
-      formData.append('passphrase', passphrase);
+      postData.passphrase = passphrase;
+      
+      // Add CSRF token
+      if (csrf_token) {
+        postData.csrf_token = csrf_token;
+      }
+      
+      // Make request directly for passphrase
+      makeHeadersAjaxRequest(postData, backupLocation, dryRun);
     } else {
       const keyfileInput = document.getElementById('keyfile_headers');
-      formData.append('keyfile', keyfileInput.files[0]);
+      if (keyfileInput.files && keyfileInput.files[0]) {
+        // Convert file to base64 (same pattern as Auto Start)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const base64Data = e.target.result;
+          postData.keyfileData = base64Data;
+          
+          // Add CSRF token
+          if (csrf_token) {
+            postData.csrf_token = csrf_token;
+          }
+          
+          makeHeadersAjaxRequest(postData, backupLocation, dryRun);
+        };
+        reader.readAsDataURL(keyfileInput.files[0]);
+        return;
+      } else {
+        setStatus('Error: No keyfile selected');
+        return;
+      }
     }
-    formData.append('backupHeaders', backupMode);
-    formData.append('dryRun', dryRun);
-    formData.append('headersOnly', 'true'); // Flag to indicate this is headers-only operation
-    
-    // Add CSRF token for Unraid security
-    console.log('DEBUG: Using CSRF token:', csrf_token);
-    if (csrf_token) {
-      formData.append('csrf_token', csrf_token);
-    } else {
-      console.log('WARNING: No CSRF token available');
-    }
-    
+  }
+  
+  function makeHeadersAjaxRequest(postData, backupLocation, dryRun) {
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_luks_script.php',
       type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
+      data: postData,
       success: function(data) {
         setStatus(data);
         
         // Check if we need to download a backup file
         if (backupLocation === 'download' && dryRun === 'no') {
-          // Look for download ready indicator in the output
           const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
           if (downloadMatch) {
             const downloadPath = downloadMatch[1];
@@ -606,39 +627,59 @@ $csrf_token = $var['csrf_token'] ?? '';
     }
 
     const detailLevel = document.getElementById('detailLevel').value;
+    const keyType = document.getElementById('keyType_encinfo').value;
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
     setStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
 
-    // Prepare form data to handle both passphrase and keyfile
-    const formData = new FormData();
-    const keyType = document.getElementById('keyType_encinfo').value;
+    // Prepare data using the same pattern as Auto Start (which works)
+    const postData = {
+      keyType: keyType,
+      detailLevel: detailLevel
+    };
     
-    formData.append('keyType', keyType);
     if (keyType === 'passphrase') {
       const passphrase = document.getElementById('passphrase_encinfo').value;
-      formData.append('passphrase', passphrase);
+      postData.passphrase = passphrase;
+      
+      // Add CSRF token
+      if (csrf_token) {
+        postData.csrf_token = csrf_token;
+      }
+      
+      // Make request directly for passphrase
+      makeEncryptionInfoAjaxRequest(postData);
     } else {
       const keyfileInput = document.getElementById('keyfile_encinfo');
-      formData.append('keyfile', keyfileInput.files[0]);
+      if (keyfileInput.files && keyfileInput.files[0]) {
+        // Convert file to base64 (same pattern as Auto Start)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const base64Data = e.target.result;
+          postData.keyfileData = base64Data;
+          
+          // Add CSRF token
+          if (csrf_token) {
+            postData.csrf_token = csrf_token;
+          }
+          
+          makeEncryptionInfoAjaxRequest(postData);
+        };
+        reader.readAsDataURL(keyfileInput.files[0]);
+        return;
+      } else {
+        setStatus('Error: No keyfile selected');
+        return;
+      }
     }
-    formData.append('detailLevel', detailLevel);
-    
-    // Add CSRF token for Unraid security
-    console.log('DEBUG: Using CSRF token:', csrf_token);
-    if (csrf_token) {
-      formData.append('csrf_token', csrf_token);
-    } else {
-      console.log('WARNING: No CSRF token available');
-    }
-
+  }
+  
+  function makeEncryptionInfoAjaxRequest(postData) {
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_encryption_info.php',
       type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
+      data: postData,
       success: function(data) {
         setStatus(data);
       },
@@ -657,39 +698,59 @@ $csrf_token = $var['csrf_token'] ?? '';
     }
 
     const detailLevel = document.getElementById('detailLevel').value;
+    const keyType = document.getElementById('keyType_encinfo').value;
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
     setStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
 
-    // Prepare form data to handle both passphrase and keyfile
-    const formData = new FormData();
-    const keyType = document.getElementById('keyType_encinfo').value;
+    // Prepare data using the same pattern as Auto Start (which works)
+    const postData = {
+      keyType: keyType,
+      detailLevel: detailLevel
+    };
     
-    formData.append('keyType', keyType);
     if (keyType === 'passphrase') {
       const passphrase = document.getElementById('passphrase_encinfo').value;
-      formData.append('passphrase', passphrase);
+      postData.passphrase = passphrase;
+      
+      // Add CSRF token
+      if (csrf_token) {
+        postData.csrf_token = csrf_token;
+      }
+      
+      // Make request directly for passphrase
+      makeEncryptionDownloadAjaxRequest(postData);
     } else {
       const keyfileInput = document.getElementById('keyfile_encinfo');
-      formData.append('keyfile', keyfileInput.files[0]);
+      if (keyfileInput.files && keyfileInput.files[0]) {
+        // Convert file to base64 (same pattern as Auto Start)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const base64Data = e.target.result;
+          postData.keyfileData = base64Data;
+          
+          // Add CSRF token
+          if (csrf_token) {
+            postData.csrf_token = csrf_token;
+          }
+          
+          makeEncryptionDownloadAjaxRequest(postData);
+        };
+        reader.readAsDataURL(keyfileInput.files[0]);
+        return;
+      } else {
+        setStatus('Error: No keyfile selected');
+        return;
+      }
     }
-    formData.append('detailLevel', detailLevel);
-    
-    // Add CSRF token for Unraid security
-    console.log('DEBUG: Using CSRF token:', csrf_token);
-    if (csrf_token) {
-      formData.append('csrf_token', csrf_token);
-    } else {
-      console.log('WARNING: No CSRF token available');
-    }
-
+  }
+  
+  function makeEncryptionDownloadAjaxRequest(postData) {
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_encryption_download.php',
       type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
+      data: postData,
       success: function(data) {
         setStatus(data);
         
