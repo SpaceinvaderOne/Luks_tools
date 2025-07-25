@@ -449,13 +449,14 @@ $csrf_token = $var['csrf_token'] ?? '';
         if (finalBackupLocation === 'download' && finalDryRun === 'no') {
           // Look for download ready indicator in the output
           console.log('DEBUG: Looking for DOWNLOAD_READY in output...');
-          const downloadMatch = data.match(/DOWNLOAD_READY: (\/usr\/local\/emhttp\/plugins\/luks-key-management\/downloads\/.+)/);
+          const downloadMatch = data.match(/DOWNLOAD_READY: (\/usr\/local\/emhttp\/plugins\/luks-key-management\/downloads\/[^D\s]+\.zip)/);
           console.log('DEBUG: Download match result:', downloadMatch);
           if (downloadMatch) {
             const downloadPath = downloadMatch[1].trim();
             const filename = downloadPath.split('/').pop();
             console.log('DEBUG: Starting download for file:', filename);
             console.log('DEBUG: Full download path:', downloadPath);
+            console.log('DEBUG: Raw matched string:', downloadMatch[1]);
             downloadBackupFile(filename);
           } else {
             console.log('DEBUG: No DOWNLOAD_READY found in output');
