@@ -13,6 +13,9 @@ echo "DEBUG: CSRF token length: " . strlen($_POST['csrf_token'] ?? '') . "\n";
 echo "DEBUG: All POST data: " . print_r($_POST, true) . "\n";
 echo "DEBUG: All FILES data: " . print_r($_FILES, true) . "\n";
 
+// TEMPORARY: Check if this is the CSRF issue or passphrase issue
+echo "DEBUG: Proceeding anyway to test passphrase authentication...\n";
+
 // Define the absolute path to the encryption info viewer script
 $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_info_viewer.sh";
 
@@ -32,7 +35,16 @@ function processEncryptionKey() {
         if (strlen($passphrase) > 512) {
             return ['error' => 'Passphrase exceeds 512 character limit (Unraid standard).'];
         }
-        return ['type' => 'passphrase', 'value' => $passphrase];
+        
+        // Follow official Unraid pattern: write passphrase to temp file and use --key-file
+        // This matches how Unraid's official LUKS key change function works
+        $temp_passphrase_file = "/tmp/luks_passphrase_" . uniqid() . ".key";
+        if (file_put_contents($temp_passphrase_file, $passphrase) === false) {
+            return ['error' => 'Failed to create temporary passphrase file.'];
+        }
+        chmod($temp_passphrase_file, 0600);
+        
+        return ['type' => 'keyfile', 'value' => $temp_passphrase_file];
     } else {
         // Handle keyfile data (base64 encoded, following Unraid pattern)
         if (!isset($_POST['keyfileData'])) {
@@ -101,15 +113,14 @@ $descriptorspec = array(
 );
 
 // Pass the encryption key securely as an environment variable
+// Since we now use temp files for both passphrases and keyfiles (Unraid pattern),
+// we always use LUKS_KEYFILE
 $env = array(
-    'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
+    'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin',
+    'LUKS_KEYFILE' => $encryption_key['value']
 );
 
-if ($encryption_key['type'] === 'passphrase') {
-    $env['LUKS_PASSPHRASE'] = $encryption_key['value'];
-} else {
-    $env['LUKS_KEYFILE'] = $encryption_key['value'];
-}
+echo "DEBUG: Using keyfile path: " . $encryption_key['value'] . "\n";
 
 // Start the process with the explicit environment
 $process = proc_open($command, $descriptorspec, $pipes, null, $env);
@@ -140,8 +151,12 @@ if (is_resource($process)) {
     exit(1);
 }
 
-// Clean up temporary keyfile if one was created
-if ($encryption_key['type'] === 'keyfile' && file_exists($encryption_key['value'])) {
-    unlink($encryption_key['value']);
+// Clean up temporary files (both passphrase temp files and uploaded keyfiles)
+if (isset($encryption_key['value']) && file_exists($encryption_key['value'])) {
+    // Check if it's a temp file we created (either passphrase or keyfile)
+    if (strpos($encryption_key['value'], '/tmp/luks_') === 0) {
+        unlink($encryption_key['value']);
+        echo "DEBUG: Cleaned up temporary file: " . $encryption_key['value'] . "\n";
+    }
 }
 ?>
