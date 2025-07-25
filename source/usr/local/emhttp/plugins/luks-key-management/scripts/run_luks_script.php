@@ -26,12 +26,36 @@ function processEncryptionKey() {
         }
         return ['type' => 'passphrase', 'value' => $passphrase];
     } else {
-        // Handle keyfile upload
-        if (!isset($_FILES['keyfile']) || $_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
-            return ['error' => 'Keyfile upload failed or no file provided.'];
+        // Handle keyfile upload - Add debugging
+        echo "DEBUG: Processing keyfile upload...\n";
+        echo "DEBUG: _FILES array: " . print_r($_FILES, true) . "\n";
+        
+        if (!isset($_FILES['keyfile'])) {
+            return ['error' => 'No keyfile in upload. Check form enctype and field name.'];
+        }
+        
+        if ($_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
+            $error_msg = 'Keyfile upload error: ';
+            switch ($_FILES['keyfile']['error']) {
+                case UPLOAD_ERR_INI_SIZE:
+                case UPLOAD_ERR_FORM_SIZE:
+                    $error_msg .= 'File too large';
+                    break;
+                case UPLOAD_ERR_PARTIAL:
+                    $error_msg .= 'Partial upload';
+                    break;
+                case UPLOAD_ERR_NO_FILE:
+                    $error_msg .= 'No file uploaded';
+                    break;
+                default:
+                    $error_msg .= 'Unknown error (' . $_FILES['keyfile']['error'] . ')';
+            }
+            return ['error' => $error_msg];
         }
         
         $uploaded_file = $_FILES['keyfile'];
+        echo "DEBUG: File size: " . $uploaded_file['size'] . " bytes\n";
+        echo "DEBUG: File name: " . $uploaded_file['name'] . "\n";
         
         // Validate file size (8 MiB limit)
         if ($uploaded_file['size'] > 8388608) {
@@ -40,12 +64,15 @@ function processEncryptionKey() {
         
         // Create secure temporary file
         $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
+        echo "DEBUG: Creating temp file: $temp_keyfile\n";
+        
         if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_keyfile)) {
-            return ['error' => 'Failed to process keyfile upload.'];
+            return ['error' => 'Failed to process keyfile upload. Check /tmp permissions.'];
         }
         
         // Set secure permissions (read-only for owner)
         chmod($temp_keyfile, 0600);
+        echo "DEBUG: Keyfile processed successfully\n";
         
         return ['type' => 'keyfile', 'value' => $temp_keyfile];
     }
