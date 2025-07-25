@@ -39,19 +39,21 @@ $csrf_token = $var['csrf_token'] ?? '';
   height: 100%;
 }
 
-.unraid_mark_1 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0s; }
-.unraid_mark_2 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.1s; }
-.unraid_mark_3 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.2s; }
-.unraid_mark_4 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.3s; }
-.unraid_mark_5 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.4s; }
-.unraid_mark_6 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.5s; }
-.unraid_mark_7 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.6s; }
-.unraid_mark_8 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.7s; }
-.unraid_mark_9 { animation: unraid-wave 2s ease-in-out infinite; animation-delay: 0.8s; }
+.unraid_mark_1 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0s; }
+.unraid_mark_2 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0.15s; }
+.unraid_mark_3 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0.3s; }
+.unraid_mark_4 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0.45s; }
+.unraid_mark_5 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0.6s; }
+.unraid_mark_6 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0.75s; }
+.unraid_mark_7 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 0.9s; }
+.unraid_mark_8 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 1.05s; }
+.unraid_mark_9 { animation: unraid-wave 3s ease-in-out infinite; animation-delay: 1.2s; }
 
 @keyframes unraid-wave {
-  0%, 100% { opacity: 0.3; }
+  0%, 100% { opacity: 0.4; }
+  25% { opacity: 0.6; }
   50% { opacity: 1; }
+  75% { opacity: 0.6; }
 }
 </style>
 
