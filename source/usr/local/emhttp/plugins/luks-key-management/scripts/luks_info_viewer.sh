@@ -13,6 +13,8 @@ set -e
 # Default values for script options
 DETAIL_LEVEL="simple"
 PASSPHRASE=""
+KEY_TYPE=""
+KEYFILE_PATH=""
 
 # Temporary working directory
 TEMP_WORK_DIR="/tmp/luks_info_viewer_$$"
@@ -36,7 +38,23 @@ get_luks_devices() {
 }
 
 #
-# Validate that a passphrase can unlock a LUKS device
+# Test encryption key (passphrase or keyfile) against a LUKS device
+#
+test_encryption_key() {
+    local device="$1"
+    
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        echo "$PASSPHRASE" | cryptsetup luksOpen --test-passphrase "$device" --stdin 2>/dev/null
+    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+        cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE_PATH" "$device" 2>/dev/null
+    else
+        echo "Error: Unknown key type '$KEY_TYPE'" >&2
+        return 1
+    fi
+}
+
+#
+# Validate that a passphrase can unlock a LUKS device (legacy function, kept for backward compatibility)
 #
 validate_passphrase() {
     local device="$1"
@@ -169,7 +187,6 @@ get_token_info() {
 #
 get_detailed_slot_info() {
     local device="$1"
-    local passphrase="$2"
     
     echo "    📋 Detailed Slot Analysis:"
     
@@ -179,7 +196,7 @@ get_detailed_slot_info() {
         local token_info=$(get_token_info "$device" "$slot")
         
         if [[ "$slot" == "0" ]]; then
-            echo "    ├─ Slot $slot: Original passphrase"
+            echo "    ├─ Slot $slot: Original encryption key"
         else
             echo "    ├─ Slot $slot: $token_info"
         fi
@@ -191,8 +208,7 @@ get_detailed_slot_info() {
 #
 analyze_device() {
     local device="$1"
-    local passphrase="$2"
-    local detail_level="$3"
+    local detail_level="$2"
     
     # Basic device info
     local luks_version=$(get_luks_version "$device")
@@ -205,15 +221,23 @@ analyze_device() {
     echo "    🔐 LUKS Version: $luks_version"
     echo "    🔢 Slot Usage: $slot_warning"
     
-    # Validate passphrase
-    if validate_passphrase "$device" "$passphrase"; then
-        echo "    🔑 Passphrase: ✅ Valid"
+    # Test encryption key
+    if test_encryption_key "$device"; then
+        if [[ "$KEY_TYPE" == "passphrase" ]]; then
+            echo "    🔑 Passphrase: ✅ Valid"
+        else
+            echo "    🔑 Keyfile: ✅ Valid"
+        fi
         
         if [[ "$detail_level" == "detailed" ]] || [[ "$detail_level" == "very_detailed" ]]; then
-            get_detailed_slot_info "$device" "$passphrase"
+            get_detailed_slot_info "$device"
         fi
     else
-        echo "    🔑 Passphrase: ❌ Invalid for this device"
+        if [[ "$KEY_TYPE" == "passphrase" ]]; then
+            echo "    🔑 Passphrase: ❌ Invalid for this device"
+        else
+            echo "    🔑 Keyfile: ❌ Invalid for this device"
+        fi
     fi
     
     echo ""
@@ -224,14 +248,13 @@ analyze_device() {
 #
 group_devices_by_pattern() {
     local devices=("$@")
-    local passphrase="$PASSPHRASE"
     
     declare -A patterns
     declare -A pattern_devices
     
     # First pass: identify patterns
     for device in "${devices[@]}"; do
-        if validate_passphrase "$device" "$passphrase"; then
+        if test_encryption_key "$device"; then
             local used_slots=($(get_used_slots "$device"))
             local pattern=$(IFS=','; echo "${used_slots[*]}")
             local luks_version=$(get_luks_version "$device")
@@ -273,7 +296,7 @@ group_devices_by_pattern() {
                 local token_info=$(get_token_info "$first_device" "$slot")
                 
                 if [[ "$slot" == "0" ]]; then
-                    echo "    ├─ Slot $slot: Original passphrase"
+                    echo "    ├─ Slot $slot: Original encryption key"
                 else
                     echo "    ├─ Slot $slot: $token_info"
                 fi
@@ -288,14 +311,18 @@ group_devices_by_pattern() {
 # Main analysis function
 #
 analyze_encryption() {
-    local passphrase="$1"
-    local detail_level="$2"
+    local detail_level="$1"
     
     echo "=================================================="
     echo "---         LUKS Encryption Analysis          ---"
     echo "=================================================="
     echo ""
     echo "🔍 Analysis Mode: $(echo "$detail_level" | tr '[:lower:]' '[:upper:]')"
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        echo "🔑 Authentication: Passphrase"
+    else
+        echo "🔑 Authentication: Keyfile ($KEYFILE_PATH)"
+    fi
     echo "📅 Generated: $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
     
@@ -314,16 +341,24 @@ analyze_encryption() {
         echo "--- Simple Device List ---"
         for device in "${devices[@]}"; do
             local device_type=$(classify_device "$device")
-            if validate_passphrase "$device" "$passphrase"; then
-                echo "✅ $device ($device_type) - Passphrase valid"
+            if test_encryption_key "$device"; then
+                if [[ "$KEY_TYPE" == "passphrase" ]]; then
+                    echo "✅ $device ($device_type) - Passphrase valid"
+                else
+                    echo "✅ $device ($device_type) - Keyfile valid"
+                fi
             else
-                echo "❌ $device ($device_type) - Passphrase invalid"
+                if [[ "$KEY_TYPE" == "passphrase" ]]; then
+                    echo "❌ $device ($device_type) - Passphrase invalid"
+                else
+                    echo "❌ $device ($device_type) - Keyfile invalid"
+                fi
             fi
         done
     elif [[ "$detail_level" == "very_detailed" ]]; then
         echo "--- Very Detailed Analysis (Individual Devices) ---"
         for device in "${devices[@]}"; do
-            analyze_device "$device" "$passphrase" "$detail_level"
+            analyze_device "$device" "$detail_level"
         done
     else
         echo "--- Detailed Analysis with Smart Grouping ---"
@@ -350,6 +385,12 @@ parse_args() {
                 ;;
             -p|--passphrase)
                 PASSPHRASE="$2"
+                KEY_TYPE="passphrase"
+                shift 2
+                ;;
+            -k|--keyfile)
+                KEYFILE_PATH="$2"
+                KEY_TYPE="keyfile"
                 shift 2
                 ;;
             -h|--help)
@@ -377,21 +418,25 @@ LUKS Encryption Information Viewer
 OPTIONS:
     -d, --detail-level LEVEL   Analysis detail level: simple, detailed, or very_detailed (default: simple)
     -p, --passphrase PASS      LUKS passphrase (can also be provided via LUKS_PASSPHRASE env var)
+    -k, --keyfile PATH         LUKS keyfile path (can also be provided via LUKS_KEYFILE env var)
     -h, --help                 Show this help message
 
 DETAIL LEVELS:
-    simple                     Simple device listing with passphrase validation
+    simple                     Simple device listing with key validation
     detailed                   Smart grouping with slot configuration analysis
     very_detailed              Individual device analysis (no smart grouping)
 
 ENVIRONMENT VARIABLES:
     LUKS_PASSPHRASE           LUKS passphrase (alternative to -p option)
+    LUKS_KEYFILE              LUKS keyfile path (alternative to -k option)
 
 EXAMPLES:
-    $0 -p "mypassphrase"                          # Simple device listing
+    $0 -p "mypassphrase"                          # Simple device listing with passphrase
+    $0 -k "/path/to/keyfile"                      # Simple device listing with keyfile
     $0 -p "mypassphrase" -d detailed              # Detailed analysis with smart grouping
-    $0 -p "mypassphrase" -d very_detailed         # Individual device analysis
-    LUKS_PASSPHRASE="pass" $0 -d very_detailed   # Using environment variable
+    $0 -k "/path/to/keyfile" -d very_detailed     # Individual device analysis with keyfile
+    LUKS_PASSPHRASE="pass" $0 -d very_detailed   # Using environment variable for passphrase
+    LUKS_KEYFILE="/path/key" $0 -d detailed      # Using environment variable for keyfile
 
 EOF
 }
@@ -413,21 +458,39 @@ trap cleanup EXIT
 # Parse command line arguments
 parse_args "$@"
 
-# Get passphrase from environment if not provided via command line
-if [[ -z "$PASSPHRASE" && -n "$LUKS_PASSPHRASE" ]]; then
-    PASSPHRASE="$LUKS_PASSPHRASE"
+# Get encryption key from environment if not provided via command line
+if [[ -z "$KEY_TYPE" ]]; then
+    if [[ -n "$LUKS_PASSPHRASE" ]]; then
+        PASSPHRASE="$LUKS_PASSPHRASE"
+        KEY_TYPE="passphrase"
+    elif [[ -n "$LUKS_KEYFILE" ]]; then
+        KEYFILE_PATH="$LUKS_KEYFILE"
+        KEY_TYPE="keyfile"
+    fi
 fi
 
-# Validate that we have a passphrase
-if [[ -z "$PASSPHRASE" ]]; then
-    echo "Error: No passphrase provided. Use -p option or LUKS_PASSPHRASE environment variable." >&2
+# Validate that we have an encryption key
+if [[ -z "$KEY_TYPE" ]]; then
+    echo "Error: No encryption key provided. Use -p/-k option or LUKS_PASSPHRASE/LUKS_KEYFILE environment variable." >&2
     exit 1
+fi
+
+# Validate keyfile exists if using keyfile authentication
+if [[ "$KEY_TYPE" == "keyfile" ]]; then
+    if [[ ! -f "$KEYFILE_PATH" ]]; then
+        echo "Error: Keyfile not found at $KEYFILE_PATH" >&2
+        exit 1
+    fi
+    if [[ ! -r "$KEYFILE_PATH" ]]; then
+        echo "Error: Keyfile not readable at $KEYFILE_PATH" >&2
+        exit 1
+    fi
 fi
 
 # Create temporary directory if needed
 mkdir -p "$TEMP_WORK_DIR"
 
 # Run the analysis
-analyze_encryption "$PASSPHRASE" "$DETAIL_LEVEL"
+analyze_encryption "$DETAIL_LEVEL"
 
 echo "Script finished."
