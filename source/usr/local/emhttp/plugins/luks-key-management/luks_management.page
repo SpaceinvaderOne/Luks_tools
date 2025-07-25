@@ -688,10 +688,19 @@ $csrf_token = $var['csrf_token'] ?? '';
   }
   
   function makeEncryptionInfoAjaxRequest(postData) {
+    console.log('DEBUG: About to send AJAX request with data:', postData);
+    console.log('DEBUG: Data keys:', Object.keys(postData));
+    console.log('DEBUG: CSRF token in postData:', postData.csrf_token);
+    
+    // Try the exact same AJAX pattern as the working Auto Start function
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_encryption_info.php',
       type: 'POST',
       data: postData,
+      beforeSend: function(xhr) {
+        console.log('DEBUG: AJAX request starting with data keys:', Object.keys(postData));
+        console.log('DEBUG: AJAX CSRF token being sent:', postData.csrf_token);
+      },
       success: function(data) {
         setStatus(data);
       },
