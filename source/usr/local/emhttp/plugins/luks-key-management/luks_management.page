@@ -442,28 +442,10 @@ $csrf_token = $var['csrf_token'] ?? '';
         console.log('DEBUG: Response data:', data);
         setStatus(data);
         
-        // Check if we need to download a backup file
+        // Use shared download detection function
         const finalBackupLocation = document.getElementById('backupLocation').value;
         const finalDryRun = document.getElementById('dryRun').value;
-        console.log('DEBUG: Checking download - backupLocation:', finalBackupLocation, 'dryRun:', finalDryRun);
-        if (finalBackupLocation === 'download' && finalDryRun === 'no') {
-          // Look for download ready indicator in the output
-          console.log('DEBUG: Looking for DOWNLOAD_READY in output...');
-          const downloadMatch = data.match(/DOWNLOAD_READY: (\/usr\/local\/emhttp\/plugins\/luks-key-management\/downloads\/[^D\s]+\.zip)/);
-          console.log('DEBUG: Download match result:', downloadMatch);
-          if (downloadMatch) {
-            const downloadPath = downloadMatch[1].trim();
-            const filename = downloadPath.split('/').pop();
-            console.log('DEBUG: Starting download for file:', filename);
-            console.log('DEBUG: Full download path:', downloadPath);
-            console.log('DEBUG: Raw matched string:', downloadMatch[1]);
-            downloadBackupFile(filename);
-          } else {
-            console.log('DEBUG: No DOWNLOAD_READY found in output');
-          }
-        } else {
-          console.log('DEBUG: Download not triggered - conditions not met');
-        }
+        handleDownloadDetection(data, finalBackupLocation, finalDryRun);
       },
       error: function(xhr, status, error) {
         console.log('DEBUG: AJAX error - Status:', status, 'Error:', error);
@@ -885,6 +867,29 @@ $csrf_token = $var['csrf_token'] ?? '';
     return null; // Valid
   }
 
+  // Shared download detection function - checks output for DOWNLOAD_READY and triggers download
+  function handleDownloadDetection(data, backupLocation, dryRun) {
+    console.log('DEBUG: Checking download - backupLocation:', backupLocation, 'dryRun:', dryRun);
+    if (backupLocation === 'download' && dryRun === 'no') {
+      // Look for download ready indicator in the output
+      console.log('DEBUG: Looking for DOWNLOAD_READY in output...');
+      const downloadMatch = data.match(/DOWNLOAD_READY: (\/usr\/local\/emhttp\/plugins\/luks-key-management\/downloads\/[^D\s]+\.zip)/);
+      console.log('DEBUG: Download match result:', downloadMatch);
+      if (downloadMatch) {
+        const downloadPath = downloadMatch[1].trim();
+        const filename = downloadPath.split('/').pop();
+        console.log('DEBUG: Starting download for file:', filename);
+        console.log('DEBUG: Full download path:', downloadPath);
+        console.log('DEBUG: Raw matched string:', downloadMatch[1]);
+        downloadBackupFile(filename);
+      } else {
+        console.log('DEBUG: No DOWNLOAD_READY found in output');
+      }
+    } else {
+      console.log('DEBUG: Download not triggered - conditions not met');
+    }
+  }
+
   function runHeadersBackup() {
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('headers');
@@ -952,18 +957,8 @@ $csrf_token = $var['csrf_token'] ?? '';
       success: function(data) {
         setStatus(data);
         
-        // Check if we need to download a backup file (only for download mode)
-        if (backupLocation === 'download') {
-          // Look for download ready indicator in the output
-          const lines = data.split('\n');
-          for (const line of lines) {
-            if (line.includes('DOWNLOAD_READY:')) {
-              const filename = line.split('DOWNLOAD_READY:')[1].trim();
-              downloadBackupFile(filename);
-              break;
-            }
-          }
-        }
+        // Use shared download detection function
+        handleDownloadDetection(data, backupLocation, 'no'); // Headers never uses dry run
       },
       error: function() {
         setStatus('Error: Failed to execute the LUKS headers backup script. Check browser console for more details.');
