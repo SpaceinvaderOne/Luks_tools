@@ -209,7 +209,7 @@ analyze_device() {
     if validate_passphrase "$device" "$passphrase"; then
         echo "    🔑 Passphrase: ✅ Valid"
         
-        if [[ "$detail_level" == "detailed" ]]; then
+        if [[ "$detail_level" == "detailed" ]] || [[ "$detail_level" == "very_detailed" ]]; then
             get_detailed_slot_info "$device" "$passphrase"
         fi
     else
