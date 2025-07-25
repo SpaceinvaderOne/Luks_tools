@@ -144,13 +144,36 @@ EOF
     
     # Create encrypted ZIP archive with all headers and metadata using the same key that unlocks the devices
     cd "$HEADER_BACKUP_DIR"
+    echo "DEBUG: About to create ZIP archive at: $archive_path"
+    echo "DEBUG: Working directory: $(pwd)"
+    echo "DEBUG: Files to archive: $(ls -la *.img *.txt 2>/dev/null || echo 'No files found')"
+    
     if [[ "$KEY_TYPE" == "passphrase" ]]; then
-        zip -r -e -P "$PASSPHRASE" "$archive_path" *.img *.txt 2>/dev/null
+        echo "DEBUG: Using passphrase for ZIP encryption"
+        if zip -r -e -P "$PASSPHRASE" "$archive_path" *.img *.txt 2>/dev/null; then
+            echo "DEBUG: ZIP creation with passphrase succeeded"
+        else
+            echo "DEBUG: ZIP creation with passphrase failed"
+        fi
     else
-        # For keyfiles, read the content and use it as password
-        local keyfile_content=$(cat "$KEYFILE_PATH")
-        zip -r -e -P "$keyfile_content" "$archive_path" *.img *.txt 2>/dev/null
+        # For keyfiles, we need to be careful with binary content
+        echo "DEBUG: Using keyfile for ZIP encryption"
+        echo "DEBUG: Keyfile path: $KEYFILE_PATH"
+        echo "DEBUG: Keyfile size: $(stat -c%s "$KEYFILE_PATH" 2>/dev/null || echo 'unknown')"
+        
+        # For keyfiles, use a hash of the content as password instead of raw content
+        # This avoids issues with binary data and special characters
+        local keyfile_hash=$(sha256sum "$KEYFILE_PATH" | cut -d' ' -f1)
+        echo "DEBUG: Using SHA256 hash of keyfile as ZIP password"
+        
+        if zip -r -e -P "$keyfile_hash" "$archive_path" *.img *.txt 2>/dev/null; then
+            echo "DEBUG: ZIP creation with keyfile hash succeeded"
+        else
+            echo "DEBUG: ZIP creation with keyfile hash failed"
+        fi
     fi
+    
+    echo "DEBUG: Checking if archive was created: $(ls -la "$archive_path" 2>/dev/null || echo 'Archive not found')"
     
     echo "Final encrypted archive created at $archive_path"
     echo "Archive includes LUKS headers and backup information"
