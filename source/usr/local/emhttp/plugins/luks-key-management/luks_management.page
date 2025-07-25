@@ -412,12 +412,15 @@ $csrf_token = $var['csrf_token'] ?? '';
     // Auto-switch to Status tab immediately to show we're starting
     switchTab('status');
     showStatusLoading('Starting complete auto-unlock setup...');
-    setStatus('DEBUG: Function called, starting validation...');
+    
+    // Use updateStatus instead of setStatus to avoid hiding the spinner
+    document.getElementById('statusOutput').textContent = 'DEBUG: Function called, starting validation...\n';
     
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('autostart');
     console.log('DEBUG: Validation result:', validationError);
     if (validationError) {
+      hideStatusLoading();
       setStatus('Error: ' + validationError);
       return;
     }
@@ -428,9 +431,8 @@ $csrf_token = $var['csrf_token'] ?? '';
     const dryRun = document.getElementById('dryRun').value;
     console.log('DEBUG: backupLocation:', backupLocation, 'dryRun:', dryRun);
 
-    // Auto-switch to Status tab to show operation progress
-    switchTab('status');
-    setStatus('Starting complete auto-unlock setup...\nThis will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...');
+    // Update the status output without hiding the loading spinner
+    updateStatus('Starting complete auto-unlock setup...\nThis will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...');
     
     console.log('DEBUG: Status set, preparing form data');
 
