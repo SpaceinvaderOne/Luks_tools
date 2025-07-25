@@ -137,15 +137,6 @@ $csrf_token = $var['csrf_token'] ?? '';
               </select>
               <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
             </dd>
-
-            <dt><strong>Dry Run:</strong></dt>
-            <dd>
-              <select id="headersDryRun" name="headersDryRun">
-                <option value="yes" selected>Yes</option>
-                <option value="no">No</option>
-              </select>
-              <div class="description">Simulates the backup process without creating files. Select 'No' to create actual backups.</div>
-            </dd>
           </dl>
           <p>
             <button type="button" onclick="runHeadersBackup()">Backup Headers</button>
@@ -890,5 +881,91 @@ $csrf_token = $var['csrf_token'] ?? '';
       }
     }
     return null; // Valid
+  }
+
+  function runHeadersBackup() {
+    // Validate encryption key input using shared component
+    const validationError = validateEncryptionKeyInput('headers');
+    if (validationError) {
+      setStatus('Error: ' + validationError);
+      return;
+    }
+
+    const backupLocation = document.getElementById('headersBackupLocation').value;
+    const keyType = document.getElementById('keyType_headers').value;
+
+    // Auto-switch to Status tab to show operation progress
+    switchTab('status');
+    setStatus('Starting LUKS headers backup...\nBacking up headers for all devices that can be unlocked with your key...');
+
+    // Prepare data using the same pattern as Auto Start
+    const postData = {
+      keyType: keyType,
+      backupHeaders: backupLocation,
+      dryRun: 'no', // Headers backup is always non-destructive
+      headersOnly: 'true' // This tells the backend to use the headers-only script
+    };
+    
+    if (keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_headers').value;
+      postData.passphrase = passphrase;
+      
+      // Add CSRF token
+      if (csrf_token && csrf_token.length > 0) {
+        postData.csrf_token = csrf_token;
+      }
+      
+      // Make request directly for passphrase
+      makeHeadersAjaxRequest(postData, backupLocation);
+    } else {
+      const keyfileInput = document.getElementById('keyfile_headers');
+      if (keyfileInput.files && keyfileInput.files[0]) {
+        // Convert file to base64 (same pattern as Auto Start)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const base64Data = e.target.result;
+          postData.keyfileData = base64Data;
+          
+          // Add CSRF token
+          if (csrf_token && csrf_token.length > 0) {
+            postData.csrf_token = csrf_token;
+          }
+          
+          makeHeadersAjaxRequest(postData, backupLocation);
+        };
+        reader.readAsDataURL(keyfileInput.files[0]);
+        return;
+      } else {
+        setStatus('Error: No keyfile selected');
+        return;
+      }
+    }
+  }
+  
+  function makeHeadersAjaxRequest(postData, backupLocation) {
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_luks_script.php',
+      type: 'POST',
+      data: postData,
+      success: function(data) {
+        setStatus(data);
+        
+        // Check if we need to download a backup file (only for download mode)
+        if (backupLocation === 'download') {
+          // Look for download ready indicator in the output
+          const lines = data.split('\n');
+          for (const line of lines) {
+            if (line.includes('DOWNLOAD_READY:')) {
+              const filename = line.split('DOWNLOAD_READY:')[1].trim();
+              downloadBackupFile(filename);
+              break;
+            }
+          }
+        }
+      },
+      error: function() {
+        setStatus('Error: Failed to execute the LUKS headers backup script. Check browser console for more details.');
+      }
+    });
   }
 </script>
