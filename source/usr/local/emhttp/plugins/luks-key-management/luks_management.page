@@ -383,12 +383,19 @@ $csrf_token = $var['csrf_token'] ?? '';
 
   // Loading spinner control functions
   function showStatusLoading(message) {
+    console.log('DEBUG: showStatusLoading called with message:', message);
     const loadingDiv = document.getElementById('status-loading');
     const loadingMessage = document.getElementById('loading-message');
+    
+    console.log('DEBUG: loadingDiv found:', !!loadingDiv);
+    console.log('DEBUG: loadingMessage found:', !!loadingMessage);
     
     if (loadingDiv && loadingMessage) {
       loadingMessage.textContent = message || 'Processing...';
       loadingDiv.style.display = 'block';
+      console.log('DEBUG: Loading spinner should now be visible');
+    } else {
+      console.log('DEBUG: Missing elements - loadingDiv:', !!loadingDiv, 'loadingMessage:', !!loadingMessage);
     }
   }
 
