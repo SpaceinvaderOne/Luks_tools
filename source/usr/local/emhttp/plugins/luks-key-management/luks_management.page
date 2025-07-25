@@ -3,10 +3,13 @@ Title="LUKS Key Management"
 Icon="key"
 ---
 <?
-# This space is intentionally left for any future PHP logic if needed.
-# For now, all logic is handled by the backend PHP scripts via AJAX.
+# Generate CSRF token for secure AJAX requests
+$csrf_token = csrf_token();
 ?>
 <div class="section">
+  <!-- Hidden CSRF token for AJAX requests -->
+  <input type="hidden" name="csrf_token" value="<?=$csrf_token?>">
+  
   <h2>LUKS Auto-Unlock for Encrypted Arrays and Pools</h2>
   <p>This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.</p>
 
@@ -399,7 +402,9 @@ Icon="key"
     formData.append('dryRun', dryRun);
     
     // Add CSRF token for Unraid security
-    formData.append('csrf_token', $('input[name="csrf_token"]').val());
+    const csrfToken = $('input[name="csrf_token"]').val();
+    console.log('DEBUG: CSRF token found:', csrfToken);
+    formData.append('csrf_token', csrfToken);
 
     console.log('DEBUG: Starting AJAX request to /plugins/luks-key-management/scripts/run_luks_script.php');
     
@@ -473,9 +478,12 @@ Icon="key"
     switchTab('status');
     setStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
 
+    const csrfToken = $('input[name="csrf_token"]').val();
+    console.log('DEBUG: CSRF token for go command:', csrfToken);
+    
     $.post('/plugins/luks-key-management/scripts/run_go_script.php', {
       action: action,
-      csrf_token: $('input[name="csrf_token"]').val()
+      csrf_token: csrfToken
     }, function(data) {
       setStatus(data);
     }).fail(function() {
@@ -518,7 +526,9 @@ Icon="key"
     formData.append('headersOnly', 'true'); // Flag to indicate this is headers-only operation
     
     // Add CSRF token for Unraid security
-    formData.append('csrf_token', $('input[name="csrf_token"]').val());
+    const csrfToken = $('input[name="csrf_token"]').val();
+    console.log('DEBUG: CSRF token found:', csrfToken);
+    formData.append('csrf_token', csrfToken);
     
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_luks_script.php',
@@ -575,7 +585,9 @@ Icon="key"
     formData.append('detailLevel', detailLevel);
     
     // Add CSRF token for Unraid security
-    formData.append('csrf_token', $('input[name="csrf_token"]').val());
+    const csrfToken = $('input[name="csrf_token"]').val();
+    console.log('DEBUG: CSRF token found:', csrfToken);
+    formData.append('csrf_token', csrfToken);
 
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_encryption_info.php',
@@ -621,7 +633,9 @@ Icon="key"
     formData.append('detailLevel', detailLevel);
     
     // Add CSRF token for Unraid security
-    formData.append('csrf_token', $('input[name="csrf_token"]').val());
+    const csrfToken = $('input[name="csrf_token"]').val();
+    console.log('DEBUG: CSRF token found:', csrfToken);
+    formData.append('csrf_token', csrfToken);
 
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_encryption_download.php',
