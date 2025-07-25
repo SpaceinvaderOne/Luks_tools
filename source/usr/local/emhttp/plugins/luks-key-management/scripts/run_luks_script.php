@@ -1,6 +1,7 @@
 <?php
-// Include Unraid's webGUI session handling for CSRF validation
-require_once '/usr/local/emhttp/webGUI/include/Wrappers.php';
+// Include Unraid's webGUI session handling for CSRF validation (using official pattern)
+$docroot = $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/webGui/include/Wrappers.php";
 
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
@@ -20,7 +21,7 @@ $backup_headers_option = $_POST['backupHeaders'] ?? 'no';
 $dry_run_option = $_POST['dryRun'] ?? 'yes';
 $headers_only = $_POST['headersOnly'] ?? 'false';
 
-// --- Process Encryption Key Input ---
+// --- Process Encryption Key Input (using Unraid pattern) ---
 function processEncryptionKey() {
     global $key_type;
     
@@ -34,39 +35,33 @@ function processEncryptionKey() {
         }
         return ['type' => 'passphrase', 'value' => $passphrase];
     } else {
-        // Handle keyfile upload - Add debugging
-        echo "DEBUG: Processing keyfile upload...\n";
-        echo "DEBUG: _FILES array: " . print_r($_FILES, true) . "\n";
+        // Handle keyfile data (base64 encoded, following Unraid pattern)
+        echo "DEBUG: Processing keyfile data...\n";
         
-        if (!isset($_FILES['keyfile'])) {
-            return ['error' => 'No keyfile in upload. Check form enctype and field name.'];
+        if (!isset($_POST['keyfileData'])) {
+            return ['error' => 'No keyfile data provided.'];
         }
         
-        if ($_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
-            $error_msg = 'Keyfile upload error: ';
-            switch ($_FILES['keyfile']['error']) {
-                case UPLOAD_ERR_INI_SIZE:
-                case UPLOAD_ERR_FORM_SIZE:
-                    $error_msg .= 'File too large';
-                    break;
-                case UPLOAD_ERR_PARTIAL:
-                    $error_msg .= 'Partial upload';
-                    break;
-                case UPLOAD_ERR_NO_FILE:
-                    $error_msg .= 'No file uploaded';
-                    break;
-                default:
-                    $error_msg .= 'Unknown error (' . $_FILES['keyfile']['error'] . ')';
-            }
-            return ['error' => $error_msg];
+        $keyfile_data = $_POST['keyfileData'];
+        echo "DEBUG: Keyfile data length: " . strlen($keyfile_data) . "\n";
+        
+        // Extract base64 data (remove data URL prefix if present)
+        if (strpos($keyfile_data, 'base64,') !== false) {
+            $base64_data = explode('base64,', $keyfile_data)[1];
+        } else {
+            $base64_data = $keyfile_data;
         }
         
-        $uploaded_file = $_FILES['keyfile'];
-        echo "DEBUG: File size: " . $uploaded_file['size'] . " bytes\n";
-        echo "DEBUG: File name: " . $uploaded_file['name'] . "\n";
+        // Decode base64 data
+        $decoded_data = base64_decode($base64_data);
+        if ($decoded_data === false) {
+            return ['error' => 'Invalid keyfile data (base64 decode failed).'];
+        }
+        
+        echo "DEBUG: Decoded data size: " . strlen($decoded_data) . " bytes\n";
         
         // Validate file size (8 MiB limit)
-        if ($uploaded_file['size'] > 8388608) {
+        if (strlen($decoded_data) > 8388608) {
             return ['error' => 'Keyfile exceeds 8 MiB limit (Unraid standard).'];
         }
         
@@ -74,8 +69,8 @@ function processEncryptionKey() {
         $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
         echo "DEBUG: Creating temp file: $temp_keyfile\n";
         
-        if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_keyfile)) {
-            return ['error' => 'Failed to process keyfile upload. Check /tmp permissions.'];
+        if (file_put_contents($temp_keyfile, $decoded_data) === false) {
+            return ['error' => 'Failed to write keyfile data.'];
         }
         
         // Set secure permissions (read-only for owner)
