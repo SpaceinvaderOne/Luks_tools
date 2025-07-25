@@ -296,6 +296,8 @@ $csrf_token = $var['csrf_token'] ?? '';
   // Make CSRF token available to JavaScript
   var csrf_token = '<?=$csrf_token?>';
   console.log('DEBUG: CSRF token loaded:', csrf_token);
+  console.log('DEBUG: CSRF token length:', csrf_token.length);
+  console.log('DEBUG: CSRF token type:', typeof csrf_token);
   
   // Tab switching functionality
   document.addEventListener('DOMContentLoaded', function() {

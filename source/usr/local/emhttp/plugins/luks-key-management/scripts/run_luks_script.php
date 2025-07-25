@@ -2,6 +2,11 @@
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
 
+// Debug CSRF token
+echo "DEBUG: POST data keys: " . implode(', ', array_keys($_POST)) . "\n";
+echo "DEBUG: CSRF token in POST: " . ($_POST['csrf_token'] ?? 'NOT SET') . "\n";
+echo "DEBUG: CSRF token length: " . strlen($_POST['csrf_token'] ?? '') . "\n";
+
 // Define the absolute paths to the LUKS scripts
 $main_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh";
 $headers_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_headers_backup.sh";
