@@ -643,9 +643,15 @@ $csrf_token = $var['csrf_token'] ?? '';
       const passphrase = document.getElementById('passphrase_encinfo').value;
       postData.passphrase = passphrase;
       
-      // Add CSRF token
-      if (csrf_token) {
+      // Add CSRF token with debug output
+      console.log('DEBUG: CSRF token available:', csrf_token);
+      console.log('DEBUG: CSRF token length:', csrf_token ? csrf_token.length : 'undefined');
+      console.log('DEBUG: CSRF token type:', typeof csrf_token);
+      if (csrf_token && csrf_token.length > 0) {
         postData.csrf_token = csrf_token;
+        console.log('DEBUG: CSRF token added to postData');
+      } else {
+        console.log('WARNING: CSRF token is empty or undefined!');
       }
       
       // Make request directly for passphrase
@@ -659,9 +665,14 @@ $csrf_token = $var['csrf_token'] ?? '';
           const base64Data = e.target.result;
           postData.keyfileData = base64Data;
           
-          // Add CSRF token
-          if (csrf_token) {
+          // Add CSRF token with debug output
+          console.log('DEBUG: CSRF token available (keyfile):', csrf_token);
+          console.log('DEBUG: CSRF token length (keyfile):', csrf_token ? csrf_token.length : 'undefined');
+          if (csrf_token && csrf_token.length > 0) {
             postData.csrf_token = csrf_token;
+            console.log('DEBUG: CSRF token added to postData (keyfile)');
+          } else {
+            console.log('WARNING: CSRF token is empty or undefined (keyfile)!');
           }
           
           makeEncryptionInfoAjaxRequest(postData);
