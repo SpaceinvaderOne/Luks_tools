@@ -121,19 +121,43 @@ create_backup_archive() {
     local archive_name="luksheaders_${TIMESTAMP}.zip"
     local archive_path="$archive_location/$archive_name"
     
-    echo "Creating encrypted zip archive of $headers_found headers..."
+    # Create metadata file with key information
+    local metadata_file="$HEADER_BACKUP_DIR/luks_backup_info_${TIMESTAMP}.txt"
+    echo "Creating backup metadata file..."
+    cat > "$metadata_file" << EOF
+LUKS Header Backup Information
+=============================
+Generated: $(date)
+Authentication: $KEY_TYPE
+Number of devices backed up: $headers_found
+
+This archive contains LUKS header backups for your encrypted devices.
+The archive is encrypted using the same key that unlocks your LUKS devices.
+
+To restore a header:
+cryptsetup luksHeaderRestore /dev/sdXY --header-backup-file HEADER_FILE.img
+
+IMPORTANT: Keep this backup secure and test restoration procedures.
+EOF
+
+    echo "Creating encrypted zip archive of $headers_found headers plus metadata..."
     
-    # Create encrypted ZIP archive with all headers using the same key that unlocks the devices
+    # Create encrypted ZIP archive with all headers and metadata using the same key that unlocks the devices
     cd "$HEADER_BACKUP_DIR"
     if [[ "$KEY_TYPE" == "passphrase" ]]; then
-        echo "$PASSPHRASE" | zip -r -e --password-from-stdin "$archive_path" *.img 2>/dev/null
+        echo "$PASSPHRASE" | zip -r -e --password-from-stdin "$archive_path" *.img *.txt 2>/dev/null
     else
         # For keyfiles, read the content and use it as password
-        cat "$KEYFILE_PATH" | zip -r -e --password-from-stdin "$archive_path" *.img 2>/dev/null
+        cat "$KEYFILE_PATH" | zip -r -e --password-from-stdin "$archive_path" *.img *.txt 2>/dev/null
     fi
     
     echo "Final encrypted archive created at $archive_path"
-    echo "Archive includes LUKS headers for $headers_found devices"
+    echo "Archive includes LUKS headers and backup information"
+    
+    # For download mode, signal that the file is ready
+    if [[ "$DOWNLOAD_MODE" == "yes" ]]; then
+        echo "DOWNLOAD_READY: $archive_path"
+    fi
     
     return 0
 }
@@ -245,7 +269,7 @@ EOF
 #
 cleanup() {
     if [[ -d "$TEMP_WORK_DIR" ]]; then
-        echo "Cleaning up temporary directory: $TEMP_WORK_DIR"
+        echo "Cleaning up temporary working directory: $TEMP_WORK_DIR"
         rm -rf "$TEMP_WORK_DIR"
     fi
 }
