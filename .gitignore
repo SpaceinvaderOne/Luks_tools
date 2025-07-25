@@ -37,7 +37,6 @@ Temporary Items
 CLAUDE.md
 
 # Build artifacts and temporary files
-packages/pluginmain/*.txz
 packages/archive/*.txz
 *.tmp
 *.temp
