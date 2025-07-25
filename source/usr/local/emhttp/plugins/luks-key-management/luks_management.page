@@ -17,6 +17,7 @@ Icon="key"
       <button class="tab-btn" data-tab="headers" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">LUKS Headers</button>
       <button class="tab-btn" data-tab="gofile" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Go File</button>
       <button class="tab-btn" data-tab="encinfo" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Encryption Info</button>
+      <button class="tab-btn" data-tab="changekey" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; margin-right: 5px; cursor: pointer;">Change Encryption Key</button>
       <button class="tab-btn" data-tab="status" style="background: #222; color: #ccc; border: 1px solid #555; padding: 10px 20px; cursor: pointer;">Status</button>
     </div>
 
@@ -166,6 +167,48 @@ Icon="key"
             <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
           </div>
         </form>
+      </div>
+
+      <!-- Change Encryption Key Tab -->
+      <div id="changekey-tab" class="tab-pane" style="display: none;">
+        <h3>Change Primary Encryption Key</h3>
+        
+        <p>To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.</p>
+        
+        <div style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 15px 0; border-radius: 5px;">
+          <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
+          Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
+        </div>
+        
+        <h4>Instructions:</h4>
+        <ol>
+          <li>Click the button below to open Unraid's Disk Settings page in a new tab</li>
+          <li>Locate the "Encryption" section (approximately halfway down the page)</li>
+          <li>Find your encrypted array or pool devices and click the "Change" button next to the device you want to modify</li>
+          <li>In the "Change encryption key" dialog that opens:
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              <li>Select your current encryption method in "Existing encryption key" (Passphrase or Keyfile)</li>
+              <li>Enter your current passphrase OR select your current keyfile</li>
+              <li>Choose your desired new encryption method in "Change encryption key" (Passphrase or Keyfile)</li>
+              <li><em>Note: You can switch between methods - change from passphrase to keyfile or vice versa</em></li>
+              <li>Enter your new passphrase OR select your new keyfile</li>
+              <li>Complete any additional fields as required (retype passphrase if applicable)</li>
+            </ul>
+          </li>
+          <li>Click "APPLY" to save the changes, then "DONE" to close the dialog</li>
+        </ol>
+        
+        <p>
+          <button type="button" onclick="goToDiskSettings()" 
+                  style="background: #4CAF50; color: white; border: 1px solid #45a049; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px;">
+            Go to Disk Settings
+          </button>
+        </p>
+        
+        <p style="color: #666; font-style: italic; margin-top: 20px;">
+          <strong>Note:</strong> This feature uses Unraid's native encryption key management system. 
+          If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface.
+        </p>
       </div>
 
       <!-- Status Tab -->
@@ -440,5 +483,15 @@ Icon="key"
         body: 'filename=' + encodeURIComponent(filename)
       });
     }, 5000); // 5 second delay to ensure download completes
+  }
+
+  function goToDiskSettings() {
+    // Get current protocol, hostname, and port from the current page
+    const currentUrl = window.location;
+    const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
+    const diskSettingsUrl = `${baseUrl}/Settings/DiskSettings`;
+    
+    // Open Disk Settings in a new tab
+    window.open(diskSettingsUrl, '_blank');
   }
 </script>
