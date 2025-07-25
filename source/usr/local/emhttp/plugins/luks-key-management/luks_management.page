@@ -451,14 +451,22 @@ $csrf_token = $var['csrf_token'] ?? '';
         setStatus(data);
         
         // Check if we need to download a backup file
+        console.log('DEBUG: Checking download - backupLocation:', backupLocation, 'dryRun:', dryRun);
         if (backupLocation === 'download' && dryRun === 'no') {
           // Look for download ready indicator in the output
+          console.log('DEBUG: Looking for DOWNLOAD_READY in output...');
           const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+          console.log('DEBUG: Download match result:', downloadMatch);
           if (downloadMatch) {
             const downloadPath = downloadMatch[1];
             const filename = downloadPath.split('/').pop();
+            console.log('DEBUG: Starting download for file:', filename);
             downloadBackupFile(filename);
+          } else {
+            console.log('DEBUG: No DOWNLOAD_READY found in output');
           }
+        } else {
+          console.log('DEBUG: Download not triggered - conditions not met');
         }
       },
       error: function(xhr, status, error) {
