@@ -1,6 +1,7 @@
 <?php
-// Include Unraid's webGUI session handling for CSRF validation
-require_once '/usr/local/emhttp/webGUI/include/Wrappers.php';
+// Include Unraid's webGUI session handling for CSRF validation (using official pattern)
+$docroot = $_SERVER['DOCUMENT_ROOT'] ?: '/usr/local/emhttp';
+require_once "$docroot/webGui/include/Wrappers.php";
 
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
@@ -33,26 +34,47 @@ function processEncryptionKey() {
         }
         return ['type' => 'passphrase', 'value' => $passphrase];
     } else {
-        // Handle keyfile upload
-        if (!isset($_FILES['keyfile']) || $_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
-            return ['error' => 'Keyfile upload failed or no file provided.'];
+        // Handle keyfile data (base64 encoded, following Unraid pattern)
+        echo "DEBUG: Processing keyfile data...\n";
+        
+        if (!isset($_POST['keyfileData'])) {
+            return ['error' => 'No keyfile data provided.'];
         }
         
-        $uploaded_file = $_FILES['keyfile'];
+        $keyfile_data = $_POST['keyfileData'];
+        echo "DEBUG: Keyfile data length: " . strlen($keyfile_data) . "\n";
+        
+        // Extract base64 data (remove data URL prefix if present)
+        if (strpos($keyfile_data, 'base64,') !== false) {
+            $base64_data = explode('base64,', $keyfile_data)[1];
+        } else {
+            $base64_data = $keyfile_data;
+        }
+        
+        // Decode base64 data
+        $decoded_data = base64_decode($base64_data);
+        if ($decoded_data === false) {
+            return ['error' => 'Invalid keyfile data (base64 decode failed).'];
+        }
+        
+        echo "DEBUG: Decoded data size: " . strlen($decoded_data) . " bytes\n";
         
         // Validate file size (8 MiB limit)
-        if ($uploaded_file['size'] > 8388608) {
+        if (strlen($decoded_data) > 8388608) {
             return ['error' => 'Keyfile exceeds 8 MiB limit (Unraid standard).'];
         }
         
         // Create secure temporary file
         $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
-        if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_keyfile)) {
-            return ['error' => 'Failed to process keyfile upload.'];
+        echo "DEBUG: Creating temp file: $temp_keyfile\n";
+        
+        if (file_put_contents($temp_keyfile, $decoded_data) === false) {
+            return ['error' => 'Failed to write keyfile data.'];
         }
         
         // Set secure permissions (read-only for owner)
         chmod($temp_keyfile, 0600);
+        echo "DEBUG: Keyfile processed successfully\n";
         
         return ['type' => 'keyfile', 'value' => $temp_keyfile];
     }
