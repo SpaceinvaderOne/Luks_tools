@@ -6,12 +6,52 @@ header('Content-Type: text/plain');
 $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_info_viewer.sh";
 
 // --- Get POST data from the UI ---
-$passphrase = $_POST['passphrase'] ?? '';
+$key_type = $_POST['keyType'] ?? 'passphrase';
 $detail_level = $_POST['detailLevel'] ?? 'simple';
 
-// --- Validate Inputs ---
-if (empty($passphrase)) {
-    echo "Error: Passphrase is required for encryption analysis.";
+// --- Process Encryption Key Input (reusing function from run_luks_script.php) ---
+function processEncryptionKey() {
+    global $key_type;
+    
+    if ($key_type === 'passphrase') {
+        $passphrase = $_POST['passphrase'] ?? '';
+        if (empty($passphrase)) {
+            return ['error' => 'Passphrase is required.'];
+        }
+        if (strlen($passphrase) > 512) {
+            return ['error' => 'Passphrase exceeds 512 character limit (Unraid standard).'];
+        }
+        return ['type' => 'passphrase', 'value' => $passphrase];
+    } else {
+        // Handle keyfile upload
+        if (!isset($_FILES['keyfile']) || $_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
+            return ['error' => 'Keyfile upload failed or no file provided.'];
+        }
+        
+        $uploaded_file = $_FILES['keyfile'];
+        
+        // Validate file size (8 MiB limit)
+        if ($uploaded_file['size'] > 8388608) {
+            return ['error' => 'Keyfile exceeds 8 MiB limit (Unraid standard).'];
+        }
+        
+        // Create secure temporary file
+        $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
+        if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_keyfile)) {
+            return ['error' => 'Failed to process keyfile upload.'];
+        }
+        
+        // Set secure permissions (read-only for owner)
+        chmod($temp_keyfile, 0600);
+        
+        return ['type' => 'keyfile', 'value' => $temp_keyfile];
+    }
+}
+
+// Process the encryption key
+$encryption_key = processEncryptionKey();
+if (isset($encryption_key['error'])) {
+    echo "Error: " . $encryption_key['error'];
     exit(1);
 }
 
@@ -36,11 +76,16 @@ $descriptorspec = array(
    2 => array("pipe", "w")   // stderr
 );
 
-// Pass the passphrase securely as an environment variable
+// Pass the encryption key securely as an environment variable
 $env = array(
-    'LUKS_PASSPHRASE' => $passphrase,
     'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
 );
+
+if ($encryption_key['type'] === 'passphrase') {
+    $env['LUKS_PASSPHRASE'] = $encryption_key['value'];
+} else {
+    $env['LUKS_KEYFILE'] = $encryption_key['value'];
+}
 
 // Start the process with the explicit environment
 $process = proc_open($command, $descriptorspec, $pipes, null, $env);
@@ -69,5 +114,10 @@ if (is_resource($process)) {
 } else {
     echo "Error: Failed to execute the encryption analysis script (proc_open failed).";
     exit(1);
+}
+
+// Clean up temporary keyfile if one was created
+if ($encryption_key['type'] === 'keyfile' && file_exists($encryption_key['value'])) {
+    unlink($encryption_key['value']);
 }
 ?>

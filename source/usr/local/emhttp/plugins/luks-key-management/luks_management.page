@@ -32,11 +32,33 @@ Icon="key"
           <!-- LUKS Management Section -->
           <h3>Complete Auto-Unlock Setup</h3>
           <dl>
-            <dt><strong>Passphrase:</strong></dt>
+            <!-- Shared Encryption Key Input Component -->
+            <dt><strong>Existing Encryption Key:</strong></dt>
             <dd>
-              <input type="password" id="passphrase" name="passphrase" class="short" required>
-              <div class="description">Enter your original LUKS encryption key.</div>
+              <select id="keyType_autostart" onchange="toggleKeyInput('autostart')">
+                <option value="passphrase" selected>Passphrase</option>
+                <option value="keyfile">Keyfile</option>
+              </select>
             </dd>
+
+            <!-- Passphrase Section -->
+            <div id="passphraseSection_autostart">
+              <dt><strong>Enter Existing Passphrase:</strong></dt>
+              <dd>
+                <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
+                <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
+                <div class="description">Enter your original LUKS encryption passphrase.</div>
+              </dd>
+            </div>
+
+            <!-- Keyfile Section -->
+            <div id="keyfileSection_autostart" style="display: none;">
+              <dt><strong>Select Existing Keyfile:</strong></dt>
+              <dd>
+                <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
+                <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
+              </dd>
+            </div>
 
             <dt><strong>Header Backup Location:</strong></dt>
             <dd>
@@ -78,11 +100,33 @@ Icon="key"
         <form id="headersForm">
           <h3>Backup LUKS Headers</h3>
           <dl>
-            <dt><strong>Passphrase:</strong></dt>
+            <!-- Shared Encryption Key Input Component -->
+            <dt><strong>Existing Encryption Key:</strong></dt>
             <dd>
-              <input type="password" id="headersPassphrase" name="headersPassphrase" class="short" required>
-              <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+              <select id="keyType_headers" onchange="toggleKeyInput('headers')">
+                <option value="passphrase" selected>Passphrase</option>
+                <option value="keyfile">Keyfile</option>
+              </select>
             </dd>
+
+            <!-- Passphrase Section -->
+            <div id="passphraseSection_headers">
+              <dt><strong>Enter Existing Passphrase:</strong></dt>
+              <dd>
+                <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
+                <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
+                <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+              </dd>
+            </div>
+
+            <!-- Keyfile Section -->
+            <div id="keyfileSection_headers" style="display: none;">
+              <dt><strong>Select Existing Keyfile:</strong></dt>
+              <dd>
+                <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
+                <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
+              </dd>
+            </div>
 
             <dt><strong>Backup Location:</strong></dt>
             <dd>
@@ -141,11 +185,33 @@ Icon="key"
         <form id="encinfoForm">
           <h3>Encryption Analysis</h3>
           <dl>
-            <dt><strong>Passphrase:</strong></dt>
+            <!-- Shared Encryption Key Input Component -->
+            <dt><strong>Existing Encryption Key:</strong></dt>
             <dd>
-              <input type="password" id="encinfoPassphrase" name="encinfoPassphrase" class="short" required>
-              <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
+              <select id="keyType_encinfo" onchange="toggleKeyInput('encinfo')">
+                <option value="passphrase" selected>Passphrase</option>
+                <option value="keyfile">Keyfile</option>
+              </select>
             </dd>
+
+            <!-- Passphrase Section -->
+            <div id="passphraseSection_encinfo">
+              <dt><strong>Enter Existing Passphrase:</strong></dt>
+              <dd>
+                <input type="password" id="passphrase_encinfo" name="passphrase" class="short" maxlength="512" required>
+                <label><input type="checkbox" onchange="togglePasswordVisibility('encinfo')"> show passphrase</label>
+                <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
+              </dd>
+            </div>
+
+            <!-- Keyfile Section -->
+            <div id="keyfileSection_encinfo" style="display: none;">
+              <dt><strong>Select Existing Keyfile:</strong></dt>
+              <dd>
+                <input type="file" id="keyfile_encinfo" name="keyfile" onchange="validateKeyfileSize(this, 'encinfo')">
+                <div class="description">Select your LUKS encryption keyfile to analyze encrypted drives and slots. Maximum size: 8 MiB. Any file type accepted.</div>
+              </dd>
+            </div>
 
             <dt><strong>Detail Level:</strong></dt>
             <dd>
@@ -278,14 +344,15 @@ Icon="key"
   }
 
   function runAutoStartSetup() {
-    const passphrase = document.getElementById('passphrase').value;
-    const backupLocation = document.getElementById('backupLocation').value;
-    const dryRun = document.getElementById('dryRun').value;
-
-    if (!passphrase) {
-      setStatus('Error: Passphrase is required.');
+    // Validate encryption key input using shared component
+    const validationError = validateEncryptionKeyInput('autostart');
+    if (validationError) {
+      setStatus('Error: ' + validationError);
       return;
     }
+
+    const backupLocation = document.getElementById('backupLocation').value;
+    const dryRun = document.getElementById('dryRun').value;
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
@@ -294,25 +361,44 @@ Icon="key"
     // Convert backupLocation to the format expected by the backend
     const backupHeaders = backupLocation === 'download' ? 'download' : 'yes';
 
-    $.post('/plugins/luks-key-management/scripts/run_luks_script.php', {
-      passphrase: passphrase,
-      backupHeaders: backupHeaders,
-      dryRun: dryRun
-    }, function(data) {
-      setStatus(data);
-      
-      // Check if we need to download a backup file
-      if (backupLocation === 'download' && dryRun === 'no') {
-        // Look for download ready indicator in the output
-        const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
-        if (downloadMatch) {
-          const downloadPath = downloadMatch[1];
-          const filename = downloadPath.split('/').pop();
-          downloadBackupFile(filename);
+    // Prepare form data to handle both passphrase and keyfile
+    const formData = new FormData();
+    const keyType = document.getElementById('keyType_autostart').value;
+    
+    formData.append('keyType', keyType);
+    if (keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_autostart').value;
+      formData.append('passphrase', passphrase);
+    } else {
+      const keyfileInput = document.getElementById('keyfile_autostart');
+      formData.append('keyfile', keyfileInput.files[0]);
+    }
+    formData.append('backupHeaders', backupHeaders);
+    formData.append('dryRun', dryRun);
+
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_luks_script.php',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        setStatus(data);
+        
+        // Check if we need to download a backup file
+        if (backupLocation === 'download' && dryRun === 'no') {
+          // Look for download ready indicator in the output
+          const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+          if (downloadMatch) {
+            const downloadPath = downloadMatch[1];
+            const filename = downloadPath.split('/').pop();
+            downloadBackupFile(filename);
+          }
         }
+      },
+      error: function() {
+        setStatus('Error: Failed to execute the auto-unlock setup. Check browser console for more details.');
       }
-    }).fail(function() {
-      setStatus('Error: Failed to execute the auto-unlock setup. Check browser console for more details.');
     });
   }
 
@@ -362,14 +448,15 @@ Icon="key"
   }
 
   function runHeadersBackup() {
-    const passphrase = document.getElementById('headersPassphrase').value;
-    const backupLocation = document.getElementById('headersBackupLocation').value;
-    const dryRun = document.getElementById('headersDryRun').value;
-
-    if (!passphrase) {
-      setStatus('Error: Passphrase is required for LUKS headers backup.');
+    // Validate encryption key input using shared component
+    const validationError = validateEncryptionKeyInput('headers');
+    if (validationError) {
+      setStatus('Error: ' + validationError);
       return;
     }
+
+    const backupLocation = document.getElementById('headersBackupLocation').value;
+    const dryRun = document.getElementById('headersDryRun').value;
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
@@ -378,81 +465,139 @@ Icon="key"
     // Use the same backend but with headers-only flags
     const backupMode = backupLocation === 'download' ? 'download' : 'yes';
     
-    $.post('/plugins/luks-key-management/scripts/run_luks_script.php', {
-      passphrase: passphrase,
-      backupHeaders: backupMode,
-      dryRun: dryRun,
-      headersOnly: 'true' // Flag to indicate this is headers-only operation
-    }, function(data) {
-      setStatus(data);
-      
-      // Check if we need to download a backup file
-      if (backupLocation === 'download' && dryRun === 'no') {
-        // Look for download ready indicator in the output
-        const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
-        if (downloadMatch) {
-          const downloadPath = downloadMatch[1];
-          const filename = downloadPath.split('/').pop();
-          downloadBackupFile(filename);
+    // Prepare form data to handle both passphrase and keyfile
+    const formData = new FormData();
+    const keyType = document.getElementById('keyType_headers').value;
+    
+    formData.append('keyType', keyType);
+    if (keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_headers').value;
+      formData.append('passphrase', passphrase);
+    } else {
+      const keyfileInput = document.getElementById('keyfile_headers');
+      formData.append('keyfile', keyfileInput.files[0]);
+    }
+    formData.append('backupHeaders', backupMode);
+    formData.append('dryRun', dryRun);
+    formData.append('headersOnly', 'true'); // Flag to indicate this is headers-only operation
+    
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_luks_script.php',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        setStatus(data);
+        
+        // Check if we need to download a backup file
+        if (backupLocation === 'download' && dryRun === 'no') {
+          // Look for download ready indicator in the output
+          const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+          if (downloadMatch) {
+            const downloadPath = downloadMatch[1];
+            const filename = downloadPath.split('/').pop();
+            downloadBackupFile(filename);
+          }
         }
+      },
+      error: function() {
+        setStatus('Error: Failed to execute the LUKS headers backup script. Check browser console for more details.');
       }
-    }).fail(function() {
-      setStatus('Error: Failed to execute the LUKS headers backup script. Check browser console for more details.');
     });
   }
 
   function runEncryptionInfo() {
-    const passphrase = document.getElementById('encinfoPassphrase').value;
-    const detailLevel = document.getElementById('detailLevel').value;
-
-    if (!passphrase) {
-      setStatus('Error: Passphrase is required for encryption analysis.');
+    // Validate encryption key input using shared component
+    const validationError = validateEncryptionKeyInput('encinfo');
+    if (validationError) {
+      setStatus('Error: ' + validationError);
       return;
     }
+
+    const detailLevel = document.getElementById('detailLevel').value;
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
     setStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
 
-    $.post('/plugins/luks-key-management/scripts/run_encryption_info.php', {
-      passphrase: passphrase,
-      detailLevel: detailLevel
-    }, function(data) {
-      setStatus(data);
-    }).fail(function() {
-      setStatus('Error: Failed to execute encryption analysis. Check browser console for more details.');
+    // Prepare form data to handle both passphrase and keyfile
+    const formData = new FormData();
+    const keyType = document.getElementById('keyType_encinfo').value;
+    
+    formData.append('keyType', keyType);
+    if (keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_encinfo').value;
+      formData.append('passphrase', passphrase);
+    } else {
+      const keyfileInput = document.getElementById('keyfile_encinfo');
+      formData.append('keyfile', keyfileInput.files[0]);
+    }
+    formData.append('detailLevel', detailLevel);
+
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_encryption_info.php',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        setStatus(data);
+      },
+      error: function() {
+        setStatus('Error: Failed to execute encryption analysis. Check browser console for more details.');
+      }
     });
   }
 
   function downloadEncryptionInfo() {
-    const passphrase = document.getElementById('encinfoPassphrase').value;
-    const detailLevel = document.getElementById('detailLevel').value;
-
-    if (!passphrase) {
-      setStatus('Error: Passphrase is required for encryption analysis download.');
+    // Validate encryption key input using shared component
+    const validationError = validateEncryptionKeyInput('encinfo');
+    if (validationError) {
+      setStatus('Error: ' + validationError);
       return;
     }
 
+    const detailLevel = document.getElementById('detailLevel').value;
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
     setStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
 
-    $.post('/plugins/luks-key-management/scripts/run_encryption_download.php', {
-      passphrase: passphrase,
-      detailLevel: detailLevel
-    }, function(data) {
-      setStatus(data);
-      
-      // Check if we need to download the analysis file
-      const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
-      if (downloadMatch) {
-        const downloadPath = downloadMatch[1];
-        const filename = downloadPath.split('/').pop();
-        downloadAnalysisFile(filename);
+    // Prepare form data to handle both passphrase and keyfile
+    const formData = new FormData();
+    const keyType = document.getElementById('keyType_encinfo').value;
+    
+    formData.append('keyType', keyType);
+    if (keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_encinfo').value;
+      formData.append('passphrase', passphrase);
+    } else {
+      const keyfileInput = document.getElementById('keyfile_encinfo');
+      formData.append('keyfile', keyfileInput.files[0]);
+    }
+    formData.append('detailLevel', detailLevel);
+
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_encryption_download.php',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        setStatus(data);
+        
+        // Check if we need to download the analysis file
+        const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+        if (downloadMatch) {
+          const downloadPath = downloadMatch[1];
+          const filename = downloadPath.split('/').pop();
+          downloadAnalysisFile(filename);
+        }
+      },
+      error: function() {
+        setStatus('Error: Failed to generate encryption analysis download. Check browser console for more details.');
       }
-    }).fail(function() {
-      setStatus('Error: Failed to generate encryption analysis download. Check browser console for more details.');
     });
   }
 
@@ -493,5 +638,69 @@ Icon="key"
     
     // Open Disk Settings in a new tab
     window.open(diskSettingsUrl, '_blank');
+  }
+
+  // Shared encryption key input component functions
+  function toggleKeyInput(tabname) {
+    const keyType = document.getElementById('keyType_' + tabname).value;
+    const passphraseSection = document.getElementById('passphraseSection_' + tabname);
+    const keyfileSection = document.getElementById('keyfileSection_' + tabname);
+    
+    if (keyType === 'passphrase') {
+      passphraseSection.style.display = 'block';
+      keyfileSection.style.display = 'none';
+      // Clear keyfile input when switching to passphrase
+      const keyfileInput = document.getElementById('keyfile_' + tabname);
+      if (keyfileInput) keyfileInput.value = '';
+    } else {
+      passphraseSection.style.display = 'none'; 
+      keyfileSection.style.display = 'block';
+      // Clear passphrase input when switching to keyfile
+      const passphraseInput = document.getElementById('passphrase_' + tabname);
+      if (passphraseInput) passphraseInput.value = '';
+    }
+  }
+
+  function togglePasswordVisibility(tabname) {
+    const passphraseInput = document.getElementById('passphrase_' + tabname);
+    const checkbox = event.target;
+    
+    if (checkbox.checked) {
+      passphraseInput.type = 'text';
+    } else {
+      passphraseInput.type = 'password';
+    }
+  }
+
+  function validateKeyfileSize(fileInput, tabname) {
+    const maxSize = 8 * 1024 * 1024; // 8 MiB
+    const file = fileInput.files[0];
+    
+    if (file && file.size > maxSize) {
+      alert('Keyfile exceeds 8 MiB limit (Unraid standard). Please select a smaller file.');
+      fileInput.value = ''; // Clear the input
+      return false;
+    }
+    return true;
+  }
+
+  function validateEncryptionKeyInput(tabname) {
+    const keyType = document.getElementById('keyType_' + tabname).value;
+    
+    if (keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_' + tabname).value;
+      if (!passphrase) {
+        return 'Please enter your encryption passphrase.';
+      }
+      if (passphrase.length > 512) {
+        return 'Passphrase exceeds 512 character limit (Unraid standard).';
+      }
+    } else {
+      const keyfileInput = document.getElementById('keyfile_' + tabname);
+      if (!keyfileInput.files || !keyfileInput.files[0]) {
+        return 'Please select your encryption keyfile.';
+      }
+    }
+    return null; // Valid
   }
 </script>

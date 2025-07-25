@@ -7,14 +7,54 @@ $main_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_
 $headers_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_headers_backup.sh";
 
 // --- Get POST data from the UI ---
-$passphrase = $_POST['passphrase'] ?? '';
+$key_type = $_POST['keyType'] ?? 'passphrase';
 $backup_headers_option = $_POST['backupHeaders'] ?? 'no';
 $dry_run_option = $_POST['dryRun'] ?? 'yes';
 $headers_only = $_POST['headersOnly'] ?? 'false';
 
-// --- Validate Inputs ---
-if (empty($passphrase)) {
-    echo "Error: Passphrase is required.";
+// --- Process Encryption Key Input ---
+function processEncryptionKey() {
+    global $key_type;
+    
+    if ($key_type === 'passphrase') {
+        $passphrase = $_POST['passphrase'] ?? '';
+        if (empty($passphrase)) {
+            return ['error' => 'Passphrase is required.'];
+        }
+        if (strlen($passphrase) > 512) {
+            return ['error' => 'Passphrase exceeds 512 character limit (Unraid standard).'];
+        }
+        return ['type' => 'passphrase', 'value' => $passphrase];
+    } else {
+        // Handle keyfile upload
+        if (!isset($_FILES['keyfile']) || $_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
+            return ['error' => 'Keyfile upload failed or no file provided.'];
+        }
+        
+        $uploaded_file = $_FILES['keyfile'];
+        
+        // Validate file size (8 MiB limit)
+        if ($uploaded_file['size'] > 8388608) {
+            return ['error' => 'Keyfile exceeds 8 MiB limit (Unraid standard).'];
+        }
+        
+        // Create secure temporary file
+        $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
+        if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_keyfile)) {
+            return ['error' => 'Failed to process keyfile upload.'];
+        }
+        
+        // Set secure permissions (read-only for owner)
+        chmod($temp_keyfile, 0600);
+        
+        return ['type' => 'keyfile', 'value' => $temp_keyfile];
+    }
+}
+
+// Process the encryption key
+$encryption_key = processEncryptionKey();
+if (isset($encryption_key['error'])) {
+    echo "Error: " . $encryption_key['error'];
     exit(1);
 }
 
@@ -29,7 +69,12 @@ if ($headers_only === 'true') {
     if ($backup_headers_option === 'download') {
         $args .= " --download-mode";
     }
-    $args .= " -p \"$passphrase\"";
+    // For headers script, pass encryption key via command line
+    if ($encryption_key['type'] === 'passphrase') {
+        $args .= " -p " . escapeshellarg($encryption_key['value']);
+    } else {
+        $args .= " -k " . escapeshellarg($encryption_key['value']);
+    }
 } else {
     // Full auto-start setup - use main management script
     $script_path = $main_script_path;
@@ -54,20 +99,18 @@ $descriptorspec = array(
    2 => array("pipe", "w")   // stderr
 );
 
-// Pass the passphrase securely as an environment variable (for main script)
-// or via command line (for headers script)
-// We also explicitly provide a standard PATH to ensure the script can find system commands.
-if ($headers_only === 'true') {
-    // Headers script gets passphrase via command line (already added above)
-    $env = array(
-        'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
-    );
-} else {
-    // Main script gets passphrase via environment variable
-    $env = array(
-        'LUKS_PASSPHRASE' => $passphrase,
-        'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
-    );
+// Prepare environment variables for encryption key
+$env = array(
+    'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
+);
+
+// For main script, pass encryption key via environment variables
+if ($headers_only !== 'true') {
+    if ($encryption_key['type'] === 'passphrase') {
+        $env['LUKS_PASSPHRASE'] = $encryption_key['value'];
+    } else {
+        $env['LUKS_KEYFILE'] = $encryption_key['value'];
+    }
 }
 
 // Start the process with the explicit environment
@@ -126,5 +169,10 @@ if (is_resource($process)) {
 } else {
     echo "Error: Failed to execute the script process (proc_open failed).";
     exit(1);
+}
+
+// Clean up temporary keyfile if one was created
+if ($encryption_key['type'] === 'keyfile' && file_exists($encryption_key['value'])) {
+    unlink($encryption_key['value']);
 }
 ?>

@@ -8,12 +8,52 @@ $download_temp_dir = "/tmp/luksheaders";
 $plugin_download_dir = "/usr/local/emhttp/plugins/luks-key-management/downloads";
 
 // --- Get POST data from the UI ---
-$passphrase = $_POST['passphrase'] ?? '';
+$key_type = $_POST['keyType'] ?? 'passphrase';
 $detail_level = $_POST['detailLevel'] ?? 'detailed';
 
-// --- Validate Inputs ---
-if (empty($passphrase)) {
-    echo "Error: Passphrase is required for encryption analysis download.";
+// --- Process Encryption Key Input ---
+function processEncryptionKey() {
+    global $key_type;
+    
+    if ($key_type === 'passphrase') {
+        $passphrase = $_POST['passphrase'] ?? '';
+        if (empty($passphrase)) {
+            return ['error' => 'Passphrase is required.'];
+        }
+        if (strlen($passphrase) > 512) {
+            return ['error' => 'Passphrase exceeds 512 character limit (Unraid standard).'];
+        }
+        return ['type' => 'passphrase', 'value' => $passphrase];
+    } else {
+        // Handle keyfile upload
+        if (!isset($_FILES['keyfile']) || $_FILES['keyfile']['error'] !== UPLOAD_ERR_OK) {
+            return ['error' => 'Keyfile upload failed or no file provided.'];
+        }
+        
+        $uploaded_file = $_FILES['keyfile'];
+        
+        // Validate file size (8 MiB limit)
+        if ($uploaded_file['size'] > 8388608) {
+            return ['error' => 'Keyfile exceeds 8 MiB limit (Unraid standard).'];
+        }
+        
+        // Create secure temporary file
+        $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
+        if (!move_uploaded_file($uploaded_file['tmp_name'], $temp_keyfile)) {
+            return ['error' => 'Failed to process keyfile upload.'];
+        }
+        
+        // Set secure permissions (read-only for owner)
+        chmod($temp_keyfile, 0600);
+        
+        return ['type' => 'keyfile', 'value' => $temp_keyfile];
+    }
+}
+
+// Process the encryption key
+$encryption_key = processEncryptionKey();
+if (isset($encryption_key['error'])) {
+    echo "Error: " . $encryption_key['error'];
     exit(1);
 }
 
@@ -47,9 +87,14 @@ $descriptorspec = array(
 
 $command = "$info_script_path -d " . escapeshellarg($detail_level);
 $env = array(
-    'LUKS_PASSPHRASE' => $passphrase,
     'PATH' => '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'
 );
+
+if ($encryption_key['type'] === 'passphrase') {
+    $env['LUKS_PASSPHRASE'] = $encryption_key['value'];
+} else {
+    $env['LUKS_KEYFILE'] = $encryption_key['value'];
+}
 
 $process = proc_open($command, $descriptorspec, $pipes, null, $env);
 
@@ -84,12 +129,13 @@ if (!file_exists($temp_analysis_file)) {
 echo "Analysis generated successfully.\n";
 echo "Creating encrypted archive...\n";
 
-// Create encrypted ZIP archive
-$zip_command = "cd " . escapeshellarg($download_temp_dir) . " && echo " . escapeshellarg($passphrase) . " | zip -e --password-from-stdin " . escapeshellarg($zip_filename) . " " . escapeshellarg($analysis_filename) . " 2>&1";
+// Create encrypted ZIP archive using appropriate password
+$zip_password = ($encryption_key['type'] === 'passphrase') ? $encryption_key['value'] : file_get_contents($encryption_key['value']);
+$zip_command = "cd " . escapeshellarg($download_temp_dir) . " && echo " . escapeshellarg($zip_password) . " | zip -e --password-from-stdin " . escapeshellarg($zip_filename) . " " . escapeshellarg($analysis_filename) . " 2>&1";
 
 $zip_output = shell_exec($zip_command);
 $zip_exit_code = 0;
-exec("cd " . escapeshellarg($download_temp_dir) . " && echo " . escapeshellarg($passphrase) . " | zip -e --password-from-stdin " . escapeshellarg($zip_filename) . " " . escapeshellarg($analysis_filename), $zip_result, $zip_exit_code);
+exec("cd " . escapeshellarg($download_temp_dir) . " && echo " . escapeshellarg($zip_password) . " | zip -e --password-from-stdin " . escapeshellarg($zip_filename) . " " . escapeshellarg($analysis_filename), $zip_result, $zip_exit_code);
 
 if ($zip_exit_code !== 0 || !file_exists($temp_zip_file)) {
     echo "Error: Failed to create encrypted archive.\n";
@@ -116,7 +162,17 @@ if (symlink($temp_zip_file, $symlink_path)) {
     
     // Clean up the temporary analysis file (keep the zip for download)
     unlink($temp_analysis_file);
+    
+    // Clean up temporary keyfile if one was created
+    if ($encryption_key['type'] === 'keyfile' && file_exists($encryption_key['value'])) {
+        unlink($encryption_key['value']);
+    }
 } else {
     echo "Warning: Could not create download link.\n";
+    
+    // Clean up temporary keyfile if one was created
+    if ($encryption_key['type'] === 'keyfile' && file_exists($encryption_key['value'])) {
+        unlink($encryption_key['value']);
+    }
 }
 ?>

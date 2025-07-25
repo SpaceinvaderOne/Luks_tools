@@ -17,6 +17,8 @@ DRY_RUN="no"
 BACKUP_HEADERS="yes"  # Always backup headers for safety
 DOWNLOAD_MODE="no"
 PASSPHRASE=""
+KEY_TYPE=""
+KEYFILE_PATH=""
 
 # Hardware information for key generation and metadata
 MOTHERBOARD_ID=""
@@ -51,6 +53,93 @@ validate_hardware_fingerprint() {
     echo "  Motherboard ID: $MOTHERBOARD_ID"
     echo "  Gateway MAC: $GATEWAY_MAC"
     return 0
+}
+
+#
+# Test encryption key (passphrase or keyfile) against a LUKS device
+#
+test_encryption_key() {
+    local device="$1"
+    
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        echo "$PASSPHRASE" | cryptsetup luksOpen --test-passphrase "$device" --stdin 2>/dev/null
+    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+        cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE_PATH" "$device" 2>/dev/null
+    else
+        echo "Error: Unknown key type '$KEY_TYPE'" >&2
+        return 1
+    fi
+}
+
+#
+# Remove a LUKS slot using the appropriate authentication method
+#
+remove_slot_with_key() {
+    local device="$1"
+    local slot="$2"
+    
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        echo "$PASSPHRASE" | cryptsetup luksKillSlot "$device" "$slot" --stdin 2>/dev/null
+    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+        cryptsetup luksKillSlot "$device" "$slot" --key-file="$KEYFILE_PATH" 2>/dev/null
+    else
+        echo "Error: Unknown key type '$KEY_TYPE'" >&2
+        return 1
+    fi
+}
+
+#
+# Create LUKS header backup using the appropriate authentication method
+#
+create_header_backup() {
+    local device="$1"
+    local backup_file="$2"
+    
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        echo "$PASSPHRASE" | cryptsetup luksHeaderBackup "$device" --header-backup-file "$backup_file" --stdin 2>/dev/null
+    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+        cryptsetup luksHeaderBackup "$device" --header-backup-file "$backup_file" --key-file="$KEYFILE_PATH" 2>/dev/null
+    else
+        echo "Error: Unknown key type '$KEY_TYPE'" >&2
+        return 1
+    fi
+}
+
+#
+# Add hardware key using the appropriate authentication method
+#
+add_hardware_key_with_auth() {
+    local device="$1"
+    local keyfile="$2"
+    
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        echo "$PASSPHRASE" | cryptsetup luksAddKey "$device" "$keyfile" --stdin 2>/dev/null
+    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+        cryptsetup luksAddKey "$device" "$keyfile" --key-file="$KEYFILE_PATH" 2>/dev/null
+    else
+        echo "Error: Unknown key type '$KEY_TYPE'" >&2
+        return 1
+    fi
+}
+
+#
+# Create encrypted archive using the appropriate authentication method
+#
+create_encrypted_archive() {
+    local archive_file="$1"
+    local source_dir="$2"
+    local metadata_file="$3"
+    
+    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        zip -j --password "$PASSPHRASE" "$archive_file" "$source_dir"/*.img "$metadata_file"
+    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+        # For keyfile authentication, we'll use the derived key as password for zip encryption
+        # This maintains security while allowing archive creation
+        zip -j --password "$DERIVED_KEY" "$archive_file" "$source_dir"/*.img "$metadata_file"
+    else
+        echo "Error: Unknown key type '$KEY_TYPE'" >&2
+        return 1
+    fi
 }
 
 #
@@ -140,7 +229,7 @@ remove_unraid_derived_slots() {
             echo "    [DRY RUN] Would remove slot $slot"
             cleaned_slots=$((cleaned_slots + 1))
         else
-            if echo "$PASSPHRASE" | cryptsetup luksKillSlot "$device" "$slot" --stdin 2>/dev/null; then
+            if remove_slot_with_key "$device" "$slot"; then
                 echo "    ✅ Removed old hardware key from slot $slot"
                 cleaned_slots=$((cleaned_slots + 1))
             else
@@ -268,13 +357,17 @@ process_single_device() {
     echo "  - LUKS Version:     $luks_version"
     echo "  - Key Slots Used:   $used_slots / $total_slots"
 
-    # 1. Check if the user-provided passphrase unlocks the device
-    if ! echo -n "$PASSPHRASE" | cryptsetup luksOpen --test-passphrase --key-file=- "$luks_device" &>/dev/null; then
-        echo "  - Passphrase Check: FAILED. Skipping this device."
-        failed_devices+=("$luks_device: Invalid passphrase")
+    # 1. Check if the user-provided encryption key unlocks the device
+    if ! test_encryption_key "$luks_device"; then
+        echo "  - Encryption Key Check: FAILED. Skipping this device."
+        if [[ "$KEY_TYPE" == "passphrase" ]]; then
+            failed_devices+=("$luks_device: Invalid passphrase")
+        else
+            failed_devices+=("$luks_device: Invalid keyfile")
+        fi
         return 1
     fi
-    echo "  - Passphrase Check: OK"
+    echo "  - Encryption Key Check: OK"
 
     # 2. Perform header backup (always enabled for safety)
     local luks_uuid backup_file
@@ -288,7 +381,7 @@ process_single_device() {
             headers_found=$((headers_found + 1))
         else
             echo "  - Header Backup:    Backing up..."
-            if echo -n "$PASSPHRASE" | cryptsetup luksHeaderBackup "$luks_device" --header-backup-file "$backup_file"; then
+            if create_header_backup "$luks_device" "$backup_file"; then
                 echo "    ...Success."
                 headers_found=$((headers_found + 1))
             else
@@ -330,7 +423,7 @@ process_single_device() {
     # Try adding the key with retry logic (attempt 1/2)
     local success=0
     for attempt in 1 2; do
-        if echo "$PASSPHRASE" | cryptsetup luksAddKey "$luks_device" "$KEYFILE" --stdin 2>/dev/null; then
+        if add_hardware_key_with_auth "$luks_device" "$KEYFILE"; then
             echo "    ✅ Added new hardware key for current hardware"
             success=1
             break
@@ -374,12 +467,25 @@ usage() {
 # Custom argument parser for the Unraid Plugin environment
 #
 parse_args() {
-    # Read the passphrase securely from an environment variable.
+    # Read the encryption key securely from environment variables
     if [[ -n "$LUKS_PASSPHRASE" ]]; then
         PASSPHRASE="$LUKS_PASSPHRASE"
+        KEY_TYPE="passphrase"
+    elif [[ -n "$LUKS_KEYFILE" ]]; then
+        KEYFILE_PATH="$LUKS_KEYFILE"
+        KEY_TYPE="keyfile"
+        # Validate keyfile exists and is readable
+        if [[ ! -f "$KEYFILE_PATH" ]]; then
+            echo "Error: Keyfile not found at $KEYFILE_PATH" >&2
+            exit 1
+        fi
+        if [[ ! -r "$KEYFILE_PATH" ]]; then
+            echo "Error: Keyfile not readable at $KEYFILE_PATH" >&2
+            exit 1
+        fi
     else
-        echo "Error: Passphrase not found in environment variable."
-        usage
+        echo "Error: No encryption key found. Provide LUKS_PASSPHRASE or LUKS_KEYFILE environment variable." >&2
+        exit 1
     fi
 
     # Always enable header backup for safety
@@ -518,9 +624,17 @@ EOF
     local info_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_info_viewer.sh"
     if [[ -f "$info_script" ]]; then
         # Run encryption analysis and append to metadata file
-        LUKS_PASSPHRASE="$PASSPHRASE" "$info_script" -d detailed >> "$metadata_file" 2>/dev/null || {
+        if [[ "$KEY_TYPE" == "passphrase" ]]; then
+            LUKS_PASSPHRASE="$PASSPHRASE" "$info_script" -d detailed >> "$metadata_file" 2>/dev/null || {
+                echo "Warning: Could not generate encryption analysis" >> "$metadata_file"
+            }
+        elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+            LUKS_KEYFILE="$KEYFILE_PATH" "$info_script" -d detailed >> "$metadata_file" 2>/dev/null || {
+                echo "Warning: Could not generate encryption analysis" >> "$metadata_file"
+            }
+        else
             echo "Warning: Could not generate encryption analysis" >> "$metadata_file"
-        }
+        fi
     else
         echo "Warning: Encryption analysis script not found" >> "$metadata_file"
     fi
@@ -653,7 +767,7 @@ process_devices() {
             mkdir -p "$ZIPPED_HEADER_BACKUP_LOCATION"
             
             # Create archive with header backups and enhanced metadata
-            zip -j --password "$PASSPHRASE" "$final_backup_file" "$HEADER_BACKUP_DIR"/*.img "$metadata_file"
+            create_encrypted_archive "$final_backup_file" "$HEADER_BACKUP_DIR" "$metadata_file"
             if [[ $? -eq 0 ]]; then
                 echo "Final encrypted archive created at $final_backup_file"
                 echo "Archive includes LUKS headers and comprehensive system analysis"
