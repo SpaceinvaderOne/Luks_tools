@@ -1,4 +1,7 @@
 <?php
+// Include Unraid's webGUI session handling for CSRF validation
+require_once '/usr/local/emhttp/webGUI/include/Wrappers.php';
+
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
 
