@@ -344,19 +344,31 @@ Icon="key"
   }
 
   function runAutoStartSetup() {
+    console.log('DEBUG: runAutoStartSetup called');
+    
+    // Auto-switch to Status tab immediately to show we're starting
+    switchTab('status');
+    setStatus('DEBUG: Function called, starting validation...');
+    
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('autostart');
+    console.log('DEBUG: Validation result:', validationError);
     if (validationError) {
       setStatus('Error: ' + validationError);
       return;
     }
+    
+    updateStatus('DEBUG: Validation passed, continuing...');
 
     const backupLocation = document.getElementById('backupLocation').value;
     const dryRun = document.getElementById('dryRun').value;
+    console.log('DEBUG: backupLocation:', backupLocation, 'dryRun:', dryRun);
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
     setStatus('Starting complete auto-unlock setup...\nThis will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...');
+    
+    console.log('DEBUG: Status set, preparing form data');
 
     // Convert backupLocation to the format expected by the backend
     const backupHeaders = backupLocation === 'download' ? 'download' : 'yes';
@@ -364,25 +376,43 @@ Icon="key"
     // Prepare form data to handle both passphrase and keyfile
     const formData = new FormData();
     const keyType = document.getElementById('keyType_autostart').value;
+    console.log('DEBUG: keyType:', keyType);
     
     formData.append('keyType', keyType);
     if (keyType === 'passphrase') {
       const passphrase = document.getElementById('passphrase_autostart').value;
+      console.log('DEBUG: Using passphrase, length:', passphrase.length);
       formData.append('passphrase', passphrase);
     } else {
       const keyfileInput = document.getElementById('keyfile_autostart');
-      formData.append('keyfile', keyfileInput.files[0]);
+      console.log('DEBUG: Using keyfile, files:', keyfileInput.files);
+      if (keyfileInput.files && keyfileInput.files[0]) {
+        console.log('DEBUG: File selected:', keyfileInput.files[0].name, 'Size:', keyfileInput.files[0].size);
+        formData.append('keyfile', keyfileInput.files[0]);
+      } else {
+        console.log('DEBUG: No file selected!');
+        setStatus('Error: No keyfile selected');
+        return;
+      }
     }
     formData.append('backupHeaders', backupHeaders);
     formData.append('dryRun', dryRun);
 
+    console.log('DEBUG: Starting AJAX request to /plugins/luks-key-management/scripts/run_luks_script.php');
+    
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_luks_script.php',
       type: 'POST',
       data: formData,
       processData: false,
       contentType: false,
+      beforeSend: function(xhr) {
+        console.log('DEBUG: AJAX request starting...');
+        updateStatus('DEBUG: AJAX request initiated...');
+      },
       success: function(data) {
+        console.log('DEBUG: AJAX success, response length:', data.length);
+        console.log('DEBUG: Response data:', data);
         setStatus(data);
         
         // Check if we need to download a backup file
@@ -396,8 +426,10 @@ Icon="key"
           }
         }
       },
-      error: function() {
-        setStatus('Error: Failed to execute the auto-unlock setup. Check browser console for more details.');
+      error: function(xhr, status, error) {
+        console.log('DEBUG: AJAX error - Status:', status, 'Error:', error);
+        console.log('DEBUG: XHR object:', xhr);
+        setStatus('Error: AJAX failed - Status: ' + status + ', Error: ' + error + '\nCheck browser console for more details.');
       }
     });
   }
