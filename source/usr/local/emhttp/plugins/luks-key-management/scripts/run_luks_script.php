@@ -193,10 +193,14 @@ if (is_resource($process)) {
                 unlink($symlink_path);
             }
             
-            if (symlink($backup_file, $symlink_path)) {
+            // Copy the file to the plugin directory instead of symlinking from temp location
+            // This prevents issues with temp directory cleanup
+            if (copy($backup_file, $symlink_path)) {
                 $output .= "\nDOWNLOAD_READY: $symlink_path";
+                echo "DEBUG: Archive copied to download location: $symlink_path\n";
             } else {
-                $output .= "\nWarning: Could not create download link.";
+                $output .= "\nWarning: Could not copy backup file to download location.";
+                echo "DEBUG: Failed to copy $backup_file to $symlink_path\n";
             }
         }
     }
