@@ -5,8 +5,8 @@
 # that can be unlocked with the provided passphrase.
 #
 
-# Exit on any error
-set -e
+# Note: Removed 'set -e' to prevent premature script termination on individual device failures
+# We want to continue processing other devices even if one fails
 
 # --- Configuration & Variables ---
 
@@ -329,7 +329,13 @@ fi
 
 # Show configuration
 echo "Configuration:"
-echo "  - Authentication: $KEY_TYPE"
+if [[ -n "$LUKS_PASSPHRASE" ]]; then
+    echo "  - Authentication: passphrase"
+elif [[ -n "$LUKS_KEYFILE" ]]; then
+    echo "  - Authentication: keyfile"
+else
+    echo "  - Authentication: $KEY_TYPE"
+fi
 echo "  - Download Mode: $DOWNLOAD_MODE"
 echo "  - Timestamp: $TIMESTAMP"
 
