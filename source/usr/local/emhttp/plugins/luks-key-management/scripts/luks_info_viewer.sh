@@ -12,7 +12,6 @@ set -e
 
 # Default values for script options
 DETAIL_LEVEL="simple"
-DRY_RUN="yes"
 PASSPHRASE=""
 
 # Temporary working directory
@@ -321,6 +320,11 @@ analyze_encryption() {
                 echo "❌ $device ($device_type) - Passphrase invalid"
             fi
         done
+    elif [[ "$detail_level" == "very_detailed" ]]; then
+        echo "--- Very Detailed Analysis (Individual Devices) ---"
+        for device in "${devices[@]}"; do
+            analyze_device "$device" "$passphrase" "$detail_level"
+        done
     else
         echo "--- Detailed Analysis with Smart Grouping ---"
         group_devices_by_pattern "${devices[@]}"
@@ -343,10 +347,6 @@ parse_args() {
             -d|--detail-level)
                 DETAIL_LEVEL="$2"
                 shift 2
-                ;;
-            --dry-run)
-                DRY_RUN="yes"
-                shift
                 ;;
             -p|--passphrase)
                 PASSPHRASE="$2"
@@ -375,18 +375,23 @@ Usage: $0 [OPTIONS]
 LUKS Encryption Information Viewer
 
 OPTIONS:
-    -d, --detail-level LEVEL   Analysis detail level: simple or detailed (default: simple)
-    --dry-run                  Dry run mode (default behavior)
+    -d, --detail-level LEVEL   Analysis detail level: simple, detailed, or very_detailed (default: simple)
     -p, --passphrase PASS      LUKS passphrase (can also be provided via LUKS_PASSPHRASE env var)
     -h, --help                 Show this help message
+
+DETAIL LEVELS:
+    simple                     Simple device listing with passphrase validation
+    detailed                   Smart grouping with slot configuration analysis
+    very_detailed              Individual device analysis (no smart grouping)
 
 ENVIRONMENT VARIABLES:
     LUKS_PASSPHRASE           LUKS passphrase (alternative to -p option)
 
 EXAMPLES:
     $0 -p "mypassphrase"                          # Simple device listing
-    $0 -p "mypassphrase" -d detailed              # Detailed analysis with slot info
-    LUKS_PASSPHRASE="pass" $0 -d detailed        # Using environment variable
+    $0 -p "mypassphrase" -d detailed              # Detailed analysis with smart grouping
+    $0 -p "mypassphrase" -d very_detailed         # Individual device analysis
+    LUKS_PASSPHRASE="pass" $0 -d very_detailed   # Using environment variable
 
 EOF
 }

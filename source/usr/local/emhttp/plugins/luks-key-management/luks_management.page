@@ -150,19 +150,12 @@ Icon="key"
             <dd>
               <select id="detailLevel" name="detailLevel">
                 <option value="simple" selected>Simple (drive list only)</option>
-                <option value="detailed">Detailed (slots and metadata)</option>
+                <option value="detailed">Detailed (smart grouping with slots and metadata)</option>
+                <option value="very_detailed">Very Detailed (individual device analysis)</option>
               </select>
               <div class="description">Choose how much information to display about your encrypted drives.</div>
             </dd>
 
-            <dt><strong>Dry Run:</strong></dt>
-            <dd>
-              <select id="encinfoDryRun" name="encinfoDryRun">
-                <option value="yes" selected>Yes</option>
-                <option value="no">No</option>
-              </select>
-              <div class="description">Dry run mode for testing - no actual operations performed.</div>
-            </dd>
           </dl>
           <p>
             <button type="button" onclick="runEncryptionInfo()">View Encryption Status</button>
@@ -368,7 +361,6 @@ Icon="key"
   function runEncryptionInfo() {
     const passphrase = document.getElementById('encinfoPassphrase').value;
     const detailLevel = document.getElementById('detailLevel').value;
-    const dryRun = document.getElementById('encinfoDryRun').value;
 
     if (!passphrase) {
       setStatus('Error: Passphrase is required for encryption analysis.');
@@ -381,8 +373,7 @@ Icon="key"
 
     $.post('/plugins/luks-key-management/scripts/run_encryption_info.php', {
       passphrase: passphrase,
-      detailLevel: detailLevel,
-      dryRun: dryRun
+      detailLevel: detailLevel
     }, function(data) {
       setStatus(data);
     }).fail(function() {
@@ -393,17 +384,12 @@ Icon="key"
   function downloadEncryptionInfo() {
     const passphrase = document.getElementById('encinfoPassphrase').value;
     const detailLevel = document.getElementById('detailLevel').value;
-    const dryRun = document.getElementById('encinfoDryRun').value;
 
     if (!passphrase) {
       setStatus('Error: Passphrase is required for encryption analysis download.');
       return;
     }
 
-    if (dryRun === 'yes') {
-      setStatus('Error: Cannot download analysis in dry run mode. Set dry run to "No" to download.');
-      return;
-    }
 
     // Auto-switch to Status tab to show operation progress
     switchTab('status');
