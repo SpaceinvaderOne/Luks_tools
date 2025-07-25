@@ -183,24 +183,40 @@ if (is_resource($process)) {
             $plugin_download_dir = "/usr/local/emhttp/plugins/luks-key-management/downloads";
             $symlink_path = "$plugin_download_dir/$filename";
             
-            // Ensure download directory exists
+            // Ensure download directory exists with proper permissions
             if (!is_dir($plugin_download_dir)) {
-                mkdir($plugin_download_dir, 0755, true);
+                if (!mkdir($plugin_download_dir, 0755, true)) {
+                    echo "DEBUG: Failed to create download directory: $plugin_download_dir\n";
+                    $output .= "\nWarning: Could not create download directory.";
+                    return;
+                }
+                echo "DEBUG: Created download directory: $plugin_download_dir\n";
             }
             
-            // Remove any existing symlink and create new one
+            // Remove any existing file and create new one
             if (file_exists($symlink_path)) {
                 unlink($symlink_path);
+            }
+            
+            // Check if source file exists before copying
+            if (!file_exists($backup_file)) {
+                echo "DEBUG: Source file does not exist: $backup_file\n";
+                $output .= "\nWarning: Source backup file not found.";
+                return;
             }
             
             // Copy the file to the plugin directory instead of symlinking from temp location
             // This prevents issues with temp directory cleanup
             if (copy($backup_file, $symlink_path)) {
+                // Set proper permissions on the copied file
+                chmod($symlink_path, 0644);
                 $output .= "\nDOWNLOAD_READY: $symlink_path";
                 echo "DEBUG: Archive copied to download location: $symlink_path\n";
             } else {
                 $output .= "\nWarning: Could not copy backup file to download location.";
                 echo "DEBUG: Failed to copy $backup_file to $symlink_path\n";
+                echo "DEBUG: Source file exists: " . (file_exists($backup_file) ? "yes" : "no") . "\n";
+                echo "DEBUG: Destination dir writable: " . (is_writable($plugin_download_dir) ? "yes" : "no") . "\n";
             }
         }
     }

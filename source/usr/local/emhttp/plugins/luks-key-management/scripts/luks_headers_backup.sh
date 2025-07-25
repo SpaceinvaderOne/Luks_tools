@@ -145,10 +145,11 @@ EOF
     # Create encrypted ZIP archive with all headers and metadata using the same key that unlocks the devices
     cd "$HEADER_BACKUP_DIR"
     if [[ "$KEY_TYPE" == "passphrase" ]]; then
-        echo "$PASSPHRASE" | zip -r -e --password-from-stdin "$archive_path" *.img *.txt 2>/dev/null
+        zip -r -e -P "$PASSPHRASE" "$archive_path" *.img *.txt 2>/dev/null
     else
         # For keyfiles, read the content and use it as password
-        cat "$KEYFILE_PATH" | zip -r -e --password-from-stdin "$archive_path" *.img *.txt 2>/dev/null
+        local keyfile_content=$(cat "$KEYFILE_PATH")
+        zip -r -e -P "$keyfile_content" "$archive_path" *.img *.txt 2>/dev/null
     fi
     
     echo "Final encrypted archive created at $archive_path"
