@@ -186,18 +186,30 @@ process_devices() {
     
     # Process each device
     local headers_found=0
+    echo "DEBUG: About to process ${#devices[@]} devices: ${devices[*]}"
     for device in "${devices[@]}"; do
+        echo "DEBUG: Processing device: $device"
         if backup_device_header "$device"; then
             ((headers_found++))
+            echo "DEBUG: Successfully processed $device, headers_found now: $headers_found"
+        else
+            echo "DEBUG: Failed to process $device"
         fi
         echo ""
     done
     
+    echo "DEBUG: Finished processing loop, total headers_found: $headers_found"
+    
     echo "Successfully backed up headers for $headers_found devices"
     
     # Create archive if we have any headers
+    echo "DEBUG: Checking if archive creation needed, headers_found: $headers_found"
     if [[ "$headers_found" -gt 0 ]]; then
+        echo "DEBUG: Creating backup archive for $headers_found headers"
         create_backup_archive "$headers_found"
+        echo "DEBUG: Archive creation completed"
+    else
+        echo "DEBUG: No headers found, skipping archive creation"
     fi
     
     return 0
