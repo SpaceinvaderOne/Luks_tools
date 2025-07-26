@@ -134,7 +134,7 @@ Manual unlock is always possible using your original passphrase. Auto-unlock onl
 
 ### Complete Auto-Unlock Setup
 _(Existing Encryption Key)_:
-: <select id="keyType_autostart" onchange="toggleKeyInput('autostart')">
+: <select id="keyType_autostart" class="short" onchange="toggleKeyInput('autostart')">
     <option value="passphrase" selected>Passphrase</option>
     <option value="keyfile">Keyfile</option>
   </select>
@@ -157,14 +157,14 @@ _(Select Existing Keyfile)_:
 </div>
 
 _(Header Backup Location)_:
-: <select id="backupLocation" name="backupLocation">
+: <select id="backupLocation" name="backupLocation" class="short">
     <option value="download" selected>Download to PC</option>
     <option value="yes">Save to server</option>
   </select>
   <div class="description">LUKS headers will always be backed up for safety. Choose where to save the encrypted backup.</div>
 
 _(Dry Run)_:
-: <select id="dryRun" name="dryRun">
+: <select id="dryRun" name="dryRun" class="short">
     <option value="yes" selected>Yes</option>
     <option value="no">No</option>
   </select>
