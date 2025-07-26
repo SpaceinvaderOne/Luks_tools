@@ -12,6 +12,89 @@ $csrf_token = $var['csrf_token'] ?? '';
 
 This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.
 
+<style>
+/* Simple tab styles for non-responsive layout */
+.tab-container {
+  margin: 20px 0;
+}
+
+.tab-buttons {
+  border-bottom: 1px solid #444;
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 1px solid #555;
+  background: #222;
+  color: #ccc;
+  border-radius: 3px 3px 0 0;
+  transition: background-color 0.2s;
+  font-size: 14px;
+}
+
+.tab-btn.active {
+  background: #333;
+  color: #fff;
+}
+
+.tab-btn:hover {
+  background: #2a2a2a;
+}
+
+.tab-content {
+  min-height: 500px;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* Status output container */
+#statusOutput {
+  background-color: #1a1a1a;
+  color: #fff;
+  padding: 15px;
+  border-radius: 5px;
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  border: 1px solid #444;
+}
+
+/* Loading spinner styles */
+.status-loading {
+  text-align: center;
+  padding: 15px;
+  background: #2a2a2a;
+  border-radius: 5px;
+  margin: 10px 0;
+  border: 1px solid #444;
+}
+
+.status-loading .spinner {
+  margin: 0 auto 10px auto;
+  width: 120px;
+  height: 70px;
+}
+
+.status-loading .loading-message {
+  color: #fff;
+  font-size: 16px;
+}
+</style>
 
 <!-- Tab Navigation -->
 <div class="tab-container">
@@ -310,26 +393,28 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   });
 
   function switchTab(tabName) {
-    // Hide all tab panes
+    // Hide all tab panes by removing active class
     const tabPanes = document.querySelectorAll('.tab-pane');
     tabPanes.forEach(pane => {
-      pane.style.display = 'none';
+      pane.classList.remove('active');
     });
 
     // Remove active class from all buttons
     const tabButtons = document.querySelectorAll('.tab-btn');
     tabButtons.forEach(button => {
       button.classList.remove('active');
-      button.style.background = '#222';
-      button.style.color = '#ccc';
     });
 
     // Show selected tab and activate button
-    document.getElementById(tabName + '-tab').style.display = 'block';
+    const selectedTab = document.getElementById(tabName + '-tab');
+    if (selectedTab) {
+      selectedTab.classList.add('active');
+    }
+    
     const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
-    activeButton.classList.add('active');
-    activeButton.style.background = '#333';
-    activeButton.style.color = '#fff';
+    if (activeButton) {
+      activeButton.classList.add('active');
+    }
   }
 
   // Unified status output functions
@@ -944,158 +1029,4 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
     }
   }
 
-  // Inject CSS for Unraid 7.2 compatibility - prevent CSS from being parsed as markdown
-  function injectCSS() {
-    const css = `
-      /* FORCE CONTENT VISIBILITY - Unraid 7.2 Override */
-      .content--non-responsive * {
-        visibility: visible !important;
-        display: initial !important;
-      }
-
-      .content--non-responsive .tab-pane {
-        display: none;
-        visibility: visible !important;
-      }
-
-      .content--non-responsive .tab-pane.active {
-        display: block !important;
-        visibility: visible !important;
-        height: auto !important;
-        overflow: visible !important;
-      }
-
-      /* Override inline styles set by JavaScript */
-      .tab-pane[style*="display: block"] {
-        display: block !important;
-        visibility: visible !important;
-      }
-
-      /* Ensure all form elements are visible */
-      .content--non-responsive dl,
-      .content--non-responsive dt,
-      .content--non-responsive dd,
-      .content--non-responsive p,
-      .content--non-responsive h1,
-      .content--non-responsive h3,
-      .content--non-responsive h4,
-      .content--non-responsive form,
-      .content--non-responsive input,
-      .content--non-responsive select,
-      .content--non-responsive button,
-      .content--non-responsive div {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-      }
-
-      .content--non-responsive input,
-      .content--non-responsive select,
-      .content--non-responsive button {
-        display: inline-block !important;
-      }
-
-      /* Plugin-specific styles for responsive compatibility */
-      .tab-container {
-        margin: 20px 0;
-        display: block !important;
-        visibility: visible !important;
-      }
-
-      .tab-buttons {
-        border-bottom: 1px solid #444;
-        margin-bottom: 20px;
-        display: flex !important;
-        flex-wrap: wrap;
-        gap: 5px;
-        visibility: visible !important;
-      }
-
-      .tab-btn {
-        padding: 10px 20px;
-        cursor: pointer;
-        border: 1px solid #555;
-        background: #222;
-        color: #ccc;
-        border-radius: 3px 3px 0 0;
-        transition: background-color 0.2s;
-        display: inline-block !important;
-        visibility: visible !important;
-      }
-
-      .tab-btn.active {
-        background: #333;
-        color: #fff;
-      }
-
-      .tab-btn:hover {
-        background: #2a2a2a;
-      }
-
-      .tab-pane {
-        display: none;
-        visibility: visible !important;
-      }
-
-      .tab-pane.active {
-        display: block !important;
-        visibility: visible !important;
-      }
-
-      .tab-content {
-        display: block !important;
-        visibility: visible !important;
-        min-height: 500px !important;
-      }
-
-      /* Status output container */
-      #statusOutput {
-        background-color: #1a1a1a;
-        color: #fff;
-        padding: 15px;
-        border-radius: 5px;
-        min-height: 400px;
-        max-height: 600px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        border: 1px solid #444;
-      }
-
-      /* Loading spinner styles */
-      .status-loading {
-        text-align: center;
-        padding: 15px;
-        background: #2a2a2a;
-        border-radius: 5px;
-        margin: 10px 0;
-        border: 1px solid #444;
-      }
-
-      .status-loading .spinner {
-        margin: 0 auto 10px auto;
-        width: 120px;
-        height: 70px;
-      }
-
-      .status-loading .loading-message {
-        color: #fff;
-        font-size: 16px;
-      }
-    `;
-
-    const style = document.createElement('style');
-    style.textContent = css;
-    document.head.appendChild(style);
-  }
-
-  // Inject CSS when page loads
-  document.addEventListener('DOMContentLoaded', function() {
-    injectCSS();
-  });
 </script>
