@@ -139,22 +139,18 @@ _(Existing Encryption Key)_:
     <option value="keyfile">Keyfile</option>
   </select>
 
-<div id="passphraseSection_autostart" markdown="1">
-
 _(Enter Existing Passphrase)_:
-: <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
-  <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
-  <div class="description">Enter your original LUKS encryption passphrase.</div>
-
-</div>
-
-<div id="keyfileSection_autostart" style="display: none;" markdown="1">
+: <div id="passphraseSection_autostart">
+    <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
+    <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
+    <div class="description">Enter your original LUKS encryption passphrase.</div>
+  </div>
 
 _(Select Existing Keyfile)_:
-: <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
-  <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
-
-</div>
+: <div id="keyfileSection_autostart" style="display: none;">
+    <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
+    <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
+  </div>
 
 _(Header Backup Location)_:
 : <select id="backupLocation" name="backupLocation" class="short">
