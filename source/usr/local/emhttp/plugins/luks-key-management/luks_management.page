@@ -57,8 +57,8 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   max-width: 600px;
 }
 
-/* Section navigation */
-.section-nav {
+/* Tab navigation */
+.tab-nav {
   background: #2a2a2a;
   padding: 15px;
   border-radius: 5px;
@@ -66,12 +66,12 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   border: 1px solid #444;
 }
 
-.section-nav h3 {
+.tab-nav h3 {
   margin-top: 0;
   color: #F15A2C;
 }
 
-.section-nav ul {
+.tab-nav ul {
   list-style: none;
   padding: 0;
   margin: 10px 0 0 0;
@@ -80,59 +80,73 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   gap: 10px;
 }
 
-.section-nav li {
+.tab-nav li {
   margin: 0;
 }
 
-.section-nav a {
+.tab-nav button {
   display: block;
+  width: 100%;
   padding: 8px 12px;
   background: #1a1a1a;
   border: 1px solid #555;
   border-radius: 3px;
-  text-decoration: none;
   color: #fff;
-  transition: background-color 0.2s;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  text-align: left;
 }
 
-.section-nav a:hover {
+.tab-nav button:hover {
   background: #333;
   color: #F15A2C;
 }
 
-.section-nav i {
+.tab-nav button.active {
+  background: #F15A2C;
+  color: white;
+  border-color: #F15A2C;
+}
+
+.tab-nav i {
   width: 20px;
   margin-right: 8px;
 }
 
-/* Section headers */
-h2 {
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 2px solid #444;
-  color: #F15A2C;
+/* Tab content */
+.tab-content {
+  display: none;
+  margin: 20px 0;
 }
 
-h2:first-of-type {
-  margin-top: 20px;
+.tab-content.active {
+  display: block;
+}
+
+.tab-content h2 {
+  margin-top: 0;
+  padding-top: 0;
   border-top: none;
+  color: #F15A2C;
 }
 
 </style>
 
-<div class="section-nav">
+<div class="tab-nav">
   <h3>Quick Navigation</h3>
   <ul>
-    <li><a href="#auto-start"><i class="fa fa-play"></i>Auto Start</a></li>
-    <li><a href="#luks-headers"><i class="fa fa-shield"></i>LUKS Headers</a></li>
-    <li><a href="#go-file"><i class="fa fa-file-code-o"></i>Go File</a></li>
-    <li><a href="#encryption-info"><i class="fa fa-info"></i>Encryption Info</a></li>
-    <li><a href="#change-key"><i class="fa fa-key"></i>Change Encryption Key</a></li>
-    <li><a href="#status"><i class="fa fa-terminal"></i>Status</a></li>
+    <li><button onclick="showTab('auto-start')" id="tab-auto-start" class="active"><i class="fa fa-play"></i>Auto Start</button></li>
+    <li><button onclick="showTab('luks-headers')" id="tab-luks-headers"><i class="fa fa-shield"></i>LUKS Headers</button></li>
+    <li><button onclick="showTab('go-file')" id="tab-go-file"><i class="fa fa-file-code-o"></i>Go File</button></li>
+    <li><button onclick="showTab('encryption-info')" id="tab-encryption-info"><i class="fa fa-info"></i>Encryption Info</button></li>
+    <li><button onclick="showTab('change-key')" id="tab-change-key"><i class="fa fa-key"></i>Change Encryption Key</button></li>
+    <li><button onclick="showTab('status')" id="tab-status"><i class="fa fa-terminal"></i>Status</button></li>
   </ul>
 </div>
 
-## <i class="fa fa-play"></i> Auto Start {#auto-start}
+<div id="content-auto-start" class="tab-content active">
+## <i class="fa fa-play"></i> Auto Start
 
 This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.
 
@@ -182,8 +196,10 @@ _(Dry Run)_:
 &nbsp;
 : <span><input type="submit" value="ENABLE AUTO-UNLOCK" onclick="runAutoStartSetup(); return false;" style="background-color: #F15A2C; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;"></span>
 </form>
+</div>
 
-## <i class="fa fa-shield"></i> LUKS Headers {#luks-headers}
+<div id="content-luks-headers" class="tab-content">
+## <i class="fa fa-shield"></i> LUKS Headers
 
 Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.
 
@@ -243,8 +259,10 @@ _(Action)_:
 <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
   <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
 </div>
+</div>
 
-## <i class="fa fa-info"></i> Encryption Info {#encryption-info}
+<div id="content-encryption-info" class="tab-content">
+## <i class="fa fa-info"></i> Encryption Info
 
 View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.
 
@@ -289,8 +307,10 @@ _(Detail Level)_:
 <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #FF9800;">
   <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
 </div>
+</div>
 
-## <i class="fa fa-key"></i> Change Encryption Key {#change-key}
+<div id="content-change-key" class="tab-content">
+## <i class="fa fa-key"></i> Change Encryption Key
 
 ### Change Primary Encryption Key
 
@@ -318,8 +338,10 @@ To modify your primary LUKS encryption authentication method, use Unraid's built
 : <span><button type="button" onclick="goToDiskSettings()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold;">Go to Disk Settings</button></span>
 
 _**Note:** This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface._
+</div>
 
-## <i class="fa fa-terminal"></i> Status {#status}
+<div id="content-status" class="tab-content">
+## <i class="fa fa-terminal"></i> Status
 
 Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.
 
@@ -335,12 +357,46 @@ Operation output and status information will be displayed here. All plugin opera
 </div>
 
 <pre id="statusOutput">No operations performed yet. Output from all plugin operations will appear here.</pre>
+</div>
 
 <script>
   // Make CSRF token available to JavaScript
   var csrf_token = '<?=$csrf_token?>';
   
-  // Simplified navigation - no more tab system, just smooth scrolling
+  // Tab functionality
+  function showTab(tabId) {
+    console.log('DEBUG: Switching to tab:', tabId);
+    
+    // Hide all tab contents
+    const allContents = document.querySelectorAll('.tab-content');
+    allContents.forEach(content => {
+      content.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    const allButtons = document.querySelectorAll('.tab-nav button');
+    allButtons.forEach(button => {
+      button.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const selectedContent = document.getElementById('content-' + tabId);
+    if (selectedContent) {
+      selectedContent.classList.add('active');
+      console.log('DEBUG: Activated content for tab:', tabId);
+    } else {
+      console.error('DEBUG: Could not find content for tab:', tabId);
+    }
+    
+    // Activate selected tab button
+    const selectedButton = document.getElementById('tab-' + tabId);
+    if (selectedButton) {
+      selectedButton.classList.add('active');
+      console.log('DEBUG: Activated button for tab:', tabId);
+    } else {
+      console.error('DEBUG: Could not find button for tab:', tabId);
+    }
+  }
   
   // Unified status output functions
   function updateStatus(message) {
@@ -348,8 +404,8 @@ Operation output and status information will be displayed here. All plugin opera
     statusOutput.textContent += message + '\n';
     statusOutput.scrollTop = statusOutput.scrollHeight;
     
-    // Auto-scroll to status section
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    // Auto-switch to status tab
+    showTab('status');
   }
 
   function setStatus(message) {
@@ -360,8 +416,8 @@ Operation output and status information will be displayed here. All plugin opera
     statusOutput.textContent = message + '\n';
     statusOutput.scrollTop = statusOutput.scrollHeight;
     
-    // Auto-scroll to status section
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    // Auto-switch to status tab
+    showTab('status');
   }
 
   function clearStatus() {
@@ -395,7 +451,7 @@ Operation output and status information will be displayed here. All plugin opera
       console.log('DEBUG: Loading spinner should now be visible with official animation');
       
       // Auto-scroll to status section
-      document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+      showTab('status');
     } else {
       console.log('DEBUG: Missing elements - loadingDiv:', !!loadingDiv, 'loadingMessage:', !!loadingMessage, 'spinnerDiv:', !!spinnerDiv);
     }
@@ -412,7 +468,7 @@ Operation output and status information will be displayed here. All plugin opera
     console.log('DEBUG: runAutoStartSetup called');
     
     // Auto-scroll to Status section immediately to show we're starting
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    showTab('status');
     showStatusLoading('Starting complete auto-unlock setup...');
     
     // Use updateStatus instead of setStatus to avoid hiding the spinner
@@ -557,7 +613,7 @@ Operation output and status information will be displayed here. All plugin opera
     const action = document.getElementById('goAction').value;
 
     // Auto-scroll to Status section to show operation progress
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    showTab('status');
     showStatusLoading('Configuring startup script...');
     setStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
 
@@ -588,7 +644,7 @@ Operation output and status information will be displayed here. All plugin opera
     const backupLocation = document.getElementById('headersBackupLocation').value;
 
     // Auto-scroll to Status section to show operation progress
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    showTab('status');
     showStatusLoading('Backing up LUKS headers...');
     setStatus('Starting LUKS headers backup operation...\nExecuting LUKS headers backup script, please wait...');
 
@@ -676,7 +732,7 @@ Operation output and status information will be displayed here. All plugin opera
     const keyType = document.getElementById('keyType_encinfo').value;
 
     // Auto-scroll to Status section to show operation progress
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    showTab('status');
     showStatusLoading('Analyzing LUKS encryption...');
     setStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
 
@@ -768,7 +824,7 @@ Operation output and status information will be displayed here. All plugin opera
     const keyType = document.getElementById('keyType_encinfo').value;
 
     // Auto-scroll to Status section to show operation progress
-    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
+    showTab('status');
     showStatusLoading('Preparing encryption analysis download...');
     setStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
 
