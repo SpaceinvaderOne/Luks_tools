@@ -8,6 +8,10 @@ ResponsiveLayout="false"
 $csrf_token = $var['csrf_token'] ?? '';
 ?>
 
+# LUKS Auto-Unlock for Encrypted Arrays and Pools
+
+This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.
+
 <style>
 /* FORCE CONTENT VISIBILITY - Unraid 7.2 Override */
 .content--non-responsive * {
@@ -91,10 +95,17 @@ $csrf_token = $var['csrf_token'] ?? '';
 }
 
 .tab-pane {
-  display: none !important;
+  display: none;
+  visibility: visible !important;
 }
 
 .tab-pane.active {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Override inline styles set by JavaScript */
+.tab-pane[style*="display: block"] {
   display: block !important;
   visibility: visible !important;
 }
@@ -142,10 +153,6 @@ $csrf_token = $var['csrf_token'] ?? '';
   font-size: 16px;
 }
 </style>
-
-# LUKS Auto-Unlock for Encrypted Arrays and Pools
-
-This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.
 
 <!-- Tab Navigation -->
 <div class="tab-container">
