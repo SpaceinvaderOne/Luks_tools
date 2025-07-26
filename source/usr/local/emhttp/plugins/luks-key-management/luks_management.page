@@ -145,218 +145,296 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   </ul>
 </div>
 
-<div id="content-auto-start" class="tab-content active" markdown="1">
+<div id="content-auto-start" class="tab-content active">
+  <h2><i class="fa fa-play"></i> Auto Start</h2>
+  
+  <p>This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.</p>
+  
+  <p>Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
+  
+  <form id="autostartForm">
+    <h3>Complete Auto-Unlock Setup</h3>
+    
+    <dl>
+      <dt>Existing Encryption Key</dt>
+      <dd>
+        <select id="keyType_autostart" class="short" onchange="toggleKeyInput('autostart')">
+          <option value="passphrase" selected>Passphrase</option>
+          <option value="keyfile">Keyfile</option>
+        </select>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Enter Existing Passphrase</dt>
+      <dd>
+        <div id="passphraseSection_autostart">
+          <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
+          <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
+          <div class="description">Enter your original LUKS encryption passphrase.</div>
+        </div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Select Existing Keyfile</dt>
+      <dd>
+        <div id="keyfileSection_autostart" style="display: none;">
+          <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
+          <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
+        </div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Header Backup Location</dt>
+      <dd>
+        <select id="backupLocation" name="backupLocation" class="short">
+          <option value="download" selected>Download to PC</option>
+          <option value="yes">Save to server</option>
+        </select>
+        <div class="description">LUKS headers will always be backed up for safety. Choose where to save the encrypted backup.</div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Dry Run</dt>
+      <dd>
+        <select id="dryRun" name="dryRun" class="short">
+          <option value="yes" selected>Yes</option>
+          <option value="no">No</option>
+        </select>
+        <div class="description">Simulates the process without making changes. Select 'No' to apply changes.</div>
+      </dd>
+    </dl>
+    
+    <h4>This will:</h4>
+    <ul>
+      <li>Backup LUKS headers to your chosen location</li>
+      <li>Refresh hardware-derived key on all devices</li>
+      <li>Automatically enable auto-unlock in go file</li>
+    </ul>
+    
+    <dl>
+      <dt>&nbsp;</dt>
+      <dd>
+        <span><input type="submit" value="ENABLE AUTO-UNLOCK" onclick="runAutoStartSetup(); return false;" style="background-color: #F15A2C; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;"></span>
+      </dd>
+    </dl>
+  </form>
+</div>
 
-## <i class="fa fa-play"></i> Auto Start
+<div id="content-luks-headers" class="tab-content">
+  <h2><i class="fa fa-shield"></i> LUKS Headers</h2>
+  
+  <p>Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.</p>
+  
+  <form id="headersForm">
+    <h3>Backup LUKS Headers</h3>
+    
+    <dl>
+      <dt>Existing Encryption Key</dt>
+      <dd>
+        <select id="keyType_headers" class="short" onchange="toggleKeyInput('headers')">
+          <option value="passphrase" selected>Passphrase</option>
+          <option value="keyfile">Keyfile</option>
+        </select>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Enter Existing Passphrase</dt>
+      <dd>
+        <div id="passphraseSection_headers">
+          <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
+          <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
+          <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+        </div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Select Existing Keyfile</dt>
+      <dd>
+        <div id="keyfileSection_headers" style="display: none;">
+          <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
+          <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
+        </div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Backup Location</dt>
+      <dd>
+        <select id="headersBackupLocation" name="headersBackupLocation" class="short">
+          <option value="yes" selected>Save to server</option>
+          <option value="download">Download to browser</option>
+        </select>
+        <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>&nbsp;</dt>
+      <dd>
+        <span><button type="button" onclick="runHeadersBackup()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Backup Headers</button></span>
+      </dd>
+    </dl>
+  </form>
+</div>
 
-This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.
-
-Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.
-
-<form id="autostartForm">
-
-### Complete Auto-Unlock Setup
-
-_(Existing Encryption Key)_:
-: <select id="keyType_autostart" class="short" onchange="toggleKeyInput('autostart')">
-    <option value="passphrase" selected>Passphrase</option>
-    <option value="keyfile">Keyfile</option>
-  </select>
-
-_(Enter Existing Passphrase)_:
-: <div id="passphraseSection_autostart">
-    <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
-    <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
-    <div class="description">Enter your original LUKS encryption passphrase.</div>
+<div id="content-go-file" class="tab-content">
+  <h2><i class="fa fa-file-code-o"></i> Go File</h2>
+  
+  <p>Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.</p>
+  
+  <form id="gofileForm">
+    <h3>Boot Auto-Unlock Control</h3>
+    
+    <dl>
+      <dt>Action</dt>
+      <dd>
+        <select id="goAction" name="goAction" class="short">
+          <option value="add" selected>Enable auto-unlock at boot</option>
+          <option value="remove">Disable auto-unlock at boot</option>
+        </select>
+        <div class="description">Choose whether to enable or disable automatic LUKS unlocking during system startup.</div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>&nbsp;</dt>
+      <dd>
+        <span><button type="button" onclick="runGoCommand()" style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Update Boot Configuration</button></span>
+      </dd>
+    </dl>
+  </form>
+  
+  <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
+    <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
   </div>
+</div>
 
-_(Select Existing Keyfile)_:
-: <div id="keyfileSection_autostart" style="display: none;">
-    <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
-    <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
+<div id="content-encryption-info" class="tab-content">
+  <h2><i class="fa fa-info"></i> Encryption Info</h2>
+  
+  <p>View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.</p>
+  
+  <form id="encinfoForm">
+    <h3>Encryption Analysis</h3>
+    
+    <dl>
+      <dt>Existing Encryption Key</dt>
+      <dd>
+        <select id="keyType_encinfo" class="short" onchange="toggleKeyInput('encinfo')">
+          <option value="passphrase" selected>Passphrase</option>
+          <option value="keyfile">Keyfile</option>
+        </select>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Enter Existing Passphrase</dt>
+      <dd>
+        <div id="passphraseSection_encinfo">
+          <input type="password" id="passphrase_encinfo" name="passphrase" class="short" maxlength="512" required>
+          <label><input type="checkbox" onchange="togglePasswordVisibility('encinfo')"> show passphrase</label>
+          <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
+        </div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Select Existing Keyfile</dt>
+      <dd>
+        <div id="keyfileSection_encinfo" style="display: none;">
+          <input type="file" id="keyfile_encinfo" name="keyfile" onchange="validateKeyfileSize(this, 'encinfo')">
+          <div class="description">Select your LUKS encryption keyfile to analyze encrypted drives and slots. Maximum size: 8 MiB. Any file type accepted.</div>
+        </div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>Detail Level</dt>
+      <dd>
+        <select id="detailLevel" name="detailLevel" class="short">
+          <option value="simple" selected>Simple (drive list only)</option>
+          <option value="detailed">Detailed (smart grouping with slots and metadata)</option>
+          <option value="very_detailed">Very Detailed (individual device analysis)</option>
+        </select>
+        <div class="description">Choose how much information to display about your encrypted drives.</div>
+      </dd>
+    </dl>
+    
+    <dl>
+      <dt>&nbsp;</dt>
+      <dd>
+        <span>
+          <button type="button" onclick="runEncryptionInfo()" style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 10px;">View Encryption Status</button>
+          <button type="button" onclick="downloadEncryptionInfo()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Download Analysis</button>
+        </span>
+      </dd>
+    </dl>
+  </form>
+  
+  <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #FF9800;">
+    <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
   </div>
-
-_(Header Backup Location)_:
-: <select id="backupLocation" name="backupLocation" class="short">
-    <option value="download" selected>Download to PC</option>
-    <option value="yes">Save to server</option>
-  </select>
-  <div class="description">LUKS headers will always be backed up for safety. Choose where to save the encrypted backup.</div>
-
-_(Dry Run)_:
-: <select id="dryRun" name="dryRun" class="short">
-    <option value="yes" selected>Yes</option>
-    <option value="no">No</option>
-  </select>
-  <div class="description">Simulates the process without making changes. Select 'No' to apply changes.</div>
-
-#### This will:
-- Backup LUKS headers to your chosen location
-- Refresh hardware-derived key on all devices  
-- Automatically enable auto-unlock in go file
-
-&nbsp;
-: <span><input type="submit" value="ENABLE AUTO-UNLOCK" onclick="runAutoStartSetup(); return false;" style="background-color: #F15A2C; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;"></span>
-</form>
 </div>
 
-<div id="content-luks-headers" class="tab-content" markdown="1">
-
-## <i class="fa fa-shield"></i> LUKS Headers
-
-Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.
-
-<form id="headersForm">
-
-### Backup LUKS Headers
-
-_(Existing Encryption Key)_:
-: <select id="keyType_headers" class="short" onchange="toggleKeyInput('headers')">
-    <option value="passphrase" selected>Passphrase</option>
-    <option value="keyfile">Keyfile</option>
-  </select>
-
-_(Enter Existing Passphrase)_:
-: <div id="passphraseSection_headers">
-    <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
-    <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
-    <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+<div id="content-change-key" class="tab-content">
+  <h2><i class="fa fa-key"></i> Change Encryption Key</h2>
+  
+  <h3>Change Primary Encryption Key</h3>
+  
+  <p>To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.</p>
+  
+  <div style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 15px 0; border-radius: 5px;">
+    <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
+    Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
   </div>
-
-_(Select Existing Keyfile)_:
-: <div id="keyfileSection_headers" style="display: none;">
-    <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
-    <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
-  </div>
-
-_(Backup Location)_:
-: <select id="headersBackupLocation" name="headersBackupLocation" class="short">
-    <option value="yes" selected>Save to server</option>
-    <option value="download">Download to browser</option>
-  </select>
-  <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
-
-&nbsp;
-: <span><button type="button" onclick="runHeadersBackup()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Backup Headers</button></span>
-</form>
-
-<div id="content-go-file" class="tab-content" markdown="1">
-
-## <i class="fa fa-file-code-o"></i> Go File
-
-Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.
-
-<form id="gofileForm">
-
-### Boot Auto-Unlock Control
-
-_(Action)_:
-: <select id="goAction" name="goAction" class="short">
-    <option value="add" selected>Enable auto-unlock at boot</option>
-    <option value="remove">Disable auto-unlock at boot</option>
-  </select>
-  <div class="description">Choose whether to enable or disable automatic LUKS unlocking during system startup.</div>
-
-&nbsp;
-: <span><button type="button" onclick="runGoCommand()" style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Update Boot Configuration</button></span>
-</form>
-
-<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
-  <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
-</div>
+  
+  <h4>Instructions:</h4>
+  <ol>
+    <li>Click the button below to open Unraid's Disk Settings page in a new tab</li>
+    <li>Locate the "Encryption" section (approximately halfway down the page)</li>
+    <li>Find your encrypted array or pool devices and click the "Change" button next to the device you want to modify</li>
+    <li>In the "Change encryption key" dialog that opens:
+      <ul>
+        <li>Select your current encryption method in "Existing encryption key" (Passphrase or Keyfile)</li>
+        <li>Enter your current passphrase OR select your current keyfile</li>
+        <li>Choose your desired new encryption method in "Change encryption key" (Passphrase or Keyfile)</li>
+        <li><em>Note: You can switch between methods - change from passphrase to keyfile or vice versa</em></li>
+        <li>Enter your new passphrase OR select your new keyfile</li>
+        <li>Complete any additional fields as required (retype passphrase if applicable)</li>
+      </ul>
+    </li>
+    <li>Click "APPLY" to save the changes, then "DONE" to close the dialog</li>
+  </ol>
+  
+  <dl>
+    <dt>&nbsp;</dt>
+    <dd>
+      <span><button type="button" onclick="goToDiskSettings()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold;">Go to Disk Settings</button></span>
+    </dd>
+  </dl>
+  
+  <p><em><strong>Note:</strong> This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface.</em></p>
 </div>
 
-<div id="content-encryption-info" class="tab-content" markdown="1">
-
-## <i class="fa fa-info"></i> Encryption Info
-
-View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.
-
-<form id="encinfoForm">
-
-### Encryption Analysis
-
-_(Existing Encryption Key)_:
-: <select id="keyType_encinfo" class="short" onchange="toggleKeyInput('encinfo')">
-    <option value="passphrase" selected>Passphrase</option>
-    <option value="keyfile">Keyfile</option>
-  </select>
-
-_(Enter Existing Passphrase)_:
-: <div id="passphraseSection_encinfo">
-    <input type="password" id="passphrase_encinfo" name="passphrase" class="short" maxlength="512" required>
-    <label><input type="checkbox" onchange="togglePasswordVisibility('encinfo')"> show passphrase</label>
-    <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
-  </div>
-
-_(Select Existing Keyfile)_:
-: <div id="keyfileSection_encinfo" style="display: none;">
-    <input type="file" id="keyfile_encinfo" name="keyfile" onchange="validateKeyfileSize(this, 'encinfo')">
-    <div class="description">Select your LUKS encryption keyfile to analyze encrypted drives and slots. Maximum size: 8 MiB. Any file type accepted.</div>
-  </div>
-
-_(Detail Level)_:
-: <select id="detailLevel" name="detailLevel" class="short">
-    <option value="simple" selected>Simple (drive list only)</option>
-    <option value="detailed">Detailed (smart grouping with slots and metadata)</option>
-    <option value="very_detailed">Very Detailed (individual device analysis)</option>
-  </select>
-  <div class="description">Choose how much information to display about your encrypted drives.</div>
-
-&nbsp;
-: <span>
-    <button type="button" onclick="runEncryptionInfo()" style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 10px;">View Encryption Status</button>
-    <button type="button" onclick="downloadEncryptionInfo()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Download Analysis</button>
-  </span>
-</form>
-
-<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #FF9800;">
-  <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
-</div>
-</div>
-
-<div id="content-change-key" class="tab-content" markdown="1">
-
-## <i class="fa fa-key"></i> Change Encryption Key
-
-### Change Primary Encryption Key
-
-To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.
-
-<div style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 15px 0; border-radius: 5px;">
-  <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
-  Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
-</div>
-
-#### Instructions:
-1. Click the button below to open Unraid's Disk Settings page in a new tab
-2. Locate the "Encryption" section (approximately halfway down the page)
-3. Find your encrypted array or pool devices and click the "Change" button next to the device you want to modify
-4. In the "Change encryption key" dialog that opens:
-   - Select your current encryption method in "Existing encryption key" (Passphrase or Keyfile)
-   - Enter your current passphrase OR select your current keyfile
-   - Choose your desired new encryption method in "Change encryption key" (Passphrase or Keyfile)
-   - _Note: You can switch between methods - change from passphrase to keyfile or vice versa_
-   - Enter your new passphrase OR select your new keyfile
-   - Complete any additional fields as required (retype passphrase if applicable)
-5. Click "APPLY" to save the changes, then "DONE" to close the dialog
-
-&nbsp;
-: <span><button type="button" onclick="goToDiskSettings()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold;">Go to Disk Settings</button></span>
-
-_**Note:** This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface._
-</div>
-
-<div id="content-status" class="tab-content" markdown="1">
-
-## <i class="fa fa-terminal"></i> Status
-
-Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.
-
-### Current Operation Status
-
-&nbsp;
-: <span><button type="button" onclick="clearStatus()" style="background: #444; color: #fff; border: 1px solid #666; padding: 5px 15px; cursor: pointer; border-radius: 3px;">Clear Output</button></span>
+<div id="content-status" class="tab-content">
+  <h2><i class="fa fa-terminal"></i> Status</h2>
+  
+  <p>Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.</p>
+  
+  <h3>Current Operation Status</h3>
+  
+  <dl>
+    <dt>&nbsp;</dt>
+    <dd>
+      <span><button type="button" onclick="clearStatus()" style="background: #444; color: #fff; border: 1px solid #666; padding: 5px 15px; cursor: pointer; border-radius: 3px;">Clear Output</button></span>
+    </dd>
+  </dl>
 
 <!-- Loading Spinner (hidden by default, positioned above status output) -->
 <div id="status-loading" style="display: none; text-align: center; padding: 15px; background: #2a2a2a; border-radius: 5px; margin: 10px 0; border: 1px solid #444;">
