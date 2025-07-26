@@ -145,7 +145,7 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   </ul>
 </div>
 
-<div id="content-auto-start" class="tab-content active">
+<div id="content-auto-start" class="tab-content active" markdown="1">
 ## <i class="fa fa-play"></i> Auto Start
 
 This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.
@@ -198,7 +198,7 @@ _(Dry Run)_:
 </form>
 </div>
 
-<div id="content-luks-headers" class="tab-content">
+<div id="content-luks-headers" class="tab-content" markdown="1">
 ## <i class="fa fa-shield"></i> LUKS Headers
 
 Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.
@@ -237,7 +237,8 @@ _(Backup Location)_:
 : <span><button type="button" onclick="runHeadersBackup()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Backup Headers</button></span>
 </form>
 
-## <i class="fa fa-file-code-o"></i> Go File {#go-file}
+<div id="content-go-file" class="tab-content" markdown="1">
+## <i class="fa fa-file-code-o"></i> Go File
 
 Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.
 
@@ -261,7 +262,7 @@ _(Action)_:
 </div>
 </div>
 
-<div id="content-encryption-info" class="tab-content">
+<div id="content-encryption-info" class="tab-content" markdown="1">
 ## <i class="fa fa-info"></i> Encryption Info
 
 View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.
@@ -309,7 +310,7 @@ _(Detail Level)_:
 </div>
 </div>
 
-<div id="content-change-key" class="tab-content">
+<div id="content-change-key" class="tab-content" markdown="1">
 ## <i class="fa fa-key"></i> Change Encryption Key
 
 ### Change Primary Encryption Key
@@ -340,7 +341,7 @@ To modify your primary LUKS encryption authentication method, use Unraid's built
 _**Note:** This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface._
 </div>
 
-<div id="content-status" class="tab-content">
+<div id="content-status" class="tab-content" markdown="1">
 ## <i class="fa fa-terminal"></i> Status
 
 Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.
