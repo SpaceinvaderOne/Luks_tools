@@ -60,6 +60,43 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   opacity: 1 !important;
 }
 
+/* Form layout styles for proper alignment */
+.tab-pane dl {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 10px 20px;
+  align-items: center;
+  margin: 15px 0;
+}
+
+.tab-pane dt {
+  text-align: right;
+  font-weight: normal;
+  margin: 0;
+  padding: 5px 0;
+}
+
+.tab-pane dd {
+  margin: 0;
+  padding: 5px 0;
+}
+
+.tab-pane input, .tab-pane select {
+  width: 300px;
+  max-width: 100%;
+}
+
+.tab-pane h3 {
+  grid-column: 1 / -1;
+  margin: 20px 0 10px 0;
+  color: #fff;
+}
+
+.tab-pane p {
+  grid-column: 1 / -1;
+  margin: 10px 0;
+}
+
 .tab-pane {
   display: none !important;
 }
@@ -390,48 +427,26 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
 <script>
   // Make CSRF token available to JavaScript
   var csrf_token = '<?=$csrf_token?>';
-  console.log('DEBUG: CSRF token loaded at page load:', csrf_token);
-  console.log('DEBUG: CSRF token length at page load:', csrf_token.length);
-  console.log('DEBUG: CSRF token type at page load:', typeof csrf_token);
-  console.log('DEBUG: PHP csrf_token value:', '<?=$csrf_token?>');
   
   // Tab switching functionality
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('DEBUG: DOMContentLoaded - Setting up tabs');
-    
     // Add click listeners to tab buttons
     const tabButtons = document.querySelectorAll('.tab-btn');
-    console.log('DEBUG: Found tab buttons:', tabButtons.length);
-    
     tabButtons.forEach(button => {
       button.addEventListener('click', function() {
-        console.log('DEBUG: Tab button clicked:', this.dataset.tab);
         switchTab(this.dataset.tab);
       });
     });
     
-    // Check initial state
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    console.log('DEBUG: Found tab panes:', tabPanes.length);
-    
-    tabPanes.forEach((pane, index) => {
-      console.log(`DEBUG: Tab pane ${index}: id=${pane.id}, classes=${pane.className}, display=${getComputedStyle(pane).display}`);
-    });
-    
     // Ensure the first tab is visible
-    console.log('DEBUG: Making sure autostart tab is visible');
     switchTab('autostart');
   });
 
   function switchTab(tabName) {
-    console.log('DEBUG: switchTab called with:', tabName);
-    
     // Hide all tab panes by removing active class
     const tabPanes = document.querySelectorAll('.tab-pane');
-    console.log('DEBUG: Found tab panes for hiding:', tabPanes.length);
     tabPanes.forEach(pane => {
       pane.classList.remove('active');
-      console.log('DEBUG: Removed active from:', pane.id);
     });
 
     // Remove active class from all buttons
@@ -442,21 +457,13 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
 
     // Show selected tab and activate button
     const selectedTab = document.getElementById(tabName + '-tab');
-    console.log('DEBUG: Selected tab element:', selectedTab);
     if (selectedTab) {
       selectedTab.classList.add('active');
-      console.log('DEBUG: Added active class to:', selectedTab.id);
-      console.log('DEBUG: Selected tab display after:', getComputedStyle(selectedTab).display);
-    } else {
-      console.log('DEBUG: ERROR - Could not find tab element with ID:', tabName + '-tab');
     }
     
     const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
     if (activeButton) {
       activeButton.classList.add('active');
-      console.log('DEBUG: Activated button for tab:', tabName);
-    } else {
-      console.log('DEBUG: ERROR - Could not find button for tab:', tabName);
     }
   }
 
