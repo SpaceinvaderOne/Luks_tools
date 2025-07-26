@@ -56,6 +56,42 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   line-height: 1.5;
   max-width: 600px;
 }
+
+/* Form alignment for description lists */
+dl {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 15px 20px;
+  align-items: start;
+  margin: 0;
+}
+
+dt {
+  font-weight: bold;
+  margin: 0;
+  padding: 8px 0;
+  text-align: right;
+  align-self: start;
+}
+
+dd {
+  margin: 0;
+  padding: 0;
+  align-self: start;
+}
+
+/* Responsive adjustment for smaller screens */
+@media (max-width: 768px) {
+  dl {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  dt {
+    text-align: left;
+    padding: 5px 0 2px 0;
+  }
+}
 </style>
 
 <nav class="tabs" role="tablist" aria-label="LUKS Management Tabs">
