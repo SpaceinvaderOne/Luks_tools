@@ -9,17 +9,64 @@ $csrf_token = $var['csrf_token'] ?? '';
 ?>
 
 <style>
+/* FORCE CONTENT VISIBILITY - Unraid 7.2 Override */
+.content--non-responsive * {
+  visibility: visible !important;
+  display: initial !important;
+}
+
+.content--non-responsive .tab-pane {
+  display: none !important;
+}
+
+.content--non-responsive .tab-pane.active {
+  display: block !important;
+  visibility: visible !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Ensure all form elements are visible */
+.content--non-responsive dl,
+.content--non-responsive dt,
+.content--non-responsive dd,
+.content--non-responsive p,
+.content--non-responsive h1,
+.content--non-responsive h3,
+.content--non-responsive h4,
+.content--non-responsive form,
+.content--non-responsive input,
+.content--non-responsive select,
+.content--non-responsive button,
+.content--non-responsive div {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.content--non-responsive input,
+.content--non-responsive select,
+.content--non-responsive button {
+  display: inline-block !important;
+}
+
 /* Plugin-specific styles for responsive compatibility */
 .tab-container {
   margin: 20px 0;
+  display: block !important;
+  visibility: visible !important;
 }
 
 .tab-buttons {
   border-bottom: 1px solid #444;
   margin-bottom: 20px;
-  display: flex;
+  display: flex !important;
   flex-wrap: wrap;
   gap: 5px;
+  visibility: visible !important;
 }
 
 .tab-btn {
@@ -30,6 +77,8 @@ $csrf_token = $var['csrf_token'] ?? '';
   color: #ccc;
   border-radius: 3px 3px 0 0;
   transition: background-color 0.2s;
+  display: inline-block !important;
+  visibility: visible !important;
 }
 
 .tab-btn.active {
@@ -42,11 +91,18 @@ $csrf_token = $var['csrf_token'] ?? '';
 }
 
 .tab-pane {
-  display: none;
+  display: none !important;
 }
 
 .tab-pane.active {
-  display: block;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.tab-content {
+  display: block !important;
+  visibility: visible !important;
+  min-height: 500px !important;
 }
 
 /* Status output container */
