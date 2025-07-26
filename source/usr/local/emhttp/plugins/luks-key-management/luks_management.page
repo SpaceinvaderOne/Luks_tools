@@ -1,7 +1,6 @@
 Menu="Utilities"
 Title="LUKS Key Management"
 Icon="key"
-ResponsiveLayout="false"
 ---
 <?
 # Get CSRF token from Unraid's variable system
@@ -13,226 +12,6 @@ $csrf_token = $var['csrf_token'] ?? '';
 This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.
 
 <style>
-/* Simple tab styles for non-responsive layout */
-.tab-container {
-  margin: 20px 0;
-}
-
-.tab-buttons {
-  border-bottom: 1px solid #444;
-  margin-bottom: 20px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.tab-btn {
-  padding: 10px 20px;
-  cursor: pointer;
-  border: 1px solid #555;
-  background: #222;
-  color: #ccc;
-  border-radius: 3px 3px 0 0;
-  transition: background-color 0.2s;
-  font-size: 14px;
-}
-
-.tab-btn.active {
-  background: #333;
-  color: #fff;
-}
-
-.tab-btn:hover {
-  background: #2a2a2a;
-}
-
-.tab-content {
-  min-height: 500px;
-  display: block !important;
-  visibility: visible !important;
-}
-
-/* Override any Unraid 7.2 hiding */
-.content--non-responsive .tab-content,
-.content--non-responsive .tab-pane,
-.content--non-responsive .tab-pane * {
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Modern responsive single-column form layout */
-.tab-pane {
-  max-width: 900px;
-  margin: 0;
-  padding: 0;
-}
-
-.tab-pane dl {
-  margin: 0;
-  padding: 0;
-}
-
-.tab-pane dt {
-  display: block;
-  margin: 20px 0 8px 0;
-  padding: 0;
-  font-weight: 600;
-  font-size: 14px;
-  clear: both;
-  float: none;
-  width: auto;
-  text-align: left;
-}
-
-.tab-pane dd {
-  display: block;
-  margin: 0 0 15px 0;
-  padding: 0;
-  clear: both;
-  float: none;
-  margin-left: 0;
-}
-
-/* Handle nested div containers */
-.tab-pane dl > div {
-  margin: 0;
-  padding: 0;
-}
-
-.tab-pane dl > div dt {
-  display: block;
-  margin: 20px 0 8px 0;
-  padding: 0;
-  font-weight: 600;
-  font-size: 14px;
-  clear: both;
-  float: none;
-  width: auto;
-  text-align: left;
-}
-
-.tab-pane dl > div dd {
-  display: block;
-  margin: 0 0 15px 0;
-  padding: 0;
-  clear: both;
-  float: none;
-  margin-left: 0;
-}
-
-.tab-pane input, .tab-pane select {
-  width: 400px;
-  max-width: 100%;
-  padding: 8px 12px;
-  border: 1px solid;
-  border-radius: 4px;
-  font-size: 14px;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.tab-pane input[type="checkbox"] {
-  width: auto;
-  display: inline-block;
-  margin-right: 8px;
-  margin-bottom: 0;
-}
-
-.tab-pane input[type="file"] {
-  padding: 6px;
-}
-
-.tab-pane .description {
-  font-size: 13px;
-  opacity: 0.7;
-  margin: 5px 0 0 0;
-  line-height: 1.5;
-  max-width: 600px;
-}
-
-.tab-pane h3 {
-  margin: 25px 0 20px 0;
-  font-size: 18px;
-  border-bottom: 1px solid rgba(128,128,128,0.3);
-  padding-bottom: 8px;
-}
-
-.tab-pane p {
-  margin: 15px 0;
-  line-height: 1.6;
-}
-
-.tab-pane form > p {
-  margin: 25px 0 15px 0;
-}
-
-/* Modern button styling */
-.tab-pane button {
-  padding: 12px 24px;
-  background: #FF8C00;
-  color: white;
-  border: 1px solid #FF7700;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  margin: 20px 0 10px 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.tab-pane button:hover {
-  background: #FF7700;
-  border-color: #FF6600;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-  transform: translateY(-1px);
-}
-
-.tab-pane button:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
-
-/* Special styling for the informational box */
-.tab-pane div[style*="background"] {
-  border: 1px solid rgba(128,128,128,0.3);
-  border-left: 4px solid #FF8C00;
-  border-radius: 6px;
-  padding: 15px;
-  margin: 20px 0;
-}
-
-.tab-pane div[style*="background"] ul {
-  margin: 10px 0;
-  padding-left: 20px;
-}
-
-.tab-pane div[style*="background"] li {
-  margin: 5px 0;
-}
-
-/* Form sections */
-.tab-pane form {
-  border: 1px solid rgba(128,128,128,0.2);
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
-}
-
-/* Let Unraid handle theme colors naturally */
-
-.tab-pane {
-  display: none !important;
-}
-
-.tab-pane.active {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  height: auto !important;
-  overflow: visible !important;
-}
-
 /* Status output container */
 #statusOutput {
   background-color: #1a1a1a;
@@ -269,23 +48,82 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   color: #fff;
   font-size: 16px;
 }
+
+.description {
+  font-size: 13px;
+  opacity: 0.7;
+  margin: 5px 0 0 0;
+  line-height: 1.5;
+  max-width: 600px;
+}
 </style>
 
-<!-- Tab Navigation -->
-<div class="tab-container">
-  <div class="tab-buttons">
-    <button class="tab-btn active" data-tab="autostart">Auto Start</button>
-    <button class="tab-btn" data-tab="headers">LUKS Headers</button>
-    <button class="tab-btn" data-tab="gofile">Go File</button>
-    <button class="tab-btn" data-tab="encinfo">Encryption Info</button>
-    <button class="tab-btn" data-tab="changekey">Change Encryption Key</button>
-    <button class="tab-btn" data-tab="status">Status</button>
-  </div>
+<nav class="tabs" role="tablist" aria-label="LUKS Management Tabs">
+    <div class="tabs-container">
+        <button
+            role="tab"
+            id="tab1"
+            aria-controls="tab1-panel"
+            tabindex="0"
+            aria-selected="true"
+        >
+            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-play title'></i>Auto Start</span>
+        </button>
+        <button
+            role="tab"
+            id="tab2"
+            aria-controls="tab2-panel"
+            tabindex="-1"
+            aria-selected="false"
+        >
+            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-shield title'></i>LUKS Headers</span>
+        </button>
+        <button
+            role="tab"
+            id="tab3"
+            aria-controls="tab3-panel"
+            tabindex="-1"
+            aria-selected="false"
+        >
+            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-file-code-o title'></i>Go File</span>
+        </button>
+        <button
+            role="tab"
+            id="tab4"
+            aria-controls="tab4-panel"
+            tabindex="-1"
+            aria-selected="false"
+        >
+            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-info title'></i>Encryption Info</span>
+        </button>
+        <button
+            role="tab"
+            id="tab5"
+            aria-controls="tab5-panel"
+            tabindex="-1"
+            aria-selected="false"
+        >
+            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-key title'></i>Change Encryption Key</span>
+        </button>
+        <button
+            role="tab"
+            id="tab6"
+            aria-controls="tab6-panel"
+            tabindex="-1"
+            aria-selected="false"
+        >
+            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-terminal title'></i>Status</span>
+        </button>
+    </div>
+</nav>
 
-  <!-- Tab Content -->
-  <div class="tab-content">
-    <!-- Auto Start Tab -->
-    <div id="autostart-tab" class="tab-pane active">
+<section
+    id="tab1-panel"
+    role="tabpanel"
+    aria-labelledby="tab1"
+    class="tab-content content"
+    tabindex="0"
+>
         <p>This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.</p>
         <p>Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
         
@@ -350,10 +188,15 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
             </ul>
           </div>
         </form>
-    </div>
+</section>
 
-      <!-- LUKS Headers Tab -->
-      <div id="headers-tab" class="tab-pane" style="display: none;">
+<section
+    id="tab2-panel"
+    role="tabpanel"
+    aria-labelledby="tab2"
+    class="tab-content content"
+    tabindex="0"
+>
         <p>Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.</p>
         
         <form id="headersForm">
@@ -400,10 +243,15 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
             <button type="button" onclick="runHeadersBackup()">Backup Headers</button>
           </p>
         </form>
-      </div>
+</section>
 
-      <!-- Go File Tab -->
-      <div id="gofile-tab" class="tab-pane" style="display: none;">
+<section
+    id="tab3-panel"
+    role="tabpanel"
+    aria-labelledby="tab3"
+    class="tab-content content"
+    tabindex="0"
+>
         <p>Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.</p>
         
         <form id="gofileForm">
@@ -426,10 +274,15 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
             <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
           </div>
         </form>
-      </div>
+</section>
 
-      <!-- Encryption Info Tab -->
-      <div id="encinfo-tab" class="tab-pane" style="display: none;">
+<section
+    id="tab4-panel"
+    role="tabpanel"
+    aria-labelledby="tab4"
+    class="tab-content content"
+    tabindex="0"
+>
         <p>View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.</p>
         
         <form id="encinfoForm">
@@ -483,10 +336,15 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
             <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
           </div>
         </form>
-      </div>
+</section>
 
-      <!-- Change Encryption Key Tab -->
-      <div id="changekey-tab" class="tab-pane" style="display: none;">
+<section
+    id="tab5-panel"
+    role="tabpanel"
+    aria-labelledby="tab5"
+    class="tab-content content"
+    tabindex="0"
+>
         <h3>Change Primary Encryption Key</h3>
         
         <p>To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.</p>
@@ -525,10 +383,15 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
           <strong>Note:</strong> This feature uses Unraid's native encryption key management system. 
           If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface.
         </p>
-      </div>
+</section>
 
-      <!-- Status Tab -->
-      <div id="status-tab" class="tab-pane" style="display: none;">
+<section
+    id="tab6-panel"
+    role="tabpanel"
+    aria-labelledby="tab6"
+    class="tab-content content"
+    tabindex="0"
+>
         <p>Operation output and status information will be displayed here. Switch to this tab during operations to monitor progress.</p>
         
         <h3>Current Operation Status</h3>
@@ -542,52 +405,87 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
           <div id="loading-message" style="color: #fff; font-size: 16px;">Processing request...</div>
         </div>
         
-        <pre id="statusOutput" style="background-color: #1a1a1a; color: #fff; padding: 15px; border-radius: 5px; min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #444;">No operations performed yet. Output from all plugin operations will appear here.</pre>
-      </div>
-    </div>
-  </div>
-</div>
+        <pre id="statusOutput">No operations performed yet. Output from all plugin operations will appear here.</pre>
+</section>
 
 <script>
   // Make CSRF token available to JavaScript
   var csrf_token = '<?=$csrf_token?>';
   
-  // Tab switching functionality
-  document.addEventListener('DOMContentLoaded', function() {
-    // Add click listeners to tab buttons
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        switchTab(this.dataset.tab);
-      });
-    });
-    
-    // Ensure the first tab is visible
-    switchTab('autostart');
+  // Responsive tab system (Unraid 7.2)
+  const tabs = document.querySelectorAll('.tabs [role="tab"]');
+  const panels = document.querySelectorAll('[role="tabpanel"]');
+
+  // Hide all panels by default (avoid flash)
+  panels.forEach(panel => panel.style.display = 'none');
+
+  // Figure out which cookie to use (matches settab logic)
+  let cookieName = 'tab';
+  cookieName = 'one';
+
+  // On load: select correct tab from cookie, or default to first
+  let activeIdx = 0;
+  const cookieVal = $.cookie(cookieName);
+  if (cookieVal) {
+      const idx = Array.from(tabs).findIndex(tab => tab.id === cookieVal);
+      if (idx !== -1) activeIdx = idx;
+  } else {
+      // If no cookie exists, clear both cookies to match the origial initab function behavior
+      $.removeCookie('one');
+      $.removeCookie('tab');
+  }
+
+  tabs.forEach((tab, i) => {
+      if (i === activeIdx) {
+          tab.setAttribute('aria-selected', 'true');
+          tab.setAttribute('tabindex', '0');
+          panels[i].style.display = 'block';
+      } else {
+          tab.setAttribute('aria-selected', 'false');
+          tab.setAttribute('tabindex', '-1');
+          panels[i].style.display = 'none';
+      }
   });
 
+  // On tab click: update cookie and show correct panel
+  // Also update ARIA
+  // No content flash
+
+  tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => {
+              tabs.forEach((t, j) => {
+              t.setAttribute('aria-selected', j === i ? 'true' : 'false');
+              t.setAttribute('tabindex', j === i ? '0' : '-1');
+              panels[j].style.display = j === i ? 'block' : 'none';
+          });
+          $.cookie(cookieName, tab.id);
+          tab.focus();
+      });
+      tab.addEventListener('keydown', e => {
+          let idx = Array.prototype.indexOf.call(tabs, document.activeElement);
+          if (e.key === 'ArrowRight') {
+              tabs[(idx+1)%tabs.length].focus();
+          } else if (e.key === 'ArrowLeft') {
+              tabs[(idx-1+tabs.length)%tabs.length].focus();
+          }
+      });
+  });
+  
+  // Helper function for legacy code that might call switchTab
   function switchTab(tabName) {
-    // Hide all tab panes by removing active class
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    tabPanes.forEach(pane => {
-      pane.classList.remove('active');
-    });
-
-    // Remove active class from all buttons
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(button => {
-      button.classList.remove('active');
-    });
-
-    // Show selected tab and activate button
-    const selectedTab = document.getElementById(tabName + '-tab');
-    if (selectedTab) {
-      selectedTab.classList.add('active');
-    }
+    // Map old tab names to new tab indices
+    const tabMap = {
+      'autostart': 0,
+      'headers': 1, 
+      'gofile': 2,
+      'encinfo': 3,
+      'changekey': 4,
+      'status': 5
+    };
     
-    const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
-    if (activeButton) {
-      activeButton.classList.add('active');
+    const idx = tabMap[tabName];
+    if (idx !== undefined && tabs[idx]) {
+      tabs[idx].click();
     }
   }
 
