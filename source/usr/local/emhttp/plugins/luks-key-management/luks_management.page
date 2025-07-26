@@ -60,97 +60,172 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   opacity: 1 !important;
 }
 
-/* Form layout styles for proper alignment */
+/* Modern single-column form layout */
+.tab-pane {
+  max-width: 600px;
+  margin: 0;
+  padding: 0;
+}
+
 .tab-pane dl {
-  margin: 15px 0;
-  overflow: hidden; /* Clear floats */
+  margin: 0;
+  padding: 0;
 }
 
 .tab-pane dt {
-  float: left;
-  clear: left;
-  width: 200px;
-  text-align: right;
-  font-weight: normal;
-  margin: 0;
-  padding: 8px 15px 8px 0;
-  box-sizing: border-box;
+  display: block;
+  margin: 20px 0 8px 0;
+  padding: 0;
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+  clear: both;
+  float: none;
+  width: auto;
+  text-align: left;
 }
 
 .tab-pane dd {
-  margin-left: 200px;
-  padding: 8px 0;
-  min-height: 20px;
-  overflow: hidden; /* Establish new block formatting context */
+  display: block;
+  margin: 0 0 15px 0;
+  padding: 0;
+  clear: both;
+  float: none;
+  margin-left: 0;
 }
 
-/* Handle nested div containers inside dl */
+/* Handle nested div containers */
 .tab-pane dl > div {
-  clear: both;
-  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 .tab-pane dl > div dt {
-  float: left;
-  clear: left;
-  width: 200px;
-  text-align: right;
-  font-weight: normal;
-  margin: 0;
-  padding: 8px 15px 8px 0;
-  box-sizing: border-box;
+  display: block;
+  margin: 20px 0 8px 0;
+  padding: 0;
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+  clear: both;
+  float: none;
+  width: auto;
+  text-align: left;
 }
 
 .tab-pane dl > div dd {
-  margin-left: 200px;
-  padding: 8px 0;
-  min-height: 20px;
-  overflow: hidden;
+  display: block;
+  margin: 0 0 15px 0;
+  padding: 0;
+  clear: both;
+  float: none;
+  margin-left: 0;
 }
 
 .tab-pane input, .tab-pane select {
-  width: 300px;
+  width: 350px;
   max-width: 100%;
-  margin-bottom: 5px;
+  padding: 8px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.tab-pane input[type="checkbox"] {
+  width: auto;
+  display: inline-block;
+  margin-right: 8px;
+  margin-bottom: 0;
+}
+
+.tab-pane input[type="file"] {
+  background: #1a1a1a;
+  padding: 6px;
 }
 
 .tab-pane .description {
-  font-size: 12px;
-  color: #ccc;
-  margin-top: 5px;
-  line-height: 1.4;
-  clear: left;
+  font-size: 13px;
+  color: #bbb;
+  margin: 5px 0 0 0;
+  line-height: 1.5;
+  max-width: 500px;
 }
 
 .tab-pane h3 {
-  clear: both;
-  margin: 20px 0 15px 0;
+  margin: 25px 0 20px 0;
   color: #fff;
+  font-size: 18px;
+  border-bottom: 1px solid #444;
+  padding-bottom: 8px;
 }
 
 .tab-pane p {
-  clear: both;
-  margin: 10px 0;
+  margin: 15px 0;
+  line-height: 1.6;
 }
 
 .tab-pane form > p {
-  margin: 20px 0 10px 200px;
+  margin: 25px 0 15px 0;
 }
 
-/* Unraid orange button styling */
+/* Modern button styling */
 .tab-pane button {
-  padding: 8px 16px;
+  padding: 12px 24px;
   background: #FF8C00;
   color: white;
   border: 1px solid #FF7700;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 14px;
+  margin: 20px 0 10px 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .tab-pane button:hover {
   background: #FF7700;
   border-color: #FF6600;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+  transform: translateY(-1px);
+}
+
+.tab-pane button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Special styling for the informational box */
+.tab-pane div[style*="background"] {
+  background: #2a2a2a !important;
+  border: 1px solid #444;
+  border-left: 4px solid #FF8C00;
+  border-radius: 6px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.tab-pane div[style*="background"] ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.tab-pane div[style*="background"] li {
+  margin: 5px 0;
+  color: #ddd;
+}
+
+/* Form sections */
+.tab-pane form {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
 }
 
 /* Fix white background issue */
