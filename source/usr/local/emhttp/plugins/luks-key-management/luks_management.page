@@ -7,9 +7,9 @@ Icon="key"
 $csrf_token = $var['csrf_token'] ?? '';
 ?>
 
-# LUKS Auto-Unlock for Encrypted Arrays and Pools
+# Multi-function LUKS Key Utility
 
-This tool manages a hardware-bound LUKS key that's dynamically generated from your router's MAC address and motherboard ID. Your original passphrase remains valid, and no keys are stored on disk.
+Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, key changes, and viewing encryption slots and metadata.
 
 <style>
 /* Status output container */
@@ -134,7 +134,6 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
 </style>
 
 <div class="tab-nav">
-  <h3>Quick Navigation</h3>
   <ul>
     <li><button onclick="showTab('auto-start')" id="tab-auto-start" class="active"><i class="fa fa-play"></i>Auto Start</button></li>
     <li><button onclick="showTab('luks-headers')" id="tab-luks-headers"><i class="fa fa-shield"></i>LUKS Headers</button></li>
