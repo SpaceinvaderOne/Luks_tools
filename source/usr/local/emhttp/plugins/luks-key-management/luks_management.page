@@ -48,14 +48,28 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
 
 .tab-content {
   min-height: 500px;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Override any Unraid 7.2 hiding */
+.content--non-responsive .tab-content,
+.content--non-responsive .tab-pane,
+.content--non-responsive .tab-pane * {
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .tab-pane {
-  display: none;
+  display: none !important;
 }
 
 .tab-pane.active {
-  display: block;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
 /* Status output container */
@@ -383,20 +397,41 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   
   // Tab switching functionality
   document.addEventListener('DOMContentLoaded', function() {
+    console.log('DEBUG: DOMContentLoaded - Setting up tabs');
+    
     // Add click listeners to tab buttons
     const tabButtons = document.querySelectorAll('.tab-btn');
+    console.log('DEBUG: Found tab buttons:', tabButtons.length);
+    
     tabButtons.forEach(button => {
       button.addEventListener('click', function() {
+        console.log('DEBUG: Tab button clicked:', this.dataset.tab);
         switchTab(this.dataset.tab);
       });
     });
+    
+    // Check initial state
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    console.log('DEBUG: Found tab panes:', tabPanes.length);
+    
+    tabPanes.forEach((pane, index) => {
+      console.log(`DEBUG: Tab pane ${index}: id=${pane.id}, classes=${pane.className}, display=${getComputedStyle(pane).display}`);
+    });
+    
+    // Ensure the first tab is visible
+    console.log('DEBUG: Making sure autostart tab is visible');
+    switchTab('autostart');
   });
 
   function switchTab(tabName) {
+    console.log('DEBUG: switchTab called with:', tabName);
+    
     // Hide all tab panes by removing active class
     const tabPanes = document.querySelectorAll('.tab-pane');
+    console.log('DEBUG: Found tab panes for hiding:', tabPanes.length);
     tabPanes.forEach(pane => {
       pane.classList.remove('active');
+      console.log('DEBUG: Removed active from:', pane.id);
     });
 
     // Remove active class from all buttons
@@ -407,13 +442,21 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
 
     // Show selected tab and activate button
     const selectedTab = document.getElementById(tabName + '-tab');
+    console.log('DEBUG: Selected tab element:', selectedTab);
     if (selectedTab) {
       selectedTab.classList.add('active');
+      console.log('DEBUG: Added active class to:', selectedTab.id);
+      console.log('DEBUG: Selected tab display after:', getComputedStyle(selectedTab).display);
+    } else {
+      console.log('DEBUG: ERROR - Could not find tab element with ID:', tabName + '-tab');
     }
     
     const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
     if (activeButton) {
       activeButton.classList.add('active');
+      console.log('DEBUG: Activated button for tab:', tabName);
+    } else {
+      console.log('DEBUG: ERROR - Could not find button for tab:', tabName);
     }
   }
 
