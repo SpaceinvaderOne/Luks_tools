@@ -57,75 +57,83 @@ This tool manages a hardware-bound LUKS key that's dynamically generated from yo
   max-width: 600px;
 }
 
+/* Section navigation */
+.section-nav {
+  background: #2a2a2a;
+  padding: 15px;
+  border-radius: 5px;
+  margin: 20px 0;
+  border: 1px solid #444;
+}
+
+.section-nav h3 {
+  margin-top: 0;
+  color: #F15A2C;
+}
+
+.section-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.section-nav li {
+  margin: 0;
+}
+
+.section-nav a {
+  display: block;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 3px;
+  text-decoration: none;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+
+.section-nav a:hover {
+  background: #333;
+  color: #F15A2C;
+}
+
+.section-nav i {
+  width: 20px;
+  margin-right: 8px;
+}
+
+/* Section headers */
+h2 {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 2px solid #444;
+  color: #F15A2C;
+}
+
+h2:first-of-type {
+  margin-top: 20px;
+  border-top: none;
+}
+
 </style>
 
-<nav class="tabs" role="tablist" aria-label="LUKS Management Tabs">
-    <div class="tabs-container">
-        <button
-            role="tab"
-            id="tab1"
-            aria-controls="tab1-panel"
-            tabindex="0"
-            aria-selected="true"
-        >
-            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-play title'></i>Auto Start</span>
-        </button>
-        <button
-            role="tab"
-            id="tab2"
-            aria-controls="tab2-panel"
-            tabindex="-1"
-            aria-selected="false"
-        >
-            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-shield title'></i>LUKS Headers</span>
-        </button>
-        <button
-            role="tab"
-            id="tab3"
-            aria-controls="tab3-panel"
-            tabindex="-1"
-            aria-selected="false"
-        >
-            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-file-code-o title'></i>Go File</span>
-        </button>
-        <button
-            role="tab"
-            id="tab4"
-            aria-controls="tab4-panel"
-            tabindex="-1"
-            aria-selected="false"
-        >
-            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-info title'></i>Encryption Info</span>
-        </button>
-        <button
-            role="tab"
-            id="tab5"
-            aria-controls="tab5-panel"
-            tabindex="-1"
-            aria-selected="false"
-        >
-            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-key title'></i>Change Encryption Key</span>
-        </button>
-        <button
-            role="tab"
-            id="tab6"
-            aria-controls="tab6-panel"
-            tabindex="-1"
-            aria-selected="false"
-        >
-            <span class='left inline-flex flex-row items-center gap-1'><i class='fa fa-terminal title'></i>Status</span>
-        </button>
-    </div>
-</nav>
+<div class="section-nav">
+  <h3>Quick Navigation</h3>
+  <ul>
+    <li><a href="#auto-start"><i class="fa fa-play"></i>Auto Start</a></li>
+    <li><a href="#luks-headers"><i class="fa fa-shield"></i>LUKS Headers</a></li>
+    <li><a href="#go-file"><i class="fa fa-file-code-o"></i>Go File</a></li>
+    <li><a href="#encryption-info"><i class="fa fa-info"></i>Encryption Info</a></li>
+    <li><a href="#change-key"><i class="fa fa-key"></i>Change Encryption Key</a></li>
+    <li><a href="#status"><i class="fa fa-terminal"></i>Status</a></li>
+  </ul>
+</div>
 
-<section
-    id="tab1-panel"
-    role="tabpanel"
-    aria-labelledby="tab1"
-    class="tab-content content"
-    tabindex="0"
-    markdown="1"
->
+## <i class="fa fa-play"></i> Auto Start {#auto-start}
+
 This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot.
 
 Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.
@@ -165,320 +173,183 @@ _(Dry Run)_:
     <option value="no">No</option>
   </select>
   <div class="description">Simulates the process without making changes. Select 'No' to apply changes.</div>
+
 #### This will:
 - Backup LUKS headers to your chosen location
 - Refresh hardware-derived key on all devices  
 - Automatically enable auto-unlock in go file
 
 &nbsp;
-: <span><input type="submit" value="ENABLE AUTO-UNLOCK" onclick="submitAutostart(); return false;" style="background-color: #F15A2C; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;"></span>
-        </form>
-</section>
+: <span><input type="submit" value="ENABLE AUTO-UNLOCK" onclick="runAutoStartSetup(); return false;" style="background-color: #F15A2C; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;"></span>
+</form>
 
-<section
-    id="tab2-panel"
-    role="tabpanel"
-    aria-labelledby="tab2"
-    class="tab-content content"
-    tabindex="0"
->
-        <p>Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.</p>
-        
-        <form id="headersForm">
-          <h3>Backup LUKS Headers</h3>
-          <dl>
-            <!-- Shared Encryption Key Input Component -->
-            <dt><strong>Existing Encryption Key:</strong></dt>
-            <dd>
-              <select id="keyType_headers" onchange="toggleKeyInput('headers')">
-                <option value="passphrase" selected>Passphrase</option>
-                <option value="keyfile">Keyfile</option>
-              </select>
-            </dd>
+## <i class="fa fa-shield"></i> LUKS Headers {#luks-headers}
 
-            <!-- Passphrase Section -->
-            <div id="passphraseSection_headers">
-              <dt><strong>Enter Existing Passphrase:</strong></dt>
-              <dd>
-                <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
-                <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
-                <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
-              </dd>
-            </div>
+Create encrypted backups of your LUKS headers for all devices that your passphrase can unlock. These backups are essential for recovery if headers become corrupted.
 
-            <!-- Keyfile Section -->
-            <div id="keyfileSection_headers" style="display: none;">
-              <dt><strong>Select Existing Keyfile:</strong></dt>
-              <dd>
-                <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
-                <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
-              </dd>
-            </div>
+<form id="headersForm">
 
-            <dt><strong>Backup Location:</strong></dt>
-            <dd>
-              <select id="headersBackupLocation" name="headersBackupLocation">
-                <option value="yes" selected>Save to server</option>
-                <option value="download">Download to browser</option>
-              </select>
-              <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
-            </dd>
-          </dl>
-          <p>
-            <button type="button" onclick="runHeadersBackup()">Backup Headers</button>
-          </p>
-        </form>
-</section>
+### Backup LUKS Headers
 
-<section
-    id="tab3-panel"
-    role="tabpanel"
-    aria-labelledby="tab3"
-    class="tab-content content"
-    tabindex="0"
->
-        <p>Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.</p>
-        
-        <form id="gofileForm">
-          <h3>Boot Auto-Unlock Control</h3>
-          <dl>
-            <dt><strong>Action:</strong></dt>
-            <dd>
-              <select id="goAction" name="goAction">
-                <option value="add" selected>Enable auto-unlock at boot</option>
-                <option value="remove">Disable auto-unlock at boot</option>
-              </select>
-              <div class="description">Choose whether to enable or disable automatic LUKS unlocking during system startup.</div>
-            </dd>
-          </dl>
-          <p>
-            <button type="button" onclick="runGoCommand()">Update Boot Configuration</button>
-          </p>
-          
-          <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
-            <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
-          </div>
-        </form>
-</section>
+_(Existing Encryption Key)_:
+: <select id="keyType_headers" class="short" onchange="toggleKeyInput('headers')">
+    <option value="passphrase" selected>Passphrase</option>
+    <option value="keyfile">Keyfile</option>
+  </select>
 
-<section
-    id="tab4-panel"
-    role="tabpanel"
-    aria-labelledby="tab4"
-    class="tab-content content"
-    tabindex="0"
->
-        <p>View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.</p>
-        
-        <form id="encinfoForm">
-          <h3>Encryption Analysis</h3>
-          <dl>
-            <!-- Shared Encryption Key Input Component -->
-            <dt><strong>Existing Encryption Key:</strong></dt>
-            <dd>
-              <select id="keyType_encinfo" onchange="toggleKeyInput('encinfo')">
-                <option value="passphrase" selected>Passphrase</option>
-                <option value="keyfile">Keyfile</option>
-              </select>
-            </dd>
+_(Enter Existing Passphrase)_:
+: <div id="passphraseSection_headers">
+    <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
+    <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
+    <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+  </div>
 
-            <!-- Passphrase Section -->
-            <div id="passphraseSection_encinfo">
-              <dt><strong>Enter Existing Passphrase:</strong></dt>
-              <dd>
-                <input type="password" id="passphrase_encinfo" name="passphrase" class="short" maxlength="512" required>
-                <label><input type="checkbox" onchange="togglePasswordVisibility('encinfo')"> show passphrase</label>
-                <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
-              </dd>
-            </div>
+_(Select Existing Keyfile)_:
+: <div id="keyfileSection_headers" style="display: none;">
+    <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
+    <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
+  </div>
 
-            <!-- Keyfile Section -->
-            <div id="keyfileSection_encinfo" style="display: none;">
-              <dt><strong>Select Existing Keyfile:</strong></dt>
-              <dd>
-                <input type="file" id="keyfile_encinfo" name="keyfile" onchange="validateKeyfileSize(this, 'encinfo')">
-                <div class="description">Select your LUKS encryption keyfile to analyze encrypted drives and slots. Maximum size: 8 MiB. Any file type accepted.</div>
-              </dd>
-            </div>
+_(Backup Location)_:
+: <select id="headersBackupLocation" name="headersBackupLocation" class="short">
+    <option value="yes" selected>Save to server</option>
+    <option value="download">Download to browser</option>
+  </select>
+  <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
 
-            <dt><strong>Detail Level:</strong></dt>
-            <dd>
-              <select id="detailLevel" name="detailLevel">
-                <option value="simple" selected>Simple (drive list only)</option>
-                <option value="detailed">Detailed (smart grouping with slots and metadata)</option>
-                <option value="very_detailed">Very Detailed (individual device analysis)</option>
-              </select>
-              <div class="description">Choose how much information to display about your encrypted drives.</div>
-            </dd>
+&nbsp;
+: <span><button type="button" onclick="runHeadersBackup()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Backup Headers</button></span>
+</form>
 
-          </dl>
-          <p>
-            <button type="button" onclick="runEncryptionInfo()">View Encryption Status</button>
-            <button type="button" onclick="downloadEncryptionInfo()" style="margin-left: 10px; background: #4CAF50; color: white; border: 1px solid #45a049; padding: 8px 16px; cursor: pointer;">Download Analysis</button>
-          </p>
-          
-          <div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #FF9800;">
-            <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
-          </div>
-        </form>
-</section>
+## <i class="fa fa-file-code-o"></i> Go File {#go-file}
 
-<section
-    id="tab5-panel"
-    role="tabpanel"
-    aria-labelledby="tab5"
-    class="tab-content content"
-    tabindex="0"
->
-        <h3>Change Primary Encryption Key</h3>
-        
-        <p>To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.</p>
-        
-        <div style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 15px 0; border-radius: 5px;">
-          <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
-          Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
-        </div>
-        
-        <h4>Instructions:</h4>
-        <ol>
-          <li>Click the button below to open Unraid's Disk Settings page in a new tab</li>
-          <li>Locate the "Encryption" section (approximately halfway down the page)</li>
-          <li>Find your encrypted array or pool devices and click the "Change" button next to the device you want to modify</li>
-          <li>In the "Change encryption key" dialog that opens:
-            <ul style="margin: 10px 0; padding-left: 20px;">
-              <li>Select your current encryption method in "Existing encryption key" (Passphrase or Keyfile)</li>
-              <li>Enter your current passphrase OR select your current keyfile</li>
-              <li>Choose your desired new encryption method in "Change encryption key" (Passphrase or Keyfile)</li>
-              <li><em>Note: You can switch between methods - change from passphrase to keyfile or vice versa</em></li>
-              <li>Enter your new passphrase OR select your new keyfile</li>
-              <li>Complete any additional fields as required (retype passphrase if applicable)</li>
-            </ul>
-          </li>
-          <li>Click "APPLY" to save the changes, then "DONE" to close the dialog</li>
-        </ol>
-        
-        <p>
-          <button type="button" onclick="goToDiskSettings()" 
-                  style="background: #4CAF50; color: white; border: 1px solid #45a049; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px;">
-            Go to Disk Settings
-          </button>
-        </p>
-        
-        <p style="color: #666; font-style: italic; margin-top: 20px;">
-          <strong>Note:</strong> This feature uses Unraid's native encryption key management system. 
-          If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface.
-        </p>
-</section>
+Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.
 
-<section
-    id="tab6-panel"
-    role="tabpanel"
-    aria-labelledby="tab6"
-    class="tab-content content"
-    tabindex="0"
->
-        <p>Operation output and status information will be displayed here. Switch to this tab during operations to monitor progress.</p>
-        
-        <h3>Current Operation Status</h3>
-        <div style="margin-bottom: 10px;">
-          <button type="button" onclick="clearStatus()" style="background: #444; color: #fff; border: 1px solid #666; padding: 5px 15px; cursor: pointer;">Clear Output</button>
-        </div>
-        
-        <!-- Loading Spinner (hidden by default, positioned above status output) -->
-        <div id="status-loading" style="display: none; text-align: center; padding: 15px; background: #2a2a2a; border-radius: 5px; margin: 10px 0; border: 1px solid #444;">
-          <div class="spinner" style="margin: 0 auto 10px auto; width: 120px; height: 70px;"></div>
-          <div id="loading-message" style="color: #fff; font-size: 16px;">Processing request...</div>
-        </div>
-        
-        <pre id="statusOutput">No operations performed yet. Output from all plugin operations will appear here.</pre>
-</section>
+<form id="gofileForm">
+
+### Boot Auto-Unlock Control
+
+_(Action)_:
+: <select id="goAction" name="goAction" class="short">
+    <option value="add" selected>Enable auto-unlock at boot</option>
+    <option value="remove">Disable auto-unlock at boot</option>
+  </select>
+  <div class="description">Choose whether to enable or disable automatic LUKS unlocking during system startup.</div>
+
+&nbsp;
+: <span><button type="button" onclick="runGoCommand()" style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Update Boot Configuration</button></span>
+</form>
+
+<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #2196F3;">
+  <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
+</div>
+
+## <i class="fa fa-info"></i> Encryption Info {#encryption-info}
+
+View detailed information about LUKS encryption on your server. This provides insight into encrypted drives, slot usage, and key configurations.
+
+<form id="encinfoForm">
+
+### Encryption Analysis
+
+_(Existing Encryption Key)_:
+: <select id="keyType_encinfo" class="short" onchange="toggleKeyInput('encinfo')">
+    <option value="passphrase" selected>Passphrase</option>
+    <option value="keyfile">Keyfile</option>
+  </select>
+
+_(Enter Existing Passphrase)_:
+: <div id="passphraseSection_encinfo">
+    <input type="password" id="passphrase_encinfo" name="passphrase" class="short" maxlength="512" required>
+    <label><input type="checkbox" onchange="togglePasswordVisibility('encinfo')"> show passphrase</label>
+    <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
+  </div>
+
+_(Select Existing Keyfile)_:
+: <div id="keyfileSection_encinfo" style="display: none;">
+    <input type="file" id="keyfile_encinfo" name="keyfile" onchange="validateKeyfileSize(this, 'encinfo')">
+    <div class="description">Select your LUKS encryption keyfile to analyze encrypted drives and slots. Maximum size: 8 MiB. Any file type accepted.</div>
+  </div>
+
+_(Detail Level)_:
+: <select id="detailLevel" name="detailLevel" class="short">
+    <option value="simple" selected>Simple (drive list only)</option>
+    <option value="detailed">Detailed (smart grouping with slots and metadata)</option>
+    <option value="very_detailed">Very Detailed (individual device analysis)</option>
+  </select>
+  <div class="description">Choose how much information to display about your encrypted drives.</div>
+
+&nbsp;
+: <span>
+    <button type="button" onclick="runEncryptionInfo()" style="background-color: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-right: 10px;">View Encryption Status</button>
+    <button type="button" onclick="downloadEncryptionInfo()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Download Analysis</button>
+  </span>
+</form>
+
+<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 5px; border-left: 4px solid #FF9800;">
+  <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
+</div>
+
+## <i class="fa fa-key"></i> Change Encryption Key {#change-key}
+
+### Change Primary Encryption Key
+
+To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.
+
+<div style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 15px 0; border-radius: 5px;">
+  <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
+  Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
+</div>
+
+#### Instructions:
+1. Click the button below to open Unraid's Disk Settings page in a new tab
+2. Locate the "Encryption" section (approximately halfway down the page)
+3. Find your encrypted array or pool devices and click the "Change" button next to the device you want to modify
+4. In the "Change encryption key" dialog that opens:
+   - Select your current encryption method in "Existing encryption key" (Passphrase or Keyfile)
+   - Enter your current passphrase OR select your current keyfile
+   - Choose your desired new encryption method in "Change encryption key" (Passphrase or Keyfile)
+   - _Note: You can switch between methods - change from passphrase to keyfile or vice versa_
+   - Enter your new passphrase OR select your new keyfile
+   - Complete any additional fields as required (retype passphrase if applicable)
+5. Click "APPLY" to save the changes, then "DONE" to close the dialog
+
+&nbsp;
+: <span><button type="button" onclick="goToDiskSettings()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold;">Go to Disk Settings</button></span>
+
+_**Note:** This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface._
+
+## <i class="fa fa-terminal"></i> Status {#status}
+
+Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.
+
+### Current Operation Status
+
+&nbsp;
+: <span><button type="button" onclick="clearStatus()" style="background: #444; color: #fff; border: 1px solid #666; padding: 5px 15px; cursor: pointer; border-radius: 3px;">Clear Output</button></span>
+
+<!-- Loading Spinner (hidden by default, positioned above status output) -->
+<div id="status-loading" style="display: none; text-align: center; padding: 15px; background: #2a2a2a; border-radius: 5px; margin: 10px 0; border: 1px solid #444;">
+  <div class="spinner" style="margin: 0 auto 10px auto; width: 120px; height: 70px;"></div>
+  <div id="loading-message" style="color: #fff; font-size: 16px;">Processing request...</div>
+</div>
+
+<pre id="statusOutput">No operations performed yet. Output from all plugin operations will appear here.</pre>
 
 <script>
   // Make CSRF token available to JavaScript
   var csrf_token = '<?=$csrf_token?>';
   
-  // Responsive tab system (Unraid 7.2)
-  const tabs = document.querySelectorAll('.tabs [role="tab"]');
-  const panels = document.querySelectorAll('[role="tabpanel"]');
-
-  // Hide all panels by default (avoid flash)
-  panels.forEach(panel => panel.style.display = 'none');
-
-  // Figure out which cookie to use (matches settab logic)
-  let cookieName = 'tab';
-  cookieName = 'one';
-
-  // On load: select correct tab from cookie, or default to first
-  let activeIdx = 0;
-  const cookieVal = $.cookie(cookieName);
-  if (cookieVal) {
-      const idx = Array.from(tabs).findIndex(tab => tab.id === cookieVal);
-      if (idx !== -1) activeIdx = idx;
-  } else {
-      // If no cookie exists, clear both cookies to match the origial initab function behavior
-      $.removeCookie('one');
-      $.removeCookie('tab');
-  }
-
-  tabs.forEach((tab, i) => {
-      if (i === activeIdx) {
-          tab.setAttribute('aria-selected', 'true');
-          tab.setAttribute('tabindex', '0');
-          panels[i].style.display = 'block';
-      } else {
-          tab.setAttribute('aria-selected', 'false');
-          tab.setAttribute('tabindex', '-1');
-          panels[i].style.display = 'none';
-      }
-  });
-
-  // On tab click: update cookie and show correct panel
-  // Also update ARIA
-  // No content flash
-
-  tabs.forEach((tab, i) => {
-      tab.addEventListener('click', () => {
-              tabs.forEach((t, j) => {
-              t.setAttribute('aria-selected', j === i ? 'true' : 'false');
-              t.setAttribute('tabindex', j === i ? '0' : '-1');
-              panels[j].style.display = j === i ? 'block' : 'none';
-          });
-          $.cookie(cookieName, tab.id);
-          tab.focus();
-      });
-      tab.addEventListener('keydown', e => {
-          let idx = Array.prototype.indexOf.call(tabs, document.activeElement);
-          if (e.key === 'ArrowRight') {
-              tabs[(idx+1)%tabs.length].focus();
-          } else if (e.key === 'ArrowLeft') {
-              tabs[(idx-1+tabs.length)%tabs.length].focus();
-          }
-      });
-  });
+  // Simplified navigation - no more tab system, just smooth scrolling
   
-  // Helper function for legacy code that might call switchTab
-  function switchTab(tabName) {
-    // Map old tab names to new tab indices
-    const tabMap = {
-      'autostart': 0,
-      'headers': 1, 
-      'gofile': 2,
-      'encinfo': 3,
-      'changekey': 4,
-      'status': 5
-    };
-    
-    const idx = tabMap[tabName];
-    if (idx !== undefined && tabs[idx]) {
-      tabs[idx].click();
-    }
-  }
-
   // Unified status output functions
   function updateStatus(message) {
     const statusOutput = document.getElementById('statusOutput');
     statusOutput.textContent += message + '\n';
     statusOutput.scrollTop = statusOutput.scrollHeight;
+    
+    // Auto-scroll to status section
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
   }
 
   function setStatus(message) {
@@ -488,6 +359,9 @@ _(Dry Run)_:
     const statusOutput = document.getElementById('statusOutput');
     statusOutput.textContent = message + '\n';
     statusOutput.scrollTop = statusOutput.scrollHeight;
+    
+    // Auto-scroll to status section
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
   }
 
   function clearStatus() {
@@ -519,6 +393,9 @@ _(Dry Run)_:
       
       loadingDiv.style.display = 'block';
       console.log('DEBUG: Loading spinner should now be visible with official animation');
+      
+      // Auto-scroll to status section
+      document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
     } else {
       console.log('DEBUG: Missing elements - loadingDiv:', !!loadingDiv, 'loadingMessage:', !!loadingMessage, 'spinnerDiv:', !!spinnerDiv);
     }
@@ -534,8 +411,8 @@ _(Dry Run)_:
   function runAutoStartSetup() {
     console.log('DEBUG: runAutoStartSetup called');
     
-    // Auto-switch to Status tab immediately to show we're starting
-    switchTab('status');
+    // Auto-scroll to Status section immediately to show we're starting
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
     showStatusLoading('Starting complete auto-unlock setup...');
     
     // Use updateStatus instead of setStatus to avoid hiding the spinner
@@ -679,8 +556,8 @@ _(Dry Run)_:
   function runGoCommand() {
     const action = document.getElementById('goAction').value;
 
-    // Auto-switch to Status tab to show operation progress
-    switchTab('status');
+    // Auto-scroll to Status section to show operation progress
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
     showStatusLoading('Configuring startup script...');
     setStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
 
@@ -709,10 +586,9 @@ _(Dry Run)_:
     }
 
     const backupLocation = document.getElementById('headersBackupLocation').value;
-    const dryRun = document.getElementById('headersDryRun').value;
 
-    // Auto-switch to Status tab to show operation progress
-    switchTab('status');
+    // Auto-scroll to Status section to show operation progress
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
     showStatusLoading('Backing up LUKS headers...');
     setStatus('Starting LUKS headers backup operation...\nExecuting LUKS headers backup script, please wait...');
 
@@ -724,7 +600,7 @@ _(Dry Run)_:
     const postData = {
       keyType: keyType,
       backupHeaders: backupMode,
-      dryRun: dryRun,
+      dryRun: 'no', // Headers backup is always live
       headersOnly: 'true' // Flag to indicate this is headers-only operation
     };
     
@@ -738,7 +614,7 @@ _(Dry Run)_:
       }
       
       // Make request directly for passphrase
-      makeHeadersAjaxRequest(postData, backupLocation, dryRun);
+      makeHeadersAjaxRequest(postData, backupLocation);
     } else {
       const keyfileInput = document.getElementById('keyfile_headers');
       if (keyfileInput.files && keyfileInput.files[0]) {
@@ -753,7 +629,7 @@ _(Dry Run)_:
             postData.csrf_token = csrf_token;
           }
           
-          makeHeadersAjaxRequest(postData, backupLocation, dryRun);
+          makeHeadersAjaxRequest(postData, backupLocation);
         };
         reader.readAsDataURL(keyfileInput.files[0]);
         return;
@@ -764,7 +640,7 @@ _(Dry Run)_:
     }
   }
   
-  function makeHeadersAjaxRequest(postData, backupLocation, dryRun) {
+  function makeHeadersAjaxRequest(postData, backupLocation) {
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_luks_script.php',
       type: 'POST',
@@ -773,7 +649,7 @@ _(Dry Run)_:
         setStatus(data);
         
         // Check if we need to download a backup file
-        if (backupLocation === 'download' && dryRun === 'no') {
+        if (backupLocation === 'download') {
           const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
           if (downloadMatch) {
             const downloadPath = downloadMatch[1];
@@ -799,8 +675,8 @@ _(Dry Run)_:
     const detailLevel = document.getElementById('detailLevel').value;
     const keyType = document.getElementById('keyType_encinfo').value;
 
-    // Auto-switch to Status tab to show operation progress
-    switchTab('status');
+    // Auto-scroll to Status section to show operation progress
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
     showStatusLoading('Analyzing LUKS encryption...');
     setStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
 
@@ -891,8 +767,8 @@ _(Dry Run)_:
     const detailLevel = document.getElementById('detailLevel').value;
     const keyType = document.getElementById('keyType_encinfo').value;
 
-    // Auto-switch to Status tab to show operation progress
-    switchTab('status');
+    // Auto-scroll to Status section to show operation progress
+    document.getElementById('status').scrollIntoView({ behavior: 'smooth' });
     showStatusLoading('Preparing encryption analysis download...');
     setStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
 
