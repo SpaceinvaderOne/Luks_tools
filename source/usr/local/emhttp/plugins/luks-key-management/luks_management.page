@@ -164,7 +164,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   
   <p>This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot. Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
   
-  <p><strong>Backup Security:</strong> When using passphrase authentication, header backups are encrypted with your LUKS passphrase for security. When using keyfile authentication, backups are stored unencrypted since no user-known password is available, but the individual LUKS headers within remain encrypted.</p>
+  <p><strong>Backup Security:</strong> When using passphrase authentication, header backups are encrypted with your LUKS passphrase for security. When using keyfile authentication, backups are stored unencrypted since no user-known password is available - store these files securely as they contain sensitive LUKS header data.</p>
   
   <form id="autostartForm">
     <h3>Complete Auto-Unlock Setup</h3>
@@ -237,7 +237,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   
   <p>Create backups of your LUKS headers for all devices that your authentication method can unlock. These backups are essential for recovery if headers become corrupted.</p>
   
-  <p><strong>Backup Security:</strong> When using passphrase authentication, header backups are encrypted with your LUKS passphrase for security. When using keyfile authentication, backups are stored unencrypted since no user-known password is available, but the individual LUKS headers within remain encrypted.</p>
+  <p><strong>Backup Security:</strong> When using passphrase authentication, header backups are encrypted with your LUKS passphrase for security. When using keyfile authentication, backups are stored unencrypted since no user-known password is available - store these files securely as they contain sensitive LUKS header data.</p>
   
   <form id="headersForm">
     <h3>Backup LUKS Headers</h3>
