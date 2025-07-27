@@ -1,15 +1,23 @@
 Menu="Utilities"
-Title="LUKS Key Management"
+Title="Multi-Function LUKS Key Utility"
 Icon="key"
 ---
 <?
 # Get CSRF token from Unraid's variable system
 $csrf_token = $var['csrf_token'] ?? '';
+
+# Get plugin version
+$version_file = '/boot/config/plugins/luks-key-management/VERSION';
+$version = file_exists($version_file) ? trim(file_get_contents($version_file)) : 'Unknown';
 ?>
 
-# Multi-function LUKS Key Utility
+<div style="color: #F15A2C; font-weight: bold; font-size: 16px; margin-bottom: 10px; text-align: center;">
+🔧 Plugin Version: <?=$version?>
+</div>
 
-Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, key changes, and viewing encryption slots and metadata.
+<div style="margin-bottom: 20px; text-align: center; color: var(--text-color);">
+This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS header backup, key changes, and viewing encryption slots and metadata. Choose which tool to use from the tabs below.
+</div>
 
 <style>
 /* Status output container */

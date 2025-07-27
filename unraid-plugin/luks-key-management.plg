@@ -2,10 +2,10 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.27.1319">
+<!ENTITY plugin_version       "2025.07.27.1439">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.27.1319-x86_64.txz">
-<!ENTITY plugin_md5           "1fc8466cf6fb353c63d802e303304621">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.27.1439-x86_64.txz">
+<!ENTITY plugin_md5           "5543f328e63bd66ae43ce5b53d20d5b3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
@@ -50,6 +50,10 @@ PERSISTENT_DIR="/boot/config/plugins/luks-key-management"
 # Create persistent directory
 mkdir -p "$PERSISTENT_DIR"
 echo " Created persistent directory: $PERSISTENT_DIR"
+
+# Create version file for display in plugin UI
+echo "&plugin_version;" > "$PERSISTENT_DIR/VERSION"
+echo " Created version file: $PERSISTENT_DIR/VERSION"
 
 # First, set executable permissions on plugin scripts
 if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
