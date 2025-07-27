@@ -168,40 +168,40 @@ find_unraid_derived_slots() {
     local device="$1"
     local found_slots=()
     
-    echo "    DEBUG: Starting unraid-derived slot detection for $device"
+    echo "    DEBUG: Starting unraid-derived slot detection for $device" >&2
     
     # Only works with LUKS2
     local luks_version=$(get_luks_version "$device")
-    echo "    DEBUG: LUKS version detected: $luks_version"
+    echo "    DEBUG: LUKS version detected: $luks_version" >&2
     if [[ "$luks_version" != "2" ]]; then
-        echo "    DEBUG: LUKS1 device - no token support, returning empty"
+        echo "    DEBUG: LUKS1 device - no token support, returning empty" >&2
         return 0  # No slots found for LUKS1
     fi
     
     # Get luksDump output and extract tokens section
     local dump_info=$(cryptsetup luksDump "$device" 2>/dev/null)
     if [[ -z "$dump_info" ]]; then
-        echo "    DEBUG: ERROR - luksDump returned empty output"
+        echo "    DEBUG: ERROR - luksDump returned empty output" >&2
         return 1
     fi
     
     # Check if tokens section exists
     if ! echo "$dump_info" | grep -q "^Tokens:"; then
-        echo "    DEBUG: No Tokens section found in luksDump output"
+        echo "    DEBUG: No Tokens section found in luksDump output" >&2
         return 0
     fi
     
     local tokens_section=$(echo "$dump_info" | awk '/^Tokens:$/,/^Digests:$/' | grep -v "^Tokens:$" | grep -v "^Digests:$")
-    echo "    DEBUG: Tokens section extracted ($(echo "$tokens_section" | wc -l) lines)"
-    echo "    DEBUG: Raw tokens section: '$tokens_section'"
+    echo "    DEBUG: Tokens section extracted ($(echo "$tokens_section" | wc -l) lines)" >&2
+    echo "    DEBUG: Raw tokens section: '$tokens_section'" >&2
     
     # Check if tokens section is truly empty (no content or just whitespace)
     local cleaned_tokens=$(echo "$tokens_section" | sed 's/^[[:space:]]*$//' | grep -v '^$')
     if [[ -z "$cleaned_tokens" ]]; then
-        echo "    DEBUG: Tokens section is empty - no tokens configured"
+        echo "    DEBUG: Tokens section is empty - no tokens configured" >&2
         return 0
     fi
-    echo "    DEBUG: Non-empty tokens found, proceeding with token analysis"
+    echo "    DEBUG: Non-empty tokens found, proceeding with token analysis" >&2
     
     # Enhanced parsing with better debugging
     local token_id=""
@@ -213,47 +213,47 @@ find_unraid_derived_slots() {
         [[ -z "$line" ]] && continue  # Skip empty lines
         
         # Debug each line being processed
-        echo "    DEBUG: Processing line $line_count: '$line'"
+        echo "    DEBUG: Processing line $line_count: '$line'" >&2
         
         # Match token ID lines: "  0: some_type"
         if [[ "$line" =~ ^[[:space:]]*([0-9]+):[[:space:]]*(.*) ]]; then
             current_token_id="${BASH_REMATCH[1]}"
             local token_type_display="${BASH_REMATCH[2]}"
-            echo "    DEBUG: Found token ID $current_token_id, type: '$token_type_display'"
+            echo "    DEBUG: Found token ID $current_token_id, type: '$token_type_display'" >&2
             
         # Match keyslot lines: "    Keyslot: 3"
         elif [[ "$line" =~ ^[[:space:]]*Keyslot:[[:space:]]*([0-9]+) ]]; then
             local keyslot_num="${BASH_REMATCH[1]}"
-            echo "    DEBUG: Found keyslot $keyslot_num for token $current_token_id"
+            echo "    DEBUG: Found keyslot $keyslot_num for token $current_token_id" >&2
             
             if [[ -n "$current_token_id" ]]; then
                 # Export this token to check if it's unraid-derived
-                echo "    DEBUG: Exporting token $current_token_id for verification..."
+                echo "    DEBUG: Exporting token $current_token_id for verification..." >&2
                 local token_json=$(cryptsetup token export --token-id "$current_token_id" "$device" 2>/dev/null)
                 
                 if [[ -n "$token_json" ]]; then
-                    echo "    DEBUG: Token JSON retrieved successfully"
+                    echo "    DEBUG: Token JSON retrieved successfully" >&2
                     local token_type_check=$(echo "$token_json" | grep -o '"type":"[^"]*"' | cut -d'"' -f4)
-                    echo "    DEBUG: Token type from JSON: '$token_type_check'"
+                    echo "    DEBUG: Token type from JSON: '$token_type_check'" >&2
                     
                     if [[ "$token_type_check" == "unraid-derived" ]]; then
-                        echo "    DEBUG: ✅ Found unraid-derived slot: $keyslot_num"
+                        echo "    DEBUG: ✅ Found unraid-derived slot: $keyslot_num" >&2
                         found_slots+=("$keyslot_num")
                     else
-                        echo "    DEBUG: ❌ Token type '$token_type_check' != 'unraid-derived'"
+                        echo "    DEBUG: ❌ Token type '$token_type_check' != 'unraid-derived'" >&2
                     fi
                 else
-                    echo "    DEBUG: ERROR - Token export failed for token $current_token_id"
+                    echo "    DEBUG: ERROR - Token export failed for token $current_token_id" >&2
                 fi
             else
-                echo "    DEBUG: ERROR - No current_token_id set for keyslot $keyslot_num"
+                echo "    DEBUG: ERROR - No current_token_id set for keyslot $keyslot_num" >&2
             fi
         else
-            echo "    DEBUG: Line doesn't match expected patterns: '$line'"
+            echo "    DEBUG: Line doesn't match expected patterns: '$line'" >&2
         fi
     done <<< "$tokens_section"
     
-    echo "    DEBUG: Final result - found ${#found_slots[@]} unraid-derived slots: ${found_slots[*]}"
+    echo "    DEBUG: Final result - found ${#found_slots[@]} unraid-derived slots: ${found_slots[*]}" >&2
     
     # Output found slots (one per line)
     printf '%s\n' "${found_slots[@]}"
