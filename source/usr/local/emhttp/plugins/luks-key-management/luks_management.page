@@ -204,7 +204,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dd>
           <input type="password" id="zipPassword_autostart" class="short" maxlength="512">
           <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_autostart" onchange="togglePasswordVisibility('autostart')"> Show password</label>
-          <div class="description">Password to encrypt the backup ZIP file. Required for keyfile authentication.</div>
+          <div class="description">Password to encrypt the LUKS headers backup ZIP file. Required for keyfile authentication.</div>
         </dd>
       </dl>
     </div>
@@ -286,17 +286,17 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dd>
           <input type="password" id="zipPassword_headers" class="short" maxlength="512">
           <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_headers" onchange="togglePasswordVisibility('headers')"> Show password</label>
-          <div class="description">Password to encrypt the backup ZIP file. Required for keyfile authentication.</div>
+          <div class="description">Password to encrypt the LUKS headers backup ZIP file. Required for keyfile authentication.</div>
         </dd>
       </dl>
     </div>
     
     <dl>
-      <dt>Backup Location</dt>
+      <dt>Header Backup Location</dt>
       <dd>
         <select id="headersBackupLocation" name="headersBackupLocation" class="short">
           <option value="yes">Save to server</option>
-          <option value="download" selected>Download to browser</option>
+          <option value="download" selected>Download to PC</option>
         </select>
         <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
       </dd>
