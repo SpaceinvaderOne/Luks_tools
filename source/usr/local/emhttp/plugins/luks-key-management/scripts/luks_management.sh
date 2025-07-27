@@ -123,7 +123,8 @@ add_hardware_key_with_auth() {
 }
 
 #
-# Create encrypted archive using the appropriate authentication method
+# Create encrypted archive using the user's LUKS passphrase for ZIP encryption
+# This ensures the user can decrypt the backup using their known LUKS passphrase
 #
 create_encrypted_archive() {
     local archive_file="$1"
@@ -131,11 +132,13 @@ create_encrypted_archive() {
     local metadata_file="$3"
     
     if [[ "$KEY_TYPE" == "passphrase" ]]; then
+        # Use the user's LUKS passphrase for ZIP encryption
         zip -j --password "$PASSPHRASE" "$archive_file" "$source_dir"/*.img "$metadata_file"
     elif [[ "$KEY_TYPE" == "keyfile" ]]; then
-        # For keyfile authentication, we'll use the derived key as password for zip encryption
-        # This maintains security while allowing archive creation
-        zip -j --password "$DERIVED_KEY" "$archive_file" "$source_dir"/*.img "$metadata_file"
+        # For keyfile users, create unencrypted archive since we don't have a user-known password
+        # The LUKS headers themselves are already encrypted and the metadata file contains the info
+        echo "Creating unencrypted archive (keyfile authentication - no user passphrase available)..."
+        zip -j "$archive_file" "$source_dir"/*.img "$metadata_file"
     else
         echo "Error: Unknown key type '$KEY_TYPE'" >&2
         return 1
