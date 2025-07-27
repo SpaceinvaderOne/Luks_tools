@@ -203,6 +203,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dt>Backup ZIP Password</dt>
         <dd>
           <input type="password" id="zipPassword_autostart" class="short" maxlength="512">
+          <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_autostart" onchange="togglePasswordVisibility('autostart')"> Show password</label>
           <div class="description">Password to encrypt the backup ZIP file. Required for keyfile authentication.</div>
         </dd>
       </dl>
@@ -284,6 +285,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dt>Backup ZIP Password</dt>
         <dd>
           <input type="password" id="zipPassword_headers" class="short" maxlength="512">
+          <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_headers" onchange="togglePasswordVisibility('headers')"> Show password</label>
           <div class="description">Password to encrypt the backup ZIP file. Required for keyfile authentication.</div>
         </dd>
       </dl>
@@ -1375,6 +1377,18 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       }
     } else {
       console.log('DEBUG: Download not triggered - conditions not met');
+    }
+  }
+
+  // Function to toggle ZIP password visibility
+  function togglePasswordVisibility(tabname) {
+    const passwordInput = document.getElementById('zipPassword_' + tabname);
+    const checkbox = document.getElementById('showZipPassword_' + tabname);
+    
+    if (checkbox.checked) {
+      passwordInput.type = 'text';
+    } else {
+      passwordInput.type = 'password';
     }
   }
 
