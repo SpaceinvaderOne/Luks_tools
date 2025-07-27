@@ -81,7 +81,7 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
   padding: 10px 24px;
   background: transparent;
   border: 2px solid #F15A2C;
-  border-bottom: none;
+  border-bottom: 2px solid var(--border-color, #ccc);
   color: var(--text-color, #000);
   cursor: pointer;
   font-size: 14px;
@@ -90,9 +90,10 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
   position: relative;
   top: 1px;
   border-radius: 6px 6px 0 0;
-  min-width: 140px;
+  width: 170px;
   text-align: center;
   transition: all 0.2s ease;
+  margin-bottom: -1px;
 }
 
 .tab-nav button:hover {
@@ -106,6 +107,7 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
   border-bottom: 2px solid #F15A2C;
   color: #ffffff;
   font-weight: bold;
+  z-index: 1;
 }
 
 .tab-nav i {
