@@ -1020,7 +1020,43 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
     const diskSettingsUrl = `${baseUrl}/Settings/DiskSettings`;
     
     // Open Disk Settings in a new tab
-    window.open(diskSettingsUrl, '_blank');
+    const newWindow = window.open(diskSettingsUrl, '_blank');
+    
+    // Wait for page to load, then scroll to encryption section
+    if (newWindow) {
+      const checkForLoad = setInterval(function() {
+        try {
+          if (newWindow.document.readyState === 'complete') {
+            clearInterval(checkForLoad);
+            
+            // Small delay to ensure content is fully rendered
+            setTimeout(function() {
+              try {
+                // Find the "Change encryption key" section by looking for the key icon
+                const encryptionTitle = newWindow.document.querySelector('.title .fa-key');
+                if (encryptionTitle) {
+                  // Scroll to the title containing the encryption section
+                  encryptionTitle.closest('.title').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                  });
+                }
+              } catch (e) {
+                // Ignore cross-origin errors if any
+                console.log('Could not scroll to encryption section due to browser restrictions');
+              }
+            }, 500);
+          }
+        } catch (e) {
+          // Ignore cross-origin errors during loading
+        }
+      }, 100);
+      
+      // Clean up interval after 10 seconds to avoid memory leaks
+      setTimeout(function() {
+        clearInterval(checkForLoad);
+      }, 10000);
+    }
   }
 
   // Shared encryption key input component functions
