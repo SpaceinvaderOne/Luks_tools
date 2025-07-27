@@ -1,0 +1,162 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name                 "luks-key-management">
+<!ENTITY author               "SpaceInvaderOne">
+<!ENTITY plugin_version       "2025.07.26.2236">
+<!ENTITY launch_page          "Settings/&name;">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.26.2236-x86_64.txz">
+<!ENTITY plugin_md5           "1c142b64f3cc6ab752736d2081d7628a">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
+
+<CHANGES>
+### 2025.07.10
+- Initial release of the LUKS Key Management plugin.
+</CHANGES>
+
+<!-- 
+  This file is the installer for the plugin. It downloads a .txz package,
+  which contains all the necessary PHP, HTML, and Shell scripts, and installs
+  them to the correct locations on your Unraid server.
+-->
+
+<!-- INSTALLATION: Downloads and installs the main plugin package. -->
+
+<!-- Step 1: Remove any previous installation of this plugin to ensure a clean install. -->
+<FILE Run="/bin/bash">
+<INLINE>
+removepkg &name;-&plugin_version;-x86_64
+</INLINE>
+</FILE>
+
+<!-- Step 2: Download and install the new package. -->
+<FILE Name="/boot/config/plugins/&name;/&name;-&plugin_version;-x86_64.txz" Run="upgradepkg --install-new">
+  <URL>&plugin_url;</URL>
+  <MD5>&plugin_md5;</MD5>
+</FILE>
+
+<!-- POST-INSTALL: Setup plugin scripts and persistent files -->
+<FILE Run="/bin/bash">
+<INLINE><![CDATA[
+echo ""
+echo "----------------------------------------------------"
+echo " Setting up plugin scripts and persistent files..."
+echo "----------------------------------------------------"
+
+PLUGIN_SCRIPTS_DIR="/usr/local/emhttp/plugins/luks-key-management/scripts"
+PERSISTENT_DIR="/boot/config/plugins/luks-key-management"
+
+# Create persistent directory
+mkdir -p "$PERSISTENT_DIR"
+echo " Created persistent directory: $PERSISTENT_DIR"
+
+# First, set executable permissions on plugin scripts
+if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
+    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.sh 2>/dev/null || true
+    chmod +x "$PLUGIN_SCRIPTS_DIR"/*.php 2>/dev/null || true
+    echo " Set permissions for plugin script files"
+    
+    # Debug: List what's actually in the plugin directory
+    echo " Debug: Contents of $PLUGIN_SCRIPTS_DIR:"
+    ls -la "$PLUGIN_SCRIPTS_DIR/" || echo " Failed to list plugin directory"
+else
+    echo " Warning: Scripts directory not found at $PLUGIN_SCRIPTS_DIR"
+fi
+
+# Copy scripts to persistent location (without .sh extension for go file compatibility)
+if [[ -f "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" ]]; then
+    cp "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" "$PERSISTENT_DIR/fetch_key"
+    chmod +x "$PERSISTENT_DIR/fetch_key"
+    echo " Copied fetch_key script to persistent location"
+else
+    echo " Warning: fetch_key.sh not found in $PLUGIN_SCRIPTS_DIR"
+    echo " Debug: Attempting to list plugin scripts directory..."
+    ls -la "$PLUGIN_SCRIPTS_DIR/" 2>/dev/null || echo " Could not list directory"
+fi
+
+if [[ -f "$PLUGIN_SCRIPTS_DIR/delete_key.sh" ]]; then
+    cp "$PLUGIN_SCRIPTS_DIR/delete_key.sh" "$PERSISTENT_DIR/delete_key"
+    chmod +x "$PERSISTENT_DIR/delete_key"
+    echo " Copied delete_key script to persistent location"
+else
+    echo " Warning: delete_key.sh not found in $PLUGIN_SCRIPTS_DIR"
+fi
+
+# Final verification
+echo " Final verification - contents of $PERSISTENT_DIR:"
+ls -la "$PERSISTENT_DIR/" 2>/dev/null || echo " Could not list persistent directory"
+
+echo ""
+echo "----------------------------------------------------"
+echo " luks-key-management version &plugin_version; has been installed."
+echo " Scripts are available at: $PERSISTENT_DIR"
+echo "----------------------------------------------------"
+echo ""
+]]></INLINE>
+</FILE>
+
+<!-- UNINSTALL: Complete cleanup including go file modifications -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE><![CDATA[
+echo ""
+echo "----------------------------------------------------"
+echo " Performing complete luks-key-management cleanup..."
+echo "----------------------------------------------------"
+
+# FIRST: Remove go file modifications (before removing scripts)
+GO_FILE="/boot/config/go"
+START_MARKER="# auto unlock block start"
+END_MARKER="# auto unlock block end"
+
+if [[ -f "$GO_FILE" ]] && grep -q "$START_MARKER" "$GO_FILE"; then
+    echo " Removing auto-unlock block from go file..."
+    sed -i.bak "/$START_MARKER/,$END_MARKER/d" "$GO_FILE"
+    echo " Auto-unlock block removed (backup saved as ${GO_FILE}.bak)"
+else
+    echo " No auto-unlock block found in go file"
+fi
+
+# Remove plugin packages from the system
+echo " Removing plugin packages..."
+for pkg in $(ls /var/log/packages/ | grep "^luks-key-management-" 2>/dev/null); do
+    removepkg "$pkg" 2>/dev/null || true
+done
+
+# Clean up plugin directory 
+PLUGIN_DIR="/usr/local/emhttp/plugins/luks-key-management"
+if [[ -d "$PLUGIN_DIR" ]]; then
+    echo " Removing plugin files from $PLUGIN_DIR"
+    rm -rf "$PLUGIN_DIR" 2>/dev/null || true
+fi
+
+# Clean up persistent config directory (includes our copied scripts)
+CONFIG_DIR="/boot/config/plugins/luks-key-management"
+if [[ -d "$CONFIG_DIR" ]]; then
+    echo " Removing persistent files from $CONFIG_DIR"
+    rm -rf "$CONFIG_DIR" 2>/dev/null || true
+fi
+
+# Clean up legacy driveunlock directory if it exists (from older versions)
+LEGACY_DIR="/boot/config/driveunlock"
+if [[ -d "$LEGACY_DIR" ]]; then
+    echo " Removing legacy driveunlock directory: $LEGACY_DIR"
+    rm -rf "$LEGACY_DIR" 2>/dev/null || true
+fi
+
+# Note about LUKS header backups (intentionally preserved for security)
+LUKS_BACKUP_DIR="/boot/config/luksheaders"
+if [[ -d "$LUKS_BACKUP_DIR" ]]; then
+    echo " Note: LUKS header backups preserved in $LUKS_BACKUP_DIR for security"
+fi
+
+echo ""
+echo "----------------------------------------------------"
+echo " Complete cleanup finished - system restored to pre-install state"
+echo " luks-key-management has been successfully removed."
+echo "----------------------------------------------------"
+echo ""
+]]></INLINE>
+</FILE>
+
+</PLUGIN>
