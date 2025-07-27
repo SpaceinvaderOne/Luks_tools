@@ -171,26 +171,26 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
       </dd>
     </dl>
     
-    <dl>
-      <dt>Enter Existing Passphrase</dt>
-      <dd>
-        <div id="passphraseSection_autostart">
+    <div id="passphraseSection_autostart">
+      <dl>
+        <dt>Enter Existing Passphrase</dt>
+        <dd>
           <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
           <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
           <div class="description">Enter your original LUKS encryption passphrase.</div>
-        </div>
-      </dd>
-    </dl>
+        </dd>
+      </dl>
+    </div>
     
-    <dl>
-      <dt>Select Existing Keyfile</dt>
-      <dd>
-        <div id="keyfileSection_autostart" style="display: none;">
+    <div id="keyfileSection_autostart" style="display: none;">
+      <dl>
+        <dt>Select Existing Keyfile</dt>
+        <dd>
           <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
           <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
-        </div>
-      </dd>
-    </dl>
+        </dd>
+      </dl>
+    </div>
     
     <dl>
       <dt>Header Backup Location</dt>
@@ -248,33 +248,33 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
       </dd>
     </dl>
     
-    <dl>
-      <dt>Enter Existing Passphrase</dt>
-      <dd>
-        <div id="passphraseSection_headers">
+    <div id="passphraseSection_headers">
+      <dl>
+        <dt>Enter Existing Passphrase</dt>
+        <dd>
           <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
           <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
           <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
-        </div>
-      </dd>
-    </dl>
+        </dd>
+      </dl>
+    </div>
     
-    <dl>
-      <dt>Select Existing Keyfile</dt>
-      <dd>
-        <div id="keyfileSection_headers" style="display: none;">
+    <div id="keyfileSection_headers" style="display: none;">
+      <dl>
+        <dt>Select Existing Keyfile</dt>
+        <dd>
           <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
           <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
-        </div>
-      </dd>
-    </dl>
+        </dd>
+      </dl>
+    </div>
     
     <dl>
       <dt>Backup Location</dt>
       <dd>
         <select id="headersBackupLocation" name="headersBackupLocation" class="short">
-          <option value="yes" selected>Save to server</option>
-          <option value="download">Download to browser</option>
+          <option value="yes">Save to server</option>
+          <option value="download" selected>Download to browser</option>
         </select>
         <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
       </dd>
@@ -339,26 +339,26 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
       </dd>
     </dl>
     
-    <dl>
-      <dt>Enter Existing Passphrase</dt>
-      <dd>
-        <div id="passphraseSection_encinfo">
+    <div id="passphraseSection_encinfo">
+      <dl>
+        <dt>Enter Existing Passphrase</dt>
+        <dd>
           <input type="password" id="passphrase_encinfo" name="passphrase" class="short" maxlength="512" required>
           <label><input type="checkbox" onchange="togglePasswordVisibility('encinfo')"> show passphrase</label>
           <div class="description">Enter your LUKS encryption key to analyze encrypted drives and slots.</div>
-        </div>
-      </dd>
-    </dl>
+        </dd>
+      </dl>
+    </div>
     
-    <dl>
-      <dt>Select Existing Keyfile</dt>
-      <dd>
-        <div id="keyfileSection_encinfo" style="display: none;">
+    <div id="keyfileSection_encinfo" style="display: none;">
+      <dl>
+        <dt>Select Existing Keyfile</dt>
+        <dd>
           <input type="file" id="keyfile_encinfo" name="keyfile" onchange="validateKeyfileSize(this, 'encinfo')">
           <div class="description">Select your LUKS encryption keyfile to analyze encrypted drives and slots. Maximum size: 8 MiB. Any file type accepted.</div>
-        </div>
-      </dd>
-    </dl>
+        </dd>
+      </dl>
+    </div>
     
     <dl>
       <dt>Detail Level</dt>
