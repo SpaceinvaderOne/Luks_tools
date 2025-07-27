@@ -193,11 +193,15 @@ find_unraid_derived_slots() {
     
     local tokens_section=$(echo "$dump_info" | awk '/^Tokens:$/,/^Digests:$/' | grep -v "^Tokens:$" | grep -v "^Digests:$")
     echo "    DEBUG: Tokens section extracted ($(echo "$tokens_section" | wc -l) lines)"
+    echo "    DEBUG: Raw tokens section: '$tokens_section'"
     
-    if [[ -z "$tokens_section" ]]; then
+    # Check if tokens section is truly empty (no content or just whitespace)
+    local cleaned_tokens=$(echo "$tokens_section" | sed 's/^[[:space:]]*$//' | grep -v '^$')
+    if [[ -z "$cleaned_tokens" ]]; then
         echo "    DEBUG: Tokens section is empty - no tokens configured"
         return 0
     fi
+    echo "    DEBUG: Non-empty tokens found, proceeding with token analysis"
     
     # Enhanced parsing with better debugging
     local token_id=""
@@ -265,7 +269,17 @@ remove_unraid_derived_slots() {
     
     # Find all unraid-derived slots using our proven method
     local old_slots
+    echo "    DEBUG: About to call find_unraid_derived_slots..."
     mapfile -t old_slots < <(find_unraid_derived_slots "$device")
+    echo "    DEBUG: mapfile completed, captured ${#old_slots[@]} elements"
+    echo "    DEBUG: Raw captured elements: '${old_slots[*]}'"
+    
+    # Debug each captured element
+    local i=0
+    for slot in "${old_slots[@]}"; do
+        echo "    DEBUG: Element $i: '$slot'"
+        i=$((i + 1))
+    done
     
     if [[ ${#old_slots[@]} -eq 0 ]]; then
         echo "    No unraid-derived slots found"
