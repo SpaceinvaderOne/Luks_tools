@@ -1022,36 +1022,49 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function goToDiskSettings() {
+    console.log('DEBUG: goToDiskSettings function called');
+    
     // Get current protocol, hostname, and port from the current page
     const currentUrl = window.location;
     const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
     const diskSettingsUrl = `${baseUrl}/Settings/DiskSettings`;
     
+    console.log('DEBUG: Opening URL:', diskSettingsUrl);
+    
     // Open Disk Settings in a new tab
     const newWindow = window.open(diskSettingsUrl, '_blank');
+    
+    console.log('DEBUG: New window object:', newWindow);
     
     // Wait for page to load, then scroll to encryption section
     if (newWindow) {
       const checkForLoad = setInterval(function() {
         try {
+          console.log('DEBUG: Checking page state:', newWindow.document.readyState);
           if (newWindow.document.readyState === 'complete') {
             clearInterval(checkForLoad);
+            console.log('DEBUG: Page loaded, attempting to scroll to encryption section');
             
             // Small delay to ensure content is fully rendered
             setTimeout(function() {
               try {
                 // Find the "Change encryption key" section by looking for the key icon
                 const encryptionTitle = newWindow.document.querySelector('.title .fa-key');
+                console.log('DEBUG: Found encryption title element:', encryptionTitle);
+                
                 if (encryptionTitle) {
                   // Scroll to the title containing the encryption section
                   encryptionTitle.closest('.title').scrollIntoView({ 
                     behavior: 'smooth', 
                     block: 'start' 
                   });
+                  console.log('DEBUG: Scrolled to encryption section');
+                } else {
+                  console.log('DEBUG: Could not find .title .fa-key element');
                 }
               } catch (e) {
                 // Ignore cross-origin errors if any
-                console.log('Could not scroll to encryption section due to browser restrictions');
+                console.log('DEBUG: Could not scroll to encryption section due to browser restrictions:', e);
               }
             }, 500);
           }
