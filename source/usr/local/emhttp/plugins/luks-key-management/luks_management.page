@@ -460,6 +460,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 </div>
 
 <script>
+  // TODO: Remove all console.log('DEBUG: ...') statements before final release
+  
   // Make CSRF token available to JavaScript
   var csrf_token = '<?=$csrf_token?>';
   

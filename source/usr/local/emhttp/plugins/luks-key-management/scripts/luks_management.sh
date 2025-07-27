@@ -162,43 +162,94 @@ supports_tokens() {
 
 #
 # Find all unraid-derived slots using proven luksDump + token export method
-# This replaces the complex AWK JSON parsing with a reliable approach
+# Enhanced with comprehensive debugging and error handling
 #
 find_unraid_derived_slots() {
     local device="$1"
     local found_slots=()
     
+    echo "    DEBUG: Starting unraid-derived slot detection for $device"
+    
     # Only works with LUKS2
     local luks_version=$(get_luks_version "$device")
+    echo "    DEBUG: LUKS version detected: $luks_version"
     if [[ "$luks_version" != "2" ]]; then
+        echo "    DEBUG: LUKS1 device - no token support, returning empty"
         return 0  # No slots found for LUKS1
     fi
     
     # Get luksDump output and extract tokens section
     local dump_info=$(cryptsetup luksDump "$device" 2>/dev/null)
-    local tokens_section=$(echo "$dump_info" | awk '/^Tokens:$/,/^Digests:$/' | grep -v "^Tokens:$" | grep -v "^Digests:$")
+    if [[ -z "$dump_info" ]]; then
+        echo "    DEBUG: ERROR - luksDump returned empty output"
+        return 1
+    fi
     
-    # Parse tokens section to find token IDs and their corresponding keyslots
+    # Check if tokens section exists
+    if ! echo "$dump_info" | grep -q "^Tokens:"; then
+        echo "    DEBUG: No Tokens section found in luksDump output"
+        return 0
+    fi
+    
+    local tokens_section=$(echo "$dump_info" | awk '/^Tokens:$/,/^Digests:$/' | grep -v "^Tokens:$" | grep -v "^Digests:$")
+    echo "    DEBUG: Tokens section extracted ($(echo "$tokens_section" | wc -l) lines)"
+    
+    if [[ -z "$tokens_section" ]]; then
+        echo "    DEBUG: Tokens section is empty - no tokens configured"
+        return 0
+    fi
+    
+    # Enhanced parsing with better debugging
     local token_id=""
     local current_token_id=""
+    local line_count=0
     
     while IFS= read -r line; do
+        line_count=$((line_count + 1))
+        [[ -z "$line" ]] && continue  # Skip empty lines
+        
+        # Debug each line being processed
+        echo "    DEBUG: Processing line $line_count: '$line'"
+        
+        # Match token ID lines: "  0: some_type"
         if [[ "$line" =~ ^[[:space:]]*([0-9]+):[[:space:]]*(.*) ]]; then
             current_token_id="${BASH_REMATCH[1]}"
-            token_type="${BASH_REMATCH[2]}"
-        elif [[ "$line" =~ ^[[:space:]]*Keyslot:[[:space:]]*([0-9]+) ]]; then
-            keyslot_num="${BASH_REMATCH[1]}"
+            local token_type_display="${BASH_REMATCH[2]}"
+            echo "    DEBUG: Found token ID $current_token_id, type: '$token_type_display'"
             
-            # Export this token to check if it's unraid-derived
-            local token_json=$(cryptsetup token export --token-id "$current_token_id" "$device" 2>/dev/null)
-            if [[ -n "$token_json" ]]; then
-                local token_type_check=$(echo "$token_json" | grep -o '"type":"[^"]*"' | cut -d'"' -f4)
-                if [[ "$token_type_check" == "unraid-derived" ]]; then
-                    found_slots+=("$keyslot_num")
+        # Match keyslot lines: "    Keyslot: 3"
+        elif [[ "$line" =~ ^[[:space:]]*Keyslot:[[:space:]]*([0-9]+) ]]; then
+            local keyslot_num="${BASH_REMATCH[1]}"
+            echo "    DEBUG: Found keyslot $keyslot_num for token $current_token_id"
+            
+            if [[ -n "$current_token_id" ]]; then
+                # Export this token to check if it's unraid-derived
+                echo "    DEBUG: Exporting token $current_token_id for verification..."
+                local token_json=$(cryptsetup token export --token-id "$current_token_id" "$device" 2>/dev/null)
+                
+                if [[ -n "$token_json" ]]; then
+                    echo "    DEBUG: Token JSON retrieved successfully"
+                    local token_type_check=$(echo "$token_json" | grep -o '"type":"[^"]*"' | cut -d'"' -f4)
+                    echo "    DEBUG: Token type from JSON: '$token_type_check'"
+                    
+                    if [[ "$token_type_check" == "unraid-derived" ]]; then
+                        echo "    DEBUG: ✅ Found unraid-derived slot: $keyslot_num"
+                        found_slots+=("$keyslot_num")
+                    else
+                        echo "    DEBUG: ❌ Token type '$token_type_check' != 'unraid-derived'"
+                    fi
+                else
+                    echo "    DEBUG: ERROR - Token export failed for token $current_token_id"
                 fi
+            else
+                echo "    DEBUG: ERROR - No current_token_id set for keyslot $keyslot_num"
             fi
+        else
+            echo "    DEBUG: Line doesn't match expected patterns: '$line'"
         fi
     done <<< "$tokens_section"
+    
+    echo "    DEBUG: Final result - found ${#found_slots[@]} unraid-derived slots: ${found_slots[*]}"
     
     # Output found slots (one per line)
     printf '%s\n' "${found_slots[@]}"
@@ -223,8 +274,49 @@ remove_unraid_derived_slots() {
     
     echo "    Found unraid-derived slots: ${old_slots[*]}"
     
+    # CRITICAL SAFEGUARD: Count total active slots and ensure we don't remove all keys
+    local dump_output=$(cryptsetup luksDump "$device" 2>/dev/null)
+    local luks_version=$(echo "$dump_output" | grep 'Version:' | awk '{print $2}')
+    local total_active_slots
+    
+    if [[ "$luks_version" == "1" ]]; then
+        total_active_slots=$(echo "$dump_output" | grep -c 'Key Slot [0-7]: ENABLED')
+    else
+        total_active_slots=$(echo "$dump_output" | grep -cE '^[[:space:]]+[0-9]+: luks2')
+    fi
+    
+    echo "    DEBUG: Total active slots on device: $total_active_slots"
+    echo "    DEBUG: Unraid-derived slots to remove: ${#old_slots[@]}"
+    
+    # Calculate slots that would remain after removal (excluding slot 0 protection)
+    local slots_to_remove=0
+    for slot in "${old_slots[@]}"; do
+        if [[ "$slot" != "0" ]]; then
+            slots_to_remove=$((slots_to_remove + 1))
+        fi
+    done
+    
+    local remaining_slots=$((total_active_slots - slots_to_remove))
+    echo "    DEBUG: Slots remaining after removal: $remaining_slots"
+    
+    if [[ $remaining_slots -lt 1 ]]; then
+        echo "    ERROR: SAFETY ABORT - Removing these slots would leave NO working keys!"
+        echo "    ERROR: This would cause complete lockout. Skipping slot removal."
+        return 1
+    fi
+    
+    if [[ $remaining_slots -eq 1 ]]; then
+        echo "    WARNING: After removal, only 1 slot will remain. Proceeding with caution..."
+    fi
+    
     # Remove old slots one by one (more robust than batch removal)
     for slot in "${old_slots[@]}"; do
+        # CRITICAL PROTECTION: Never remove slot 0 (original passphrase)
+        if [[ "$slot" == "0" ]]; then
+            echo "    PROTECTION: Skipping slot 0 (original passphrase) - never removed"
+            continue
+        fi
+        
         if [[ "$DRY_RUN" == "yes" ]]; then
             echo "    [DRY RUN] Would remove slot $slot"
             cleaned_slots=$((cleaned_slots + 1))
