@@ -582,7 +582,18 @@ parse_args() {
         KEY_TYPE="passphrase"
     elif [[ -n "$LUKS_KEYFILE" ]]; then
         KEYFILE_PATH="$LUKS_KEYFILE"
-        KEY_TYPE="keyfile"
+        # Check if we have original input type (for ZIP encryption decisions)
+        if [[ -n "$LUKS_ORIGINAL_INPUT_TYPE" ]]; then
+            KEY_TYPE="$LUKS_ORIGINAL_INPUT_TYPE"
+            echo "DEBUG: Using original input type for ZIP encryption: $KEY_TYPE"
+            # For passphrase users, read the passphrase from the temp file for ZIP encryption
+            if [[ "$KEY_TYPE" == "passphrase" ]]; then
+                PASSPHRASE=$(cat "$KEYFILE_PATH")
+                echo "DEBUG: Read passphrase from temp file for ZIP encryption"
+            fi
+        else
+            KEY_TYPE="keyfile"
+        fi
         # Validate keyfile exists and is readable
         if [[ ! -f "$KEYFILE_PATH" ]]; then
             echo "Error: Keyfile not found at $KEYFILE_PATH" >&2

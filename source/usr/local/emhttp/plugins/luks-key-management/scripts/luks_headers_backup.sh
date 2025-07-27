@@ -15,6 +15,7 @@ DOWNLOAD_MODE="no"
 PASSPHRASE=""
 KEYFILE_PATH=""
 KEY_TYPE=""
+ORIGINAL_INPUT_TYPE=""
 
 # Locations
 TEMP_WORK_DIR="/tmp/luks_header_backup_$$" # $$ makes it unique per script run
@@ -148,28 +149,36 @@ EOF
     echo "DEBUG: Working directory: $(pwd)"
     echo "DEBUG: Files to archive: $(ls -la *.img *.txt 2>/dev/null || echo 'No files found')"
     
-    if [[ "$KEY_TYPE" == "passphrase" ]]; then
-        echo "DEBUG: Using passphrase for ZIP encryption"
-        if zip -r -e -P "$PASSPHRASE" "$archive_path" *.img *.txt 2>/dev/null; then
+    # Use original input type if available, otherwise fall back to KEY_TYPE
+    local zip_decision_type="${ORIGINAL_INPUT_TYPE:-$KEY_TYPE}"
+    echo "DEBUG: ZIP encryption decision based on: $zip_decision_type"
+    
+    if [[ "$zip_decision_type" == "passphrase" ]]; then
+        # For passphrase users (even if using temp keyfile), read passphrase and encrypt ZIP
+        if [[ -n "$PASSPHRASE" ]]; then
+            echo "DEBUG: Using existing passphrase for ZIP encryption"
+            zip -r -e -P "$PASSPHRASE" "$archive_path" *.img *.txt 2>/dev/null
+        else
+            echo "DEBUG: Reading passphrase from keyfile for ZIP encryption"
+            local temp_passphrase=$(cat "$KEYFILE_PATH")
+            zip -r -e -P "$temp_passphrase" "$archive_path" *.img *.txt 2>/dev/null
+        fi
+        
+        if [[ $? -eq 0 ]]; then
             echo "DEBUG: ZIP creation with passphrase succeeded"
         else
             echo "DEBUG: ZIP creation with passphrase failed"
         fi
     else
-        # For keyfiles, we need to be careful with binary content
-        echo "DEBUG: Using keyfile for ZIP encryption"
-        echo "DEBUG: Keyfile path: $KEYFILE_PATH"
-        echo "DEBUG: Keyfile size: $(stat -c%s "$KEYFILE_PATH" 2>/dev/null || echo 'unknown')"
+        # For actual keyfile users, create unencrypted archive
+        echo "DEBUG: Creating unencrypted archive (keyfile authentication - no user passphrase available)"
+        echo "WARNING: Archive is unencrypted because keyfile authentication provides no user-known password."
+        echo "         LUKS headers are individually encrypted and metadata contains recovery information."
         
-        # For keyfiles, use a hash of the content as password instead of raw content
-        # This avoids issues with binary data and special characters
-        local keyfile_hash=$(sha256sum "$KEYFILE_PATH" | cut -d' ' -f1)
-        echo "DEBUG: Using SHA256 hash of keyfile as ZIP password"
-        
-        if zip -r -e -P "$keyfile_hash" "$archive_path" *.img *.txt 2>/dev/null; then
-            echo "DEBUG: ZIP creation with keyfile hash succeeded"
+        if zip -r "$archive_path" *.img *.txt 2>/dev/null; then
+            echo "DEBUG: Unencrypted ZIP creation succeeded"
         else
-            echo "DEBUG: ZIP creation with keyfile hash failed"
+            echo "DEBUG: Unencrypted ZIP creation failed"
         fi
     fi
     
@@ -257,6 +266,11 @@ parse_args() {
             -k|--keyfile)
                 KEYFILE_PATH="$2"
                 KEY_TYPE="keyfile"
+                shift 2
+                ;;
+            --original-input-type)
+                ORIGINAL_INPUT_TYPE="$2"
+                echo "DEBUG: Headers backup received original input type: $ORIGINAL_INPUT_TYPE"
                 shift 2
                 ;;
             -h|--help)

@@ -110,8 +110,9 @@ if ($headers_only === 'true') {
     }
     // For headers script, pass encryption key via command line
     // Since we now use temp files for both passphrases and keyfiles (Unraid pattern),
-    // we always use -k (keyfile) option
+    // we always use -k (keyfile) option, but also pass original input type
     $args .= " -k " . escapeshellarg($encryption_key['value']);
+    $args .= " --original-input-type " . escapeshellarg($key_type);
 } else {
     // Full auto-start setup - use main management script
     $script_path = $main_script_path;
@@ -143,10 +144,12 @@ $env = array(
 
 // For main script, pass encryption key via environment variables
 // Since we now use temp files for both passphrases and keyfiles (Unraid pattern),
-// we always use LUKS_KEYFILE
+// we always use LUKS_KEYFILE, but also pass the original user input type
 if ($headers_only !== 'true') {
     $env['LUKS_KEYFILE'] = $encryption_key['value'];
+    $env['LUKS_ORIGINAL_INPUT_TYPE'] = $key_type;  // 'passphrase' or 'keyfile'
     echo "DEBUG: Auto Start using keyfile path: " . $encryption_key['value'] . "\n";
+    echo "DEBUG: Original input type: " . $key_type . "\n";
 }
 
 // Start the process with the explicit environment
