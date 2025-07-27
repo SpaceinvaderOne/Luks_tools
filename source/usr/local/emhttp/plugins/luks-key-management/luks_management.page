@@ -1105,12 +1105,48 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
                   console.log('DEBUG: Scrolled to encryption section using element:', scrollTarget);
                 } else {
                   console.log('DEBUG: Could not find encryption section with any selector');
+                  
+                  // Debug: Let's see what's actually on the page
+                  console.log('DEBUG: Analyzing page structure...');
+                  
+                  // Look for all headings
+                  const headings = newWindow.document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+                  console.log('DEBUG: Found headings:', Array.from(headings).map(h => h.textContent.trim()));
+                  
+                  // Look for all elements with "title" class
+                  const titles = newWindow.document.querySelectorAll('.title');
+                  console.log('DEBUG: Found .title elements:', Array.from(titles).map(t => t.textContent.trim()));
+                  
+                  // Look for any FontAwesome icons
+                  const icons = newWindow.document.querySelectorAll('[class*="fa-"]');
+                  console.log('DEBUG: Found FontAwesome icons:', Array.from(icons).map(i => i.className));
+                  
+                  // Look for elements containing "encrypt" anywhere in text
+                  const encryptElements = [];
+                  const walker = newWindow.document.createTreeWalker(
+                    newWindow.document.body,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                  );
+                  
+                  let node;
+                  while (node = walker.nextNode()) {
+                    if (node.textContent.toLowerCase().includes('encrypt')) {
+                      encryptElements.push({
+                        text: node.textContent.trim(),
+                        parent: node.parentElement.tagName + (node.parentElement.className ? '.' + node.parentElement.className : '')
+                      });
+                    }
+                  }
+                  console.log('DEBUG: Found elements with "encrypt" text:', encryptElements);
+                  
                   // Fallback: try to scroll to any element containing "encryption" in text
                   const allElements = newWindow.document.querySelectorAll('*');
                   for (const el of allElements) {
                     if (el.textContent && el.textContent.toLowerCase().includes('encryption')) {
                       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      console.log('DEBUG: Fallback scroll to element containing "encryption":', el);
+                      console.log('DEBUG: Fallback scroll to element containing "encryption":', el.tagName, el.className, el.textContent.trim());
                       break;
                     }
                   }
