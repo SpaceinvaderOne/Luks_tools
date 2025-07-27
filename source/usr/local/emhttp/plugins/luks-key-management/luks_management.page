@@ -1141,13 +1141,64 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
                   }
                   console.log('DEBUG: Found elements with "encrypt" text:', encryptElements);
                   
-                  // Fallback: try to scroll to any element containing "encryption" in text
-                  const allElements = newWindow.document.querySelectorAll('*');
-                  for (const el of allElements) {
-                    if (el.textContent && el.textContent.toLowerCase().includes('encryption')) {
-                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      console.log('DEBUG: Fallback scroll to element containing "encryption":', el.tagName, el.className, el.textContent.trim());
-                      break;
+                  // Fallback: try more specific selectors for the encryption section
+                  const fallbackSelectors = [
+                    'form[onsubmit*="prepareForm"]',  // The encryption form
+                    'input[name="oldtext"]',          // Encryption input field
+                    'input[name="newtext"]',          // New encryption input
+                    'select[name="oldinput"]',        // Encryption input type selector
+                    'dt:contains("Change encryption")', // Any dt with "Change encryption"
+                    'label:contains("encryption")',  // Any label with encryption
+                  ];
+                  
+                  let scrollTarget = null;
+                  for (const selector of fallbackSelectors) {
+                    console.log('DEBUG: Trying fallback selector:', selector);
+                    
+                    if (selector.includes(':contains')) {
+                      // Handle text-based selectors
+                      const baseSelector = selector.split(':')[0];
+                      const searchText = selector.match(/contains\("([^"]+)"\)/)[1];
+                      const elements = newWindow.document.querySelectorAll(baseSelector);
+                      
+                      for (const el of elements) {
+                        if (el.textContent.toLowerCase().includes(searchText.toLowerCase())) {
+                          scrollTarget = el;
+                          console.log('DEBUG: Found fallback target with text search:', el);
+                          break;
+                        }
+                      }
+                    } else {
+                      scrollTarget = newWindow.document.querySelector(selector);
+                      if (scrollTarget) {
+                        console.log('DEBUG: Found fallback target with direct selector:', scrollTarget);
+                      }
+                    }
+                    
+                    if (scrollTarget) break;
+                  }
+                  
+                  if (scrollTarget) {
+                    // Try to find a good parent element to scroll to
+                    const betterTarget = scrollTarget.closest('form') || 
+                                       scrollTarget.closest('.title') || 
+                                       scrollTarget.closest('div') || 
+                                       scrollTarget;
+                    
+                    betterTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    console.log('DEBUG: Fallback scroll successful to:', betterTarget.tagName, betterTarget.className);
+                  } else {
+                    console.log('DEBUG: No fallback targets found, trying generic text search');
+                    
+                    // Last resort: scan all text for "encrypt"
+                    const allElements = newWindow.document.querySelectorAll('*');
+                    for (const el of allElements) {
+                      if (el.textContent && el.textContent.toLowerCase().includes('encrypt') && el.offsetHeight > 0) {
+                        const parent = el.closest('form') || el.closest('div') || el;
+                        parent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        console.log('DEBUG: Last resort scroll to element containing "encrypt":', parent.tagName, parent.className);
+                        break;
+                      }
                     }
                   }
                 }
