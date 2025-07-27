@@ -20,6 +20,7 @@ $key_type = $_POST['keyType'] ?? 'passphrase';
 $backup_headers_option = $_POST['backupHeaders'] ?? 'no';
 $dry_run_option = $_POST['dryRun'] ?? 'yes';
 $headers_only = $_POST['headersOnly'] ?? 'false';
+$zip_password = $_POST['zipPassword'] ?? '';
 
 // --- Process Encryption Key Input (using Unraid pattern) ---
 function processEncryptionKey() {
@@ -113,6 +114,10 @@ if ($headers_only === 'true') {
     // we always use -k (keyfile) option, but also pass original input type
     $args .= " -k " . escapeshellarg($encryption_key['value']);
     $args .= " --original-input-type " . escapeshellarg($key_type);
+    if (!empty($zip_password)) {
+        $args .= " --zip-password " . escapeshellarg($zip_password);
+        echo "DEBUG: ZIP password added to headers script arguments\n";
+    }
 } else {
     // Full auto-start setup - use main management script
     $script_path = $main_script_path;
@@ -148,6 +153,10 @@ $env = array(
 if ($headers_only !== 'true') {
     $env['LUKS_KEYFILE'] = $encryption_key['value'];
     $env['LUKS_ORIGINAL_INPUT_TYPE'] = $key_type;  // 'passphrase' or 'keyfile'
+    if (!empty($zip_password)) {
+        $env['LUKS_ZIP_PASSWORD'] = $zip_password;
+        echo "DEBUG: ZIP password provided for keyfile user\n";
+    }
     echo "DEBUG: Auto Start using keyfile path: " . $encryption_key['value'] . "\n";
     echo "DEBUG: Original input type: " . $key_type . "\n";
 }

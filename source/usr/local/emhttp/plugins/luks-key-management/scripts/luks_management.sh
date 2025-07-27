@@ -20,6 +20,7 @@ PASSPHRASE=""
 KEY_TYPE=""
 KEYFILE_PATH=""
 ZIP_ENCRYPTION_TYPE=""  # Track original input type for ZIP encryption decisions
+CUSTOM_ZIP_PASSWORD=""  # Custom ZIP password for keyfile users
 
 # Hardware information for key generation and metadata
 MOTHERBOARD_ID=""
@@ -141,10 +142,15 @@ create_encrypted_archive() {
         echo "DEBUG: Creating password-protected ZIP with user's passphrase"
         zip -j --password "$PASSPHRASE" "$archive_file" "$source_dir"/*.img "$metadata_file"
     else
-        # For keyfile users, create unencrypted archive since we don't have a user-known password
-        # The LUKS headers themselves are already encrypted and the metadata file contains the info
-        echo "Creating unencrypted archive (keyfile authentication - no user passphrase available)..."
-        zip -j "$archive_file" "$source_dir"/*.img "$metadata_file"
+        # For keyfile users, check if custom ZIP password was provided
+        if [[ -n "$CUSTOM_ZIP_PASSWORD" ]]; then
+            echo "DEBUG: Creating password-protected ZIP with custom password"
+            zip -j --password "$CUSTOM_ZIP_PASSWORD" "$archive_file" "$source_dir"/*.img "$metadata_file"
+        else
+            # Fallback: create unencrypted archive (shouldn't happen with new UI)
+            echo "Creating unencrypted archive (no ZIP password provided)..."
+            zip -j "$archive_file" "$source_dir"/*.img "$metadata_file"
+        fi
     fi
 }
 
@@ -599,6 +605,13 @@ parse_args() {
         else
             ZIP_ENCRYPTION_TYPE="keyfile"
         fi
+        
+        # Check for custom ZIP password from environment variable
+        if [[ -n "$LUKS_ZIP_PASSWORD" ]]; then
+            CUSTOM_ZIP_PASSWORD="$LUKS_ZIP_PASSWORD"
+            echo "DEBUG: Custom ZIP password received from PHP"
+        fi
+        
         # Validate keyfile exists and is readable
         if [[ ! -f "$KEYFILE_PATH" ]]; then
             echo "Error: Keyfile not found at $KEYFILE_PATH" >&2

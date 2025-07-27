@@ -16,6 +16,7 @@ PASSPHRASE=""
 KEYFILE_PATH=""
 KEY_TYPE=""
 ORIGINAL_INPUT_TYPE=""
+CUSTOM_ZIP_PASSWORD=""
 
 # Locations
 TEMP_WORK_DIR="/tmp/luks_header_backup_$$" # $$ makes it unique per script run
@@ -170,15 +171,24 @@ EOF
             echo "DEBUG: ZIP creation with passphrase failed"
         fi
     else
-        # For actual keyfile users, create unencrypted archive
-        echo "DEBUG: Creating unencrypted archive (keyfile authentication - no user passphrase available)"
-        echo "WARNING: Archive is unencrypted because keyfile authentication provides no user-known password."
-        echo "         LUKS headers are individually encrypted and metadata contains recovery information."
-        
-        if zip -r "$archive_path" *.img *.txt 2>/dev/null; then
-            echo "DEBUG: Unencrypted ZIP creation succeeded"
+        # For keyfile users, check if custom ZIP password was provided
+        if [[ -n "$CUSTOM_ZIP_PASSWORD" ]]; then
+            echo "DEBUG: Creating password-protected ZIP with custom password"
+            if zip -r -e -P "$CUSTOM_ZIP_PASSWORD" "$archive_path" *.img *.txt 2>/dev/null; then
+                echo "DEBUG: ZIP creation with custom password succeeded"
+            else
+                echo "DEBUG: ZIP creation with custom password failed"
+            fi
         else
-            echo "DEBUG: Unencrypted ZIP creation failed"
+            # Fallback: create unencrypted archive (shouldn't happen with new UI)
+            echo "DEBUG: Creating unencrypted archive (no ZIP password provided)"
+            echo "WARNING: Archive is unencrypted because no password was provided."
+            
+            if zip -r "$archive_path" *.img *.txt 2>/dev/null; then
+                echo "DEBUG: Unencrypted ZIP creation succeeded"
+            else
+                echo "DEBUG: Unencrypted ZIP creation failed"
+            fi
         fi
     fi
     
@@ -271,6 +281,11 @@ parse_args() {
             --original-input-type)
                 ORIGINAL_INPUT_TYPE="$2"
                 echo "DEBUG: Headers backup received original input type: $ORIGINAL_INPUT_TYPE"
+                shift 2
+                ;;
+            --zip-password)
+                CUSTOM_ZIP_PASSWORD="$2"
+                echo "DEBUG: Headers backup received custom ZIP password"
                 shift 2
                 ;;
             -h|--help)
