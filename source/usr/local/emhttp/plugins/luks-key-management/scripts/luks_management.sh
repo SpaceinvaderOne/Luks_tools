@@ -19,6 +19,7 @@ DOWNLOAD_MODE="no"
 PASSPHRASE=""
 KEY_TYPE=""
 KEYFILE_PATH=""
+ZIP_ENCRYPTION_TYPE=""  # Track original input type for ZIP encryption decisions
 
 # Hardware information for key generation and metadata
 MOTHERBOARD_ID=""
@@ -131,17 +132,19 @@ create_encrypted_archive() {
     local source_dir="$2"
     local metadata_file="$3"
     
-    if [[ "$KEY_TYPE" == "passphrase" ]]; then
+    # Use ZIP_ENCRYPTION_TYPE if available, otherwise fall back to KEY_TYPE
+    local zip_type="${ZIP_ENCRYPTION_TYPE:-$KEY_TYPE}"
+    echo "DEBUG: ZIP encryption decision based on: $zip_type"
+    
+    if [[ "$zip_type" == "passphrase" ]]; then
         # Use the user's LUKS passphrase for ZIP encryption
+        echo "DEBUG: Creating password-protected ZIP with user's passphrase"
         zip -j --password "$PASSPHRASE" "$archive_file" "$source_dir"/*.img "$metadata_file"
-    elif [[ "$KEY_TYPE" == "keyfile" ]]; then
+    else
         # For keyfile users, create unencrypted archive since we don't have a user-known password
         # The LUKS headers themselves are already encrypted and the metadata file contains the info
         echo "Creating unencrypted archive (keyfile authentication - no user passphrase available)..."
         zip -j "$archive_file" "$source_dir"/*.img "$metadata_file"
-    else
-        echo "Error: Unknown key type '$KEY_TYPE'" >&2
-        return 1
     fi
 }
 
@@ -582,17 +585,19 @@ parse_args() {
         KEY_TYPE="passphrase"
     elif [[ -n "$LUKS_KEYFILE" ]]; then
         KEYFILE_PATH="$LUKS_KEYFILE"
-        # Check if we have original input type (for ZIP encryption decisions)
+        KEY_TYPE="keyfile"  # Always use keyfile method for LUKS operations
+        
+        # Check if we have original input type (for ZIP encryption decisions only)
         if [[ -n "$LUKS_ORIGINAL_INPUT_TYPE" ]]; then
-            KEY_TYPE="$LUKS_ORIGINAL_INPUT_TYPE"
-            echo "DEBUG: Using original input type for ZIP encryption: $KEY_TYPE"
+            ZIP_ENCRYPTION_TYPE="$LUKS_ORIGINAL_INPUT_TYPE"
+            echo "DEBUG: Original input type for ZIP encryption: $ZIP_ENCRYPTION_TYPE"
             # For passphrase users, read the passphrase from the temp file for ZIP encryption
-            if [[ "$KEY_TYPE" == "passphrase" ]]; then
+            if [[ "$ZIP_ENCRYPTION_TYPE" == "passphrase" ]]; then
                 PASSPHRASE=$(cat "$KEYFILE_PATH")
                 echo "DEBUG: Read passphrase from temp file for ZIP encryption"
             fi
         else
-            KEY_TYPE="keyfile"
+            ZIP_ENCRYPTION_TYPE="keyfile"
         fi
         # Validate keyfile exists and is readable
         if [[ ! -f "$KEYFILE_PATH" ]]; then
