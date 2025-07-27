@@ -1048,19 +1048,72 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
             // Small delay to ensure content is fully rendered
             setTimeout(function() {
               try {
-                // Find the "Change encryption key" section by looking for the key icon
-                const encryptionTitle = newWindow.document.querySelector('.title .fa-key');
-                console.log('DEBUG: Found encryption title element:', encryptionTitle);
+                // Try multiple selectors to find the encryption section
+                const selectors = [
+                  '.title .fa-key',           // Original selector
+                  '.fa-key',                  // Just the key icon
+                  '[class*="fa-key"]',        // Any element with fa-key in class
+                  'span:contains("encryption")', // Text-based search
+                  'span:contains("Change encryption")', // More specific text
+                  'h3:contains("Change encryption")', // Different heading level
+                  '.title:contains("encryption")', // Title containing encryption
+                ];
                 
-                if (encryptionTitle) {
-                  // Scroll to the title containing the encryption section
-                  encryptionTitle.closest('.title').scrollIntoView({ 
+                let encryptionElement = null;
+                let usedSelector = '';
+                
+                for (const selector of selectors) {
+                  console.log('DEBUG: Trying selector:', selector);
+                  
+                  if (selector.includes(':contains')) {
+                    // Handle text-based selectors manually
+                    const elements = newWindow.document.querySelectorAll(selector.split(':')[0]);
+                    for (const el of elements) {
+                      const searchText = selector.match(/contains\("([^"]+)"\)/)[1];
+                      if (el.textContent.toLowerCase().includes(searchText.toLowerCase())) {
+                        encryptionElement = el;
+                        usedSelector = selector;
+                        break;
+                      }
+                    }
+                  } else {
+                    encryptionElement = newWindow.document.querySelector(selector);
+                  }
+                  
+                  if (encryptionElement) {
+                    usedSelector = selector;
+                    console.log('DEBUG: Found element with selector:', usedSelector, encryptionElement);
+                    break;
+                  }
+                }
+                
+                if (encryptionElement) {
+                  // Try to find the best parent element to scroll to
+                  let scrollTarget = encryptionElement;
+                  if (usedSelector !== '.title .fa-key') {
+                    // If we didn't find the original title, try to find a good parent
+                    scrollTarget = encryptionElement.closest('.title') || 
+                                 encryptionElement.closest('h3') || 
+                                 encryptionElement.closest('div') || 
+                                 encryptionElement;
+                  }
+                  
+                  scrollTarget.scrollIntoView({ 
                     behavior: 'smooth', 
                     block: 'start' 
                   });
-                  console.log('DEBUG: Scrolled to encryption section');
+                  console.log('DEBUG: Scrolled to encryption section using element:', scrollTarget);
                 } else {
-                  console.log('DEBUG: Could not find .title .fa-key element');
+                  console.log('DEBUG: Could not find encryption section with any selector');
+                  // Fallback: try to scroll to any element containing "encryption" in text
+                  const allElements = newWindow.document.querySelectorAll('*');
+                  for (const el of allElements) {
+                    if (el.textContent && el.textContent.toLowerCase().includes('encryption')) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      console.log('DEBUG: Fallback scroll to element containing "encryption":', el);
+                      break;
+                    }
+                  }
                 }
               } catch (e) {
                 // Ignore cross-origin errors if any
