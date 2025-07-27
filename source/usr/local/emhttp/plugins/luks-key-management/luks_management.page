@@ -707,7 +707,7 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
     // Auto-scroll to Status section to show operation progress
     showTab('status');
     showStatusLoading('Configuring startup script...');
-    setStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
+    updateStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
 
     console.log('DEBUG: CSRF token for go command:', csrf_token);
     
@@ -738,7 +738,7 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
     // Auto-scroll to Status section to show operation progress
     showTab('status');
     showStatusLoading('Backing up LUKS headers...');
-    setStatus('Starting LUKS headers backup operation...\nExecuting LUKS headers backup script, please wait...');
+    updateStatus('Starting LUKS headers backup operation...\nExecuting LUKS headers backup script, please wait...');
 
     // Use the same backend but with headers-only flags
     const backupMode = backupLocation === 'download' ? 'download' : 'yes';
@@ -826,7 +826,7 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
     // Auto-scroll to Status section to show operation progress
     showTab('status');
     showStatusLoading('Analyzing LUKS encryption...');
-    setStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
+    updateStatus('Starting encryption analysis...\nAnalyzing LUKS encrypted drives and slot configurations, please wait...');
 
     // Prepare data using the same pattern as Auto Start (which works)
     const postData = {
@@ -918,7 +918,7 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
     // Auto-scroll to Status section to show operation progress
     showTab('status');
     showStatusLoading('Preparing encryption analysis download...');
-    setStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
+    updateStatus('Preparing encryption analysis for download...\nGenerating encrypted analysis file, please wait...');
 
     // Prepare data using the same pattern as Auto Start (which works)
     const postData = {
