@@ -11,11 +11,11 @@ $version_file = '/boot/config/plugins/luks-key-management/VERSION';
 $version = file_exists($version_file) ? trim(file_get_contents($version_file)) : 'Unknown';
 ?>
 
-<div style="color: #F15A2C; font-weight: bold; font-size: 16px; margin-bottom: 10px; text-align: center;">
-🔧 Plugin Version: <?=$version?>
+<div style="color: #F15A2C; font-weight: bold; font-size: 16px; margin-bottom: 10px;">
+Plugin Version: <?=$version?>
 </div>
 
-<div style="margin-bottom: 20px; text-align: center; color: var(--text-color);">
+<div style="margin-bottom: 20px; color: var(--text-color);">
 This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS header backup, key changes, and viewing encryption slots and metadata. Choose which tool to use from the tabs below.
 </div>
 

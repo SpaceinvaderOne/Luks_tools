@@ -2,10 +2,10 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.27.1439">
+<!ENTITY plugin_version       "2025.07.27.1451">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.27.1439-x86_64.txz">
-<!ENTITY plugin_md5           "5543f328e63bd66ae43ce5b53d20d5b3">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.27.1451-x86_64.txz">
+<!ENTITY plugin_md5           "7b6f11860e7f3a4c21fb81ab7dfd9bc9">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
@@ -51,9 +51,16 @@ PERSISTENT_DIR="/boot/config/plugins/luks-key-management"
 mkdir -p "$PERSISTENT_DIR"
 echo " Created persistent directory: $PERSISTENT_DIR"
 
-# Create version file for display in plugin UI
-echo "&plugin_version;" > "$PERSISTENT_DIR/VERSION"
-echo " Created version file: $PERSISTENT_DIR/VERSION"
+# Create version file for display in plugin UI by extracting from package filename
+PACKAGE_FILE=$(ls "$PERSISTENT_DIR"/luks-key-management-*.txz 2>/dev/null | head -1)
+if [[ -n "$PACKAGE_FILE" ]]; then
+    VERSION=$(basename "$PACKAGE_FILE" | sed 's/luks-key-management-\(.*\)-x86_64\.txz/\1/')
+    echo "$VERSION" > "$PERSISTENT_DIR/VERSION"
+    echo " Created version file: $PERSISTENT_DIR/VERSION (version: $VERSION)"
+else
+    echo "Unknown" > "$PERSISTENT_DIR/VERSION"
+    echo " Warning: Could not determine version, set to Unknown"
+fi
 
 # First, set executable permissions on plugin scripts
 if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
