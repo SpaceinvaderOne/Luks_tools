@@ -69,7 +69,6 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  border-bottom: 2px solid var(--border-color, #ccc);
 }
 
 .tab-nav li {
@@ -78,20 +77,19 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
 
 .tab-nav button {
   display: block;
-  padding: 10px 12px;
+  padding: 10px 20px;
   background: transparent;
   border: 2px solid #F15A2C;
-  border-bottom: 2px solid var(--border-color, #ccc);
   color: var(--text-color, #000);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-  position: relative;
-  border-radius: 6px 6px 0 0;
-  width: 250px;
+  border-radius: 6px;
+  width: 270px;
   text-align: center;
   transition: all 0.2s ease;
+  margin-bottom: 8px;
 }
 
 .tab-nav button:hover {
@@ -102,11 +100,8 @@ Manage encrypted drives with tools for auto-unlock at boot, LUKS header backup, 
 .tab-nav button.active {
   background: #F15A2C;
   border: 2px solid #F15A2C;
-  border-bottom: 2px solid #F15A2C;
   color: #ffffff;
   font-weight: bold;
-  z-index: 10;
-  margin-bottom: -2px;
 }
 
 .tab-nav i {
