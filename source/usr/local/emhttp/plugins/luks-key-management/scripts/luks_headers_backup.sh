@@ -100,7 +100,6 @@ create_backup_archive() {
     if [[ "$DOWNLOAD_MODE" == "yes" ]]; then
         archive_location="$DOWNLOAD_TEMP_DIR"
         mkdir -p "$archive_location"
-        echo "Download mode enabled - archive will be prepared for browser download."
     else
         archive_location="$ZIPPED_HEADER_BACKUP_LOCATION"
         mkdir -p "$archive_location"
@@ -129,9 +128,6 @@ EOF
 
     # Create encrypted ZIP archive with all headers and metadata using the same key that unlocks the devices
     cd "$HEADER_BACKUP_DIR"
-    echo "DEBUG: About to create ZIP archive at: $archive_path"
-    echo "DEBUG: Working directory: $(pwd)"
-    echo "DEBUG: Files to archive: $(ls -la *.img *.txt 2>/dev/null || echo 'No files found')"
     
     # Use original input type if available, otherwise fall back to KEY_TYPE
     local zip_decision_type="${ORIGINAL_INPUT_TYPE:-$KEY_TYPE}"

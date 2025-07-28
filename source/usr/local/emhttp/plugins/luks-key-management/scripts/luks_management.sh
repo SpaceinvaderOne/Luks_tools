@@ -900,6 +900,11 @@ process_devices() {
             create_encrypted_archive "$final_backup_file" "$HEADER_BACKUP_DIR" "$metadata_file" >/dev/null 2>&1
             if [[ $? -eq 0 ]]; then
                 echo "   → Archive created with password protection"
+                
+                # Signal download ready for browser if in download mode
+                if [[ "$DOWNLOAD_MODE" == "yes" ]]; then
+                    echo "DOWNLOAD_READY: $final_backup_file"
+                fi
             else
                 echo "   → Warning: Failed to create encrypted archive"
             fi

@@ -177,8 +177,8 @@ if (is_resource($process)) {
 
     // Handle symlink creation for download mode
     if ($backup_headers_option === 'download' && $dry_run_option === 'no') {
-        // Look for the backup file path in the output
-        if (preg_match('/Final encrypted archive created at (.+\.zip)/', $output, $matches)) {
+        // Look for the backup file path in the output using DOWNLOAD_READY signal
+        if (preg_match('/DOWNLOAD_READY: (.+\.zip)/', $output, $matches)) {
             $backup_file = $matches[1];
             $filename = basename($backup_file);
             
