@@ -569,11 +569,9 @@ parse_args() {
         # Check if we have original input type (for ZIP encryption decisions only)
         if [[ -n "$LUKS_ORIGINAL_INPUT_TYPE" ]]; then
             ZIP_ENCRYPTION_TYPE="$LUKS_ORIGINAL_INPUT_TYPE"
-            echo "DEBUG: Original input type for ZIP encryption: $ZIP_ENCRYPTION_TYPE"
             # For passphrase users, read the passphrase from the temp file for ZIP encryption
             if [[ "$ZIP_ENCRYPTION_TYPE" == "passphrase" ]]; then
                 PASSPHRASE=$(cat "$KEYFILE_PATH")
-                echo "DEBUG: Read passphrase from temp file for ZIP encryption"
             fi
         else
             ZIP_ENCRYPTION_TYPE="keyfile"
@@ -582,7 +580,6 @@ parse_args() {
         # Check for custom ZIP password from environment variable
         if [[ -n "$LUKS_ZIP_PASSWORD" ]]; then
             CUSTOM_ZIP_PASSWORD="$LUKS_ZIP_PASSWORD"
-            echo "DEBUG: Custom ZIP password received from PHP"
         fi
         
         # Validate keyfile exists and is readable
@@ -656,7 +653,8 @@ get_gateway_mac() {
 # Generate a keyfile based on hardware identifiers
 #
 generate_keyfile() {
-    echo "\nChecking hardware key configuration..."
+    echo ""
+    echo "Checking hardware key configuration..."
     
     # Store generation time
     KEY_GENERATION_TIME=$(date '+%Y-%m-%d %H:%M:%S %Z')
@@ -841,7 +839,8 @@ classify_disks() {
 # Process each LUKS device: cleanup old slots, backup header, and add key
 #
 process_devices() {
-    echo "\nBacking up LUKS headers..."
+    echo ""
+    echo "Backing up LUKS headers..."
 
     # Initialize result arrays
     added_keys=()
@@ -884,7 +883,8 @@ process_devices() {
     
     # 5. Create the final encrypted archive if headers were backed up
     if [[ "$BACKUP_HEADERS" == "yes" && $headers_found -gt 0 ]]; then
-        echo "\nCreating encrypted backup archive..."
+        echo ""
+        echo "Creating encrypted backup archive..."
         local final_backup_file="${ZIPPED_HEADER_BACKUP_LOCATION}/luksheaders_${TIMESTAMP}.zip"
         local metadata_file="${HEADER_BACKUP_DIR}/luks_system_analysis_${TIMESTAMP}.txt"
         
@@ -920,8 +920,7 @@ generate_summary() {
 #
 cleanup() {
     if [[ -d "$TEMP_WORK_DIR" ]]; then
-        echo "Cleaning up temporary directory: $TEMP_WORK_DIR"
-        rm -rf "$TEMP_WORK_DIR"
+        rm -rf "$TEMP_WORK_DIR" >/dev/null 2>&1
     fi
 }
 
@@ -947,7 +946,8 @@ generate_summary
 
 # Step 6: Auto-enable auto-unlock by adding to go file (unless dry run)
 if [[ "$DRY_RUN" == "no" ]]; then
-    echo "\nEnabling boot auto-unlock..."
+    echo ""
+    echo "Enabling boot auto-unlock..."
     
     # Call the write_go.sh script to add auto-unlock
     GO_SCRIPT_PATH="/usr/local/emhttp/plugins/luks-key-management/scripts/write_go.sh"
@@ -961,9 +961,11 @@ if [[ "$DRY_RUN" == "no" ]]; then
         echo "   → Warning: Auto-unlock script not found"
     fi
 else
-    echo "\n[DRY RUN] Auto-unlock configuration would be enabled"
+    echo ""
+    echo "[DRY RUN] Auto-unlock configuration would be enabled"
 fi
 
-echo "\n================================================"
+echo ""
+ echo "================================================"
 echo "           PROCESS COMPLETE ✅"
 echo "================================================"

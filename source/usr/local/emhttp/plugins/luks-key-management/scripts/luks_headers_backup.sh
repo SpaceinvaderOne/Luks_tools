@@ -66,34 +66,20 @@ test_encryption_key() {
 backup_device_header() {
     local device="$1"
     
-    echo "--- Processing device: $device ---"
-    
-    # Get LUKS version
-    local luks_version=$(get_luks_version "$device")
-    echo "  - LUKS Version:     $luks_version"
-    
     # Validate encryption key
-    echo -n "  - Key Check:        "
-    if test_encryption_key "$device"; then
-        echo "OK"
-    else
-        echo "FAILED - Skipping device"
+    if ! test_encryption_key "$device"; then
         return 1
     fi
     
-    # Extract UUID from cryptsetup dump
-    echo -n "  - Header Backup:    "
+    # Extract UUID and create backup
     local uuid=$(cryptsetup luksDump "$device" | grep 'UUID:' | awk '{print $2}')
     local device_name=$(basename "$device")
     local backup_filename="HEADER_UUID_${uuid}_DEVICE_${device_name}.img"
     local backup_path="$HEADER_BACKUP_DIR/$backup_filename"
     
-    echo "Backing up..."
     if cryptsetup luksHeaderBackup "$device" --header-backup-file "$backup_path" 2>/dev/null; then
-        echo "    ...Success."
         return 0
     else
-        echo "    ...FAILED."
         return 1
     fi
 }
@@ -125,7 +111,6 @@ create_backup_archive() {
     
     # Create metadata file with key information
     local metadata_file="$HEADER_BACKUP_DIR/luks_backup_info_${TIMESTAMP}.txt"
-    echo "Creating backup metadata file..."
     cat > "$metadata_file" << EOF
 LUKS Header Backup Information
 =============================
@@ -142,8 +127,6 @@ cryptsetup luksHeaderRestore /dev/sdXY --header-backup-file HEADER_FILE.img
 IMPORTANT: Keep this backup secure and test restoration procedures.
 EOF
 
-    echo "Creating encrypted zip archive of $headers_found headers plus metadata..."
-    
     # Create encrypted ZIP archive with all headers and metadata using the same key that unlocks the devices
     cd "$HEADER_BACKUP_DIR"
     echo "DEBUG: About to create ZIP archive at: $archive_path"
@@ -152,50 +135,25 @@ EOF
     
     # Use original input type if available, otherwise fall back to KEY_TYPE
     local zip_decision_type="${ORIGINAL_INPUT_TYPE:-$KEY_TYPE}"
-    echo "DEBUG: ZIP encryption decision based on: $zip_decision_type"
     
     if [[ "$zip_decision_type" == "passphrase" ]]; then
         # For passphrase users (even if using temp keyfile), read passphrase and encrypt ZIP
         if [[ -n "$PASSPHRASE" ]]; then
-            echo "DEBUG: Using existing passphrase for ZIP encryption"
             zip -r -e -P "$PASSPHRASE" "$archive_path" *.img *.txt 2>/dev/null
         else
-            echo "DEBUG: Reading passphrase from keyfile for ZIP encryption"
             local temp_passphrase=$(cat "$KEYFILE_PATH")
             zip -r -e -P "$temp_passphrase" "$archive_path" *.img *.txt 2>/dev/null
-        fi
-        
-        if [[ $? -eq 0 ]]; then
-            echo "DEBUG: ZIP creation with passphrase succeeded"
-        else
-            echo "DEBUG: ZIP creation with passphrase failed"
         fi
     else
         # For keyfile users, check if custom ZIP password was provided
         if [[ -n "$CUSTOM_ZIP_PASSWORD" ]]; then
-            echo "DEBUG: Creating password-protected ZIP with custom password"
-            if zip -r -e -P "$CUSTOM_ZIP_PASSWORD" "$archive_path" *.img *.txt 2>/dev/null; then
-                echo "DEBUG: ZIP creation with custom password succeeded"
-            else
-                echo "DEBUG: ZIP creation with custom password failed"
-            fi
+            zip -r -e -P "$CUSTOM_ZIP_PASSWORD" "$archive_path" *.img *.txt 2>/dev/null
         else
             # Fallback: create unencrypted archive (shouldn't happen with new UI)
-            echo "DEBUG: Creating unencrypted archive (no ZIP password provided)"
             echo "WARNING: Archive is unencrypted because no password was provided."
-            
-            if zip -r "$archive_path" *.img *.txt 2>/dev/null; then
-                echo "DEBUG: Unencrypted ZIP creation succeeded"
-            else
-                echo "DEBUG: Unencrypted ZIP creation failed"
-            fi
+            zip -r "$archive_path" *.img *.txt 2>/dev/null
         fi
     fi
-    
-    echo "DEBUG: Checking if archive was created: $(ls -la "$archive_path" 2>/dev/null || echo 'Archive not found')"
-    
-    echo "Final encrypted archive created at $archive_path"
-    echo "Archive includes LUKS headers and backup information"
     
     # For download mode, signal that the file is ready
     if [[ "$DOWNLOAD_MODE" == "yes" ]]; then
@@ -210,8 +168,7 @@ EOF
 #
 process_devices() {
     echo ""
-    echo "--- Starting LUKS Header Backup ---"
-    echo ""
+    echo "Checking provided encryption key..."
     
     # Get all LUKS devices
     local devices=($(get_luks_devices))
@@ -221,7 +178,9 @@ process_devices() {
         return 0
     fi
     
-    echo "Found ${#devices[@]} LUKS encrypted devices"
+    echo "   Key verified successfully"
+    echo ""
+    echo "Backing up LUKS headers..."
     
     # Create temporary directories
     mkdir -p "$TEMP_WORK_DIR"
@@ -229,30 +188,20 @@ process_devices() {
     
     # Process each device
     local headers_found=0
-    echo "DEBUG: About to process ${#devices[@]} devices: ${devices[*]}"
     for device in "${devices[@]}"; do
-        echo "DEBUG: Processing device: $device"
-        if backup_device_header "$device"; then
+        if backup_device_header "$device" >/dev/null 2>&1; then
             ((headers_found++))
-            echo "DEBUG: Successfully processed $device, headers_found now: $headers_found"
-        else
-            echo "DEBUG: Failed to process $device"
         fi
-        echo ""
     done
     
-    echo "DEBUG: Finished processing loop, total headers_found: $headers_found"
-    
-    echo "Successfully backed up headers for $headers_found devices"
+    echo "   → Processed $headers_found encrypted device(s) successfully"
     
     # Create archive if we have any headers
-    echo "DEBUG: Checking if archive creation needed, headers_found: $headers_found"
     if [[ "$headers_found" -gt 0 ]]; then
-        echo "DEBUG: Creating backup archive for $headers_found headers"
+        echo ""
+        echo "Creating encrypted backup archive..."
         create_backup_archive "$headers_found"
-        echo "DEBUG: Archive creation completed"
-    else
-        echo "DEBUG: No headers found, skipping archive creation"
+        echo "   → Archive created with password protection"
     fi
     
     return 0
@@ -280,12 +229,10 @@ parse_args() {
                 ;;
             --original-input-type)
                 ORIGINAL_INPUT_TYPE="$2"
-                echo "DEBUG: Headers backup received original input type: $ORIGINAL_INPUT_TYPE"
                 shift 2
                 ;;
             --zip-password)
                 CUSTOM_ZIP_PASSWORD="$2"
-                echo "DEBUG: Headers backup received custom ZIP password"
                 shift 2
                 ;;
             -h|--help)
@@ -334,8 +281,7 @@ EOF
 #
 cleanup() {
     if [[ -d "$TEMP_WORK_DIR" ]]; then
-        echo "Cleaning up temporary working directory: $TEMP_WORK_DIR"
-        rm -rf "$TEMP_WORK_DIR"
+        rm -rf "$TEMP_WORK_DIR" >/dev/null 2>&1
     fi
 }
 
@@ -344,9 +290,9 @@ trap cleanup EXIT
 
 # --- Main Script Logic ---
 
-echo "==================================================="
-echo "---         LUKS Header Backup Utility         ---"
-echo "==================================================="
+echo "================================================"
+echo "        LUKS HEADERS BACKUP PROCESS"
+echo "================================================"
 
 # Parse command line arguments
 parse_args "$@"
@@ -380,23 +326,11 @@ if [[ "$KEY_TYPE" == "keyfile" ]]; then
     fi
 fi
 
-# Show configuration
-echo "Configuration:"
-if [[ -n "$LUKS_PASSPHRASE" ]]; then
-    echo "  - Authentication: passphrase"
-elif [[ -n "$LUKS_KEYFILE" ]]; then
-    echo "  - Authentication: keyfile"
-else
-    echo "  - Authentication: $KEY_TYPE"
-fi
-echo "  - Download Mode: $DOWNLOAD_MODE"
-echo "  - Timestamp: $TIMESTAMP"
 
 # Process all devices
 process_devices
 
 echo ""
-echo "==================================================="
-echo "---            Backup Complete                  ---"
-echo "==================================================="
-echo "Script finished."
+echo "================================================"
+echo "           PROCESS COMPLETE ✅"
+echo "================================================"

@@ -6,6 +6,11 @@ require_once "$docroot/webGui/include/Wrappers.php";
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
 
+// Display clean process header
+echo "================================================\n";
+echo "        GO FILE CONFIGURATION PROCESS\n";
+echo "================================================\n\n";
+
 // Define the absolute path to your 'go file' management script
 // IMPORTANT: Update this path to match your plugin's structure.
 $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/write_go.sh";
@@ -51,6 +56,11 @@ if (is_resource($process)) {
     }
     
     echo $output;
+    
+    // Add clean completion footer
+    echo "\n================================================\n";
+    echo "           PROCESS COMPLETE ✅\n"; 
+    echo "================================================\n";
 } else {
     echo "Error: Failed to execute the script. Check permissions and paths.";
     exit(1);

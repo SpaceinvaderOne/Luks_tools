@@ -48,6 +48,8 @@ verify_scripts_exist() {
 }
 
 add_block() {
+    echo "Configuring boot auto-unlock..."
+    
     # First, verify that the required scripts exist in persistent location
     if ! verify_scripts_exist; then
         echo "Error: Required scripts not found. Plugin may not be properly installed." >&2
@@ -57,7 +59,6 @@ add_block() {
     # Ensure the go file exists and has a shebang.
     if [[ ! -f "$GO_FILE" ]] || ! grep -qF "$SHEBANG" "$GO_FILE"; then
         echo "$SHEBANG" > "$GO_FILE"
-        echo "Created or repaired $GO_FILE with shebang."
     fi
 
     # Check if the start marker is already in the file.
@@ -79,18 +80,27 @@ add_block() {
         
         # Ensure the go file is executable
         chmod +x "$GO_FILE"
+        
+        echo "   → Auto-unlock configuration added to boot process"
+    else
+        echo "   → Auto-unlock configuration already enabled"
     fi
 }
 
 remove_block() {
+    echo "Removing boot auto-unlock configuration..."
+    
     # Check if the go file exists and if our block is in it.
     if [[ ! -f "$GO_FILE" ]] || ! grep -qF "$START_MARKER" "$GO_FILE"; then
+        echo "   → Auto-unlock configuration already disabled"
         return
     fi
     
     # Use sed to delete the lines between the start and end markers (inclusive).
     # The -i flag performs the edit in-place. A backup is created first for safety.
     sed -i.bak "/$START_MARKER/,/$END_MARKER/d" "$GO_FILE"
+    
+    echo "   → Auto-unlock configuration removed from boot process"
 }
 
 # --- Main Execution ---
