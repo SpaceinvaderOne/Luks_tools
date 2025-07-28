@@ -89,9 +89,9 @@ get_slot_warning() {
     local total_slots=32
     
     if [[ $used_count -ge 29 ]]; then
-        echo "🔴 CRITICAL: $used_count/$total_slots slots used (90%+ full)"
+        echo "CRITICAL: $used_count/$total_slots slots used (90%+ full)"
     elif [[ $used_count -ge 25 ]]; then
-        echo "⚠️  WARNING: $used_count/$total_slots slots used (80%+ full)"
+        echo "WARNING: $used_count/$total_slots slots used (80%+ full)"
     else
         echo "✅ Healthy: $used_count/$total_slots slots used"
     fi
@@ -188,7 +188,7 @@ get_token_info() {
 get_detailed_slot_info() {
     local device="$1"
     
-    echo "    📋 Detailed Slot Analysis:"
+    echo "    Detailed Slot Analysis:"
     
     local used_slots=($(get_used_slots "$device"))
     
@@ -217,16 +217,16 @@ analyze_device() {
     local slot_count=${#used_slots[@]}
     local slot_warning=$(get_slot_warning "$slot_count")
     
-    echo "📱 Device: $device ($device_type)"
-    echo "    🔐 LUKS Version: $luks_version"
-    echo "    🔢 Slot Usage: $slot_warning"
+    echo "Device: $device ($device_type)"
+    echo "    LUKS Version: $luks_version"
+    echo "    Slot Usage: $slot_warning"
     
     # Test encryption key
     if test_encryption_key "$device"; then
         if [[ "$KEY_TYPE" == "passphrase" ]]; then
-            echo "    🔑 Passphrase: ✅ Valid"
+            echo "    Passphrase: ✅ Valid"
         else
-            echo "    🔑 Keyfile: ✅ Valid"
+            echo "    Keyfile: ✅ Valid"
         fi
         
         if [[ "$detail_level" == "detailed" ]] || [[ "$detail_level" == "very_detailed" ]]; then
@@ -234,9 +234,9 @@ analyze_device() {
         fi
     else
         if [[ "$KEY_TYPE" == "passphrase" ]]; then
-            echo "    🔑 Passphrase: ❌ Invalid for this device"
+            echo "    Passphrase: Invalid for this device"
         else
-            echo "    🔑 Keyfile: ❌ Invalid for this device"
+            echo "    Keyfile: Invalid for this device"
         fi
     fi
     
@@ -278,19 +278,19 @@ group_devices_by_pattern() {
         local group_type=$(classify_device "$first_device")
         
         if [[ ${#devices_in_pattern[@]} -gt 1 ]]; then
-            echo "📂 ${group_type}s (${#devices_in_pattern[@]} devices):"
-            echo "    📱 Devices: ${devices_in_pattern[*]}"
+            echo "${group_type}s (${#devices_in_pattern[@]} devices):"
+            echo "    Devices: ${devices_in_pattern[*]}"
         else
-            echo "📱 ${group_type} (1 device):"
-            echo "    📱 Device: ${devices_in_pattern[*]}"
+            echo "${group_type} (1 device):"
+            echo "    Device: ${devices_in_pattern[*]}"
         fi
         
-        echo "    🔐 LUKS Version: $luks_version"
+        echo "    LUKS Version: $luks_version"
         local slot_warning=$(get_slot_warning "$slot_count")
-        echo "    🔢 Slot Usage: $slot_warning"
+        echo "    Slot Usage: $slot_warning"
         
         if [[ "$DETAIL_LEVEL" == "detailed" ]]; then
-            echo "    📋 Slot Configuration:"
+            echo "    Slot Configuration:"
             local slots_array=(${slots//,/ })
             for slot in "${slots_array[@]}"; do
                 local token_info=$(get_token_info "$first_device" "$slot")
@@ -317,24 +317,24 @@ analyze_encryption() {
     echo "---         LUKS Encryption Analysis          ---"
     echo "=================================================="
     echo ""
-    echo "🔍 Analysis Mode: $(echo "$detail_level" | tr '[:lower:]' '[:upper:]')"
+    echo "Analysis Mode: $(echo "$detail_level" | tr '[:lower:]' '[:upper:]')"
     if [[ "$KEY_TYPE" == "passphrase" ]]; then
-        echo "🔑 Authentication: Passphrase"
+        echo "Authentication: Passphrase"
     else
-        echo "🔑 Authentication: Keyfile ($KEYFILE_PATH)"
+        echo "Authentication: Keyfile ($KEYFILE_PATH)"
     fi
-    echo "📅 Generated: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Generated: $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
     
     # Get all LUKS devices
     local devices=($(get_luks_devices))
     
     if [[ ${#devices[@]} -eq 0 ]]; then
-        echo "ℹ️  No LUKS encrypted devices found on this system."
+        echo "No LUKS encrypted devices found on this system."
         return 0
     fi
     
-    echo "🔎 Found ${#devices[@]} LUKS encrypted device(s)"
+    echo "Found ${#devices[@]} LUKS encrypted device(s)"
     echo ""
     
     if [[ "$detail_level" == "simple" ]]; then
@@ -493,4 +493,3 @@ mkdir -p "$TEMP_WORK_DIR"
 # Run the analysis
 analyze_encryption "$DETAIL_LEVEL"
 
-echo "Script finished."

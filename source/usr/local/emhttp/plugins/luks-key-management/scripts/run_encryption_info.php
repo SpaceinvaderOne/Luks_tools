@@ -6,16 +6,6 @@ require_once "$docroot/webGui/include/Wrappers.php";
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
 
-// Debug CSRF token
-echo "DEBUG: POST data keys: " . implode(', ', array_keys($_POST)) . "\n";
-echo "DEBUG: CSRF token in POST: " . ($_POST['csrf_token'] ?? 'NOT SET') . "\n";
-echo "DEBUG: CSRF token length: " . strlen($_POST['csrf_token'] ?? '') . "\n";
-echo "DEBUG: All POST data: " . print_r($_POST, true) . "\n";
-echo "DEBUG: All FILES data: " . print_r($_FILES, true) . "\n";
-
-// TEMPORARY: Check if this is the CSRF issue or passphrase issue
-echo "DEBUG: Proceeding anyway to test passphrase authentication...\n";
-
 // Define the absolute path to the encryption info viewer script
 $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_info_viewer.sh";
 
@@ -120,7 +110,6 @@ $env = array(
     'LUKS_KEYFILE' => $encryption_key['value']
 );
 
-echo "DEBUG: Using keyfile path: " . $encryption_key['value'] . "\n";
 
 // Start the process with the explicit environment
 $process = proc_open($command, $descriptorspec, $pipes, null, $env);
@@ -156,7 +145,6 @@ if (isset($encryption_key['value']) && file_exists($encryption_key['value'])) {
     // Check if it's a temp file we created (either passphrase or keyfile)
     if (strpos($encryption_key['value'], '/tmp/luks_') === 0) {
         unlink($encryption_key['value']);
-        echo "DEBUG: Cleaned up temporary file: " . $encryption_key['value'] . "\n";
     }
 }
 ?>
