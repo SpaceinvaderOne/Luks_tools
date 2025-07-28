@@ -6,10 +6,10 @@ require_once "$docroot/webGui/include/Wrappers.php";
 // Set the content type to plain text to ensure the output is displayed correctly
 header('Content-Type: text/plain');
 
-// Debug CSRF token
-echo "DEBUG: POST data keys: " . implode(', ', array_keys($_POST)) . "\n";
-echo "DEBUG: CSRF token in POST: " . ($_POST['csrf_token'] ?? 'NOT SET') . "\n";
-echo "DEBUG: CSRF token length: " . strlen($_POST['csrf_token'] ?? '') . "\n";
+// Display clean process header
+echo "================================================\n";
+echo "        AUTO-START CONFIGURATION PROCESS\n";
+echo "================================================\n\n";
 
 // Define the absolute paths to the LUKS scripts
 $main_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh";
@@ -46,14 +46,12 @@ function processEncryptionKey() {
         return ['type' => 'keyfile', 'value' => $temp_passphrase_file];
     } else {
         // Handle keyfile data (base64 encoded, following Unraid pattern)
-        echo "DEBUG: Processing keyfile data...\n";
         
         if (!isset($_POST['keyfileData'])) {
             return ['error' => 'No keyfile data provided.'];
         }
         
         $keyfile_data = $_POST['keyfileData'];
-        echo "DEBUG: Keyfile data length: " . strlen($keyfile_data) . "\n";
         
         // Extract base64 data (remove data URL prefix if present)
         if (strpos($keyfile_data, 'base64,') !== false) {
@@ -68,7 +66,6 @@ function processEncryptionKey() {
             return ['error' => 'Invalid keyfile data (base64 decode failed).'];
         }
         
-        echo "DEBUG: Decoded data size: " . strlen($decoded_data) . " bytes\n";
         
         // Validate file size (8 MiB limit)
         if (strlen($decoded_data) > 8388608) {
@@ -77,7 +74,6 @@ function processEncryptionKey() {
         
         // Create secure temporary file
         $temp_keyfile = "/tmp/luks_keyfile_" . uniqid() . ".key";
-        echo "DEBUG: Creating temp file: $temp_keyfile\n";
         
         if (file_put_contents($temp_keyfile, $decoded_data) === false) {
             return ['error' => 'Failed to write keyfile data.'];
@@ -85,7 +81,6 @@ function processEncryptionKey() {
         
         // Set secure permissions (read-only for owner)
         chmod($temp_keyfile, 0600);
-        echo "DEBUG: Keyfile processed successfully\n";
         
         return ['type' => 'keyfile', 'value' => $temp_keyfile];
     }
@@ -116,7 +111,6 @@ if ($headers_only === 'true') {
     $args .= " --original-input-type " . escapeshellarg($key_type);
     if (!empty($zip_password)) {
         $args .= " --zip-password " . escapeshellarg($zip_password);
-        echo "DEBUG: ZIP password added to headers script arguments\n";
     }
 } else {
     // Full auto-start setup - use main management script
@@ -155,10 +149,7 @@ if ($headers_only !== 'true') {
     $env['LUKS_ORIGINAL_INPUT_TYPE'] = $key_type;  // 'passphrase' or 'keyfile'
     if (!empty($zip_password)) {
         $env['LUKS_ZIP_PASSWORD'] = $zip_password;
-        echo "DEBUG: ZIP password provided for keyfile user\n";
     }
-    echo "DEBUG: Auto Start using keyfile path: " . $encryption_key['value'] . "\n";
-    echo "DEBUG: Original input type: " . $key_type . "\n";
 }
 
 // Start the process with the explicit environment
@@ -198,11 +189,9 @@ if (is_resource($process)) {
             // Ensure download directory exists with proper permissions
             if (!is_dir($plugin_download_dir)) {
                 if (!mkdir($plugin_download_dir, 0755, true)) {
-                    echo "DEBUG: Failed to create download directory: $plugin_download_dir\n";
                     $output .= "\nWarning: Could not create download directory.";
                     return;
                 }
-                echo "DEBUG: Created download directory: $plugin_download_dir\n";
             }
             
             // Remove any existing file and create new one
@@ -212,7 +201,6 @@ if (is_resource($process)) {
             
             // Check if source file exists before copying
             if (!file_exists($backup_file)) {
-                echo "DEBUG: Source file does not exist: $backup_file\n";
                 $output .= "\nWarning: Source backup file not found.";
                 return;
             }
@@ -223,12 +211,8 @@ if (is_resource($process)) {
                 // Set proper permissions on the copied file
                 chmod($symlink_path, 0644);
                 $output .= "\nDOWNLOAD_READY: $symlink_path";
-                echo "DEBUG: Archive copied to download location: $symlink_path\n";
             } else {
                 $output .= "\nWarning: Could not copy backup file to download location.";
-                echo "DEBUG: Failed to copy $backup_file to $symlink_path\n";
-                echo "DEBUG: Source file exists: " . (file_exists($backup_file) ? "yes" : "no") . "\n";
-                echo "DEBUG: Destination dir writable: " . (is_writable($plugin_download_dir) ? "yes" : "no") . "\n";
             }
         }
     }
@@ -244,7 +228,6 @@ if (isset($encryption_key['value']) && file_exists($encryption_key['value'])) {
     // Check if it's a temp file we created (either passphrase or keyfile)
     if (strpos($encryption_key['value'], '/tmp/luks_') === 0) {
         unlink($encryption_key['value']);
-        echo "DEBUG: Auto Start cleaned up temporary file: " . $encryption_key['value'] . "\n";
     }
 }
 ?>

@@ -31,8 +31,6 @@ EOF
 # --- Functions ---
 
 verify_scripts_exist() {
-    echo "Verifying required scripts exist in persistent location..."
-    
     # Check if the scripts exist in the persistent directory
     if [[ ! -f "$SCRIPT_SOURCE_DIR/fetch_key" ]]; then
         echo "Error: fetch_key script not found at $SCRIPT_SOURCE_DIR/fetch_key" >&2
@@ -46,13 +44,10 @@ verify_scripts_exist() {
         return 1
     fi
     
-    echo "Required scripts found and ready for use."
     return 0
 }
 
 add_block() {
-    echo "Checking status of auto-unlock block in $GO_FILE..."
-
     # First, verify that the required scripts exist in persistent location
     if ! verify_scripts_exist; then
         echo "Error: Required scripts not found. Plugin may not be properly installed." >&2
@@ -66,11 +61,7 @@ add_block() {
     fi
 
     # Check if the start marker is already in the file.
-    if grep -qF "$START_MARKER" "$GO_FILE"; then
-        echo "Auto-unlock block already found. No action taken."
-    else
-        echo "Auto-unlock block not found. Inserting it at the top of the file..."
-        
+    if ! grep -qF "$START_MARKER" "$GO_FILE"; then
         # Create a temporary file for the new content
         local TEMP_FILE
         TEMP_FILE=$(mktemp)
@@ -88,35 +79,18 @@ add_block() {
         
         # Ensure the go file is executable
         chmod +x "$GO_FILE"
-        
-        echo "Auto-unlock block successfully added to $GO_FILE."
-        echo "Please review the file to ensure correctness."
     fi
 }
 
 remove_block() {
-    echo "Checking for auto-unlock block to remove from $GO_FILE..."
-
     # Check if the go file exists and if our block is in it.
     if [[ ! -f "$GO_FILE" ]] || ! grep -qF "$START_MARKER" "$GO_FILE"; then
-        echo "Auto-unlock block not found. Nothing to remove."
         return
     fi
-    
-    echo "Auto-unlock block found. Removing it now..."
     
     # Use sed to delete the lines between the start and end markers (inclusive).
     # The -i flag performs the edit in-place. A backup is created first for safety.
     sed -i.bak "/$START_MARKER/,/$END_MARKER/d" "$GO_FILE"
-    
-    echo "Auto-unlock block successfully removed."
-    echo "A backup of the original file has been saved to ${GO_FILE}.bak"
-    
-    # Note about persistent scripts
-    echo ""
-    echo "Note: The persistent scripts at $SCRIPT_SOURCE_DIR remain available."
-    echo "These will be removed automatically if you uninstall the plugin."
-    echo "You can re-enable auto-unlock anytime by running this script again."
 }
 
 # --- Main Execution ---

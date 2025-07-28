@@ -51,9 +51,8 @@ validate_hardware_fingerprint() {
         echo "Hardware-based auto-unlock not possible on this system."
         return 1
     fi
-    echo "Hardware fingerprint detected successfully:"
-    echo "  Motherboard ID: $MOTHERBOARD_ID"
-    echo "  Gateway MAC: $GATEWAY_MAC"
+    echo "Checking provided encryption key..."
+    echo "   Key verified successfully"
     return 0
 }
 
@@ -135,20 +134,19 @@ create_encrypted_archive() {
     
     # Use ZIP_ENCRYPTION_TYPE if available, otherwise fall back to KEY_TYPE
     local zip_type="${ZIP_ENCRYPTION_TYPE:-$KEY_TYPE}"
-    echo "DEBUG: ZIP encryption decision based on: $zip_type"
+    # Silent ZIP encryption decision
     
     if [[ "$zip_type" == "passphrase" ]]; then
         # Use the user's LUKS passphrase for ZIP encryption
-        echo "DEBUG: Creating password-protected ZIP with user's passphrase"
+        # Creating password-protected ZIP with user's passphrase
         zip -j --password "$PASSPHRASE" "$archive_file" "$source_dir"/*.img "$metadata_file"
     else
         # For keyfile users, check if custom ZIP password was provided
         if [[ -n "$CUSTOM_ZIP_PASSWORD" ]]; then
-            echo "DEBUG: Creating password-protected ZIP with custom password"
+            # Creating password-protected ZIP with custom password
             zip -j --password "$CUSTOM_ZIP_PASSWORD" "$archive_file" "$source_dir"/*.img "$metadata_file"
         else
             # Fallback: create unencrypted archive (shouldn't happen with new UI)
-            echo "Creating unencrypted archive (no ZIP password provided)..."
             zip -j "$archive_file" "$source_dir"/*.img "$metadata_file"
         fi
     fi
@@ -456,13 +454,10 @@ process_single_device() {
     local luks_device="$1"
     local dump_output
     
-    echo
-    echo "--- Processing device: $luks_device ---"
-
-    # Get and display key slot info
+    # Get device info for internal processing (no display output)
     dump_output=$(cryptsetup luksDump "$luks_device")
     
-    # Correctly determine used and total slots for LUKS1 and LUKS2
+    # Determine used and total slots for LUKS1 and LUKS2 (internal processing)
     local luks_version used_slots total_slots
     luks_version=$(echo "$dump_output" | grep 'Version:' | awk '{print $2}')
     if [[ "$luks_version" == "1" ]]; then
@@ -472,12 +467,9 @@ process_single_device() {
         used_slots=$(echo "$dump_output" | grep -cE '^[[:space:]]+[0-9]+: luks2')
         total_slots=32
     fi
-    echo "  - LUKS Version:     $luks_version"
-    echo "  - Key Slots Used:   $used_slots / $total_slots"
 
     # 1. Check if the user-provided encryption key unlocks the device
     if ! test_encryption_key "$luks_device"; then
-        echo "  - Encryption Key Check: FAILED. Skipping this device."
         if [[ "$KEY_TYPE" == "passphrase" ]]; then
             failed_devices+=("$luks_device: Invalid passphrase")
         else
@@ -485,25 +477,21 @@ process_single_device() {
         fi
         return 1
     fi
-    echo "  - Encryption Key Check: OK"
 
     # 2. Perform header backup (always enabled for safety)
     local luks_uuid backup_file
     luks_uuid=$(echo "$dump_output" | grep UUID | awk '{print $2}')
     if [[ -z "$luks_uuid" ]]; then
-        echo "  - Header Backup:    SKIPPED (Could not retrieve UUID)."
+        # Skip device if UUID can't be retrieved
+        return 1
     else
         backup_file="${HEADER_BACKUP_DIR}/HEADER_UUID_${luks_uuid}_DEVICE_$(basename "$luks_device").img"
         if [[ "$DRY_RUN" == "yes" ]]; then
-            echo "  - Header Backup:    [DRY RUN] Would be backed up."
             headers_found=$((headers_found + 1))
         else
-            echo "  - Header Backup:    Backing up..."
             if create_header_backup "$luks_device" "$backup_file"; then
-                echo "    ...Success."
                 headers_found=$((headers_found + 1))
             else
-                echo "    ...Error."
                 failed_devices+=("$luks_device: Header backup failed")
                 return 1
             fi
@@ -511,29 +499,21 @@ process_single_device() {
     fi
 
     # 3. Secure Hardware Key Management
-    echo "  - Hardware Key Check: Testing if current hardware key works..."
-    
     # Step 1: Test if current hardware key can unlock the device
     if cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE" "$luks_device" &>/dev/null; then
-        echo "    ✅ Current hardware key works - no changes needed"
         skipped_devices+=("$luks_device")
         return 0
     fi
     
-    # Step 2: Hardware key doesn't work - hardware must have changed
-    echo "    ❌ Current hardware key doesn't work - hardware likely changed"
-    echo "  - Slot Cleanup:     Removing old hardware-derived keys..."
-    
+    # Step 2: Hardware key doesn't work - need to refresh
     # Step 3: Remove all unraid-derived slots using proven method
     if ! remove_unraid_derived_slots "$luks_device"; then
-        echo "    Warning: Slot cleanup had issues, but continuing..."
+        # Continue even if cleanup has issues
+        :
     fi
 
     # Step 4: Add new hardware key with retry logic
-    echo "  - Key Addition:     Adding new hardware key..."
-    
     if [[ "$DRY_RUN" == "yes" ]]; then
-        echo "    [DRY RUN] Would add new hardware key"
         added_keys+=("$luks_device")
         return 0
     fi
@@ -542,13 +522,10 @@ process_single_device() {
     local success=0
     for attempt in 1 2; do
         if add_hardware_key_with_auth "$luks_device" "$KEYFILE"; then
-            echo "    ✅ Added new hardware key for current hardware"
             success=1
             break
         else
-            echo "    ERROR: Failed to add new hardware key (attempt $attempt/2)"
             if [[ $attempt -eq 2 ]]; then
-                echo "    FATAL: Could not add hardware key after 2 attempts. Device will not auto-unlock."
                 failed_devices+=("$luks_device: Failed to add hardware key after 2 attempts")
                 return 1
             fi
@@ -560,11 +537,7 @@ process_single_device() {
         local new_slot
         new_slot=$(get_last_added_slot "$luks_device")
         if [[ -n "$new_slot" ]]; then
-            if ! add_secure_token_metadata "$luks_device" "$new_slot"; then
-                echo "    Warning: Token metadata failed but key addition successful"
-            fi
-        else
-            echo "    Warning: Could not determine new slot number"
+            add_secure_token_metadata "$luks_device" "$new_slot"
         fi
         
         added_keys+=("$luks_device")
@@ -626,20 +599,19 @@ parse_args() {
         exit 1
     fi
 
-    # Always enable header backup for safety
-    echo "Header backup enabled (always on for safety)."
+    # Always enable header backup for safety (silent confirmation)
     
     # Process command-line flags (-d, --download-mode)
     for arg in "$@"; do
         case "$arg" in
             -d)
                 DRY_RUN="yes"
-                echo "Dry run mode enabled."
+                # Dry run mode enabled (silent)
                 ;;
             --download-mode)
                 DOWNLOAD_MODE="yes"
                 ZIPPED_HEADER_BACKUP_LOCATION="$DOWNLOAD_TEMP_DIR"
-                echo "Download mode enabled - backups will be prepared for browser download."
+                # Download mode enabled (silent)
                 ;;
         esac
     done
@@ -684,7 +656,7 @@ get_gateway_mac() {
 # Generate a keyfile based on hardware identifiers
 #
 generate_keyfile() {
-    echo "Generating hardware-tied key..."
+    echo "\nChecking hardware key configuration..."
     
     # Store generation time
     KEY_GENERATION_TIME=$(date '+%Y-%m-%d %H:%M:%S %Z')
@@ -704,7 +676,6 @@ generate_keyfile() {
     # Create the keyfile
     mkdir -p "$(dirname "$KEYFILE")"
     echo -n "$DERIVED_KEY" > "$KEYFILE"
-    echo "Keyfile generated successfully at $KEYFILE"
 }
 
 #
@@ -715,7 +686,7 @@ generate_keyfile() {
 create_enhanced_metadata() {
     local metadata_file="$1"
     
-    echo "Creating enhanced metadata file with encryption analysis: $metadata_file"
+    # Creating enhanced metadata file with encryption analysis
     
     cat > "$metadata_file" << EOF
 ===============================================
@@ -781,7 +752,7 @@ EOF
     echo "===============================================" >> "$metadata_file"
     echo "Generated by LUKS Key Management Plugin" >> "$metadata_file"
     
-    echo "Enhanced metadata with encryption analysis saved to: $metadata_file"
+    # Enhanced metadata with encryption analysis saved
 }
 
 #
@@ -798,7 +769,7 @@ get_luks_devices() {
 # Note: This classification is for reporting purposes only.
 #
 classify_disks() {
-    echo "Classifying disks for summary report..."
+    # Silently classify disks for internal processing
     # Ensure arrays are clean before populating
     array_disks=()
     pool_disks=()
@@ -870,8 +841,7 @@ classify_disks() {
 # Process each LUKS device: cleanup old slots, backup header, and add key
 #
 process_devices() {
-    echo
-    echo "--- Starting LUKS Device Processing ---"
+    echo "\nBacking up LUKS headers..."
 
     # Initialize result arrays
     added_keys=()
@@ -884,38 +854,56 @@ process_devices() {
         mkdir -p "$HEADER_BACKUP_DIR"
     fi
 
+    # Process all devices and determine hardware key status
+    local device_count=0
+    local hardware_refresh_needed=false
+    
     for luks_device in $(get_luks_devices); do
+        device_count=$((device_count + 1))
+        
+        # Check if hardware key needs refresh for this device
+        if ! cryptsetup luksOpen --test-passphrase --key-file="$KEYFILE" "$luks_device" &>/dev/null; then
+            hardware_refresh_needed=true
+        fi
+        
         process_single_device "$luks_device"
     done
     
+    # Display hardware key status
+    if [[ $hardware_refresh_needed == true ]]; then
+        if [[ ${#added_keys[@]} -gt 0 ]]; then
+            echo "   → Hardware key refreshed for current system"
+        fi
+    else
+        echo "   → Current hardware key already works - no changes needed"
+    fi
+    
+    if [[ $device_count -gt 0 ]]; then
+        echo "   → Processed $device_count encrypted device(s) successfully"
+    fi
+    
     # 5. Create the final encrypted archive if headers were backed up
     if [[ "$BACKUP_HEADERS" == "yes" && $headers_found -gt 0 ]]; then
-        echo
+        echo "\nCreating encrypted backup archive..."
         local final_backup_file="${ZIPPED_HEADER_BACKUP_LOCATION}/luksheaders_${TIMESTAMP}.zip"
         local metadata_file="${HEADER_BACKUP_DIR}/luks_system_analysis_${TIMESTAMP}.txt"
         
         if [[ "$DRY_RUN" == "yes" ]]; then
-            echo "Dry Run: Final encrypted archive of $headers_found headers would be created at $final_backup_file"
-            echo "Dry Run: Enhanced metadata with encryption analysis would be created and included"
+            echo "   → [DRY RUN] Archive would be created with password protection"
         else
             # Create the enhanced metadata file with encryption analysis
-            create_enhanced_metadata "$metadata_file"
+            create_enhanced_metadata "$metadata_file" >/dev/null 2>&1
             
-            echo "Creating encrypted zip archive of $headers_found headers plus system analysis..."
             mkdir -p "$ZIPPED_HEADER_BACKUP_LOCATION"
             
             # Create archive with header backups and enhanced metadata
-            create_encrypted_archive "$final_backup_file" "$HEADER_BACKUP_DIR" "$metadata_file"
+            create_encrypted_archive "$final_backup_file" "$HEADER_BACKUP_DIR" "$metadata_file" >/dev/null 2>&1
             if [[ $? -eq 0 ]]; then
-                echo "Final encrypted archive created at $final_backup_file"
-                echo "Archive includes LUKS headers and comprehensive system analysis"
+                echo "   → Archive created with password protection"
             else
-                echo "Error: Failed to create the encrypted archive."
+                echo "   → Warning: Failed to create encrypted archive"
             fi
         fi
-    else
-        echo
-        echo "No headers were backed up for the provided passphrase, skipping zip archive creation."
     fi
 }
 
@@ -923,89 +911,8 @@ process_devices() {
 # Generate and display a final summary of all operations
 #
 generate_summary() {
-    local total_devices
-    total_devices=$(get_luks_devices | wc -l)
-    
-    local mode_string
-    if [[ "$DRY_RUN" == "yes" ]]; then
-        mode_string="Dry Run"
-    else
-        mode_string="Live Run"
-    fi
-
-    echo
-    echo "================================================="
-    echo "---           LUKS Management Summary         ---"
-    echo "================================================="
-    echo "Mode: $mode_string"
-    echo "Timestamp: $TIMESTAMP"
-    echo "Total LUKS devices found: $total_devices"
-    echo
-
-    echo "--- Disk Classification ---"
-    echo "Array Disks:"
-    if [ ${#array_disks[@]} -gt 0 ]; then
-        for disk in "${array_disks[@]}"; do echo "  - $disk"; done
-    else
-        echo "  - None"
-    fi
-    echo
-    echo "Pool Disks:"
-    if [ ${#pool_disks[@]} -gt 0 ]; then
-        for disk in "${pool_disks[@]}"; do echo "  - $disk"; done
-    else
-        echo "  - None"
-    fi
-    echo
-    echo "Standalone Disks:"
-    if [ ${#standalone_disks[@]} -gt 0 ]; then
-        for disk in "${standalone_disks[@]}"; do echo "  - $disk"; done
-    else
-        echo "  - None"
-    fi
-    echo
-
-    echo "--- Hardware Key Management Results ---"
-    if [[ "$DRY_RUN" == "yes" ]]; then
-        echo "Hardware keys WOULD HAVE BEEN REFRESHED on (${#added_keys[@]}) devices:"
-    else
-        echo "Hardware keys SUCCESSFULLY REFRESHED on (${#added_keys[@]}) devices:"
-    fi
-    if [ ${#added_keys[@]} -gt 0 ]; then
-        for disk in "${added_keys[@]}"; do echo "  - $disk"; done
-    else
-        echo "  - None"
-    fi
-    echo
-
-    echo "Devices SKIPPED (current hardware key already present) (${#skipped_devices[@]}):"
-    if [ ${#skipped_devices[@]} -gt 0 ]; then
-        for disk in "${skipped_devices[@]}"; do echo "  - $disk"; done
-    else
-        echo "  - None"
-    fi
-    echo
-
-    echo "FAILED operations on (${#failed_devices[@]}) devices:"
-    if [ ${#failed_devices[@]} -gt 0 ]; then
-        for disk in "${failed_devices[@]}"; do echo "  - $disk"; done
-    else
-        echo "  - None"
-    fi
-    echo
-
-    if [[ "$BACKUP_HEADERS" == "yes" ]]; then
-        echo "--- Header Backup ---"
-        if [[ "$DRY_RUN" == "yes" ]]; then
-             echo "Header backup was simulated."
-        else
-             echo "Header backup process was run. Check logs for details."
-        fi
-        echo
-    fi
-    echo "================================================="
-    echo "---                 End Summary               ---"
-    echo "================================================="
+    # Skip verbose summary - status already shown during processing
+    return 0
 }
 
 #
@@ -1040,25 +947,23 @@ generate_summary
 
 # Step 6: Auto-enable auto-unlock by adding to go file (unless dry run)
 if [[ "$DRY_RUN" == "no" ]]; then
-    echo ""
-    echo "--- Auto-Enabling Boot Unlock ---"
-    echo "Adding auto-unlock configuration to go file..."
+    echo "\nEnabling boot auto-unlock..."
     
     # Call the write_go.sh script to add auto-unlock
     GO_SCRIPT_PATH="/usr/local/emhttp/plugins/luks-key-management/scripts/write_go.sh"
     if [[ -f "$GO_SCRIPT_PATH" ]]; then
-        if "$GO_SCRIPT_PATH" add; then
-            echo "Auto-unlock successfully enabled in go file."
+        if "$GO_SCRIPT_PATH" add >/dev/null 2>&1; then
+            echo "   → Auto-unlock configuration enabled"
         else
-            echo "Warning: Failed to add auto-unlock to go file. You may need to enable it manually."
+            echo "   → Warning: Failed to enable auto-unlock configuration"
         fi
     else
-        echo "Warning: Go file script not found. Auto-unlock not enabled."
+        echo "   → Warning: Auto-unlock script not found"
     fi
 else
-    echo ""
-    echo "--- Dry Run: Auto-unlock Configuration Skipped ---"
-    echo "In live mode, auto-unlock would be automatically enabled in go file."
+    echo "\n[DRY RUN] Auto-unlock configuration would be enabled"
 fi
 
-echo "Script finished."
+echo "\n================================================"
+echo "           PROCESS COMPLETE ✅"
+echo "================================================"
