@@ -591,9 +591,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     showTab('status');
     showStatusLoading('Starting complete auto-unlock setup...');
     
-    // Use updateStatus instead of setStatus to avoid hiding the spinner
-    document.getElementById('statusOutput').textContent = 'DEBUG: Function called, starting validation...\n';
-    
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('autostart');
     console.log('DEBUG: Validation result:', validationError);
@@ -603,11 +600,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       return;
     }
     
-    updateStatus('DEBUG: Validation passed, continuing...');
-
     const backupLocation = document.getElementById('backupLocation').value;
     const dryRun = document.getElementById('dryRun').value;
-    console.log('DEBUG: backupLocation:', backupLocation, 'dryRun:', dryRun);
 
     // Update the status output without hiding the loading spinner
     updateStatus('Starting complete auto-unlock setup...\nThis will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...');
@@ -685,7 +679,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       data: postData,
       beforeSend: function(xhr) {
         console.log('DEBUG: AJAX request starting...');
-        updateStatus('DEBUG: AJAX request initiated...');
       },
       success: function(data) {
         console.log('DEBUG: AJAX success, response length:', data.length);
