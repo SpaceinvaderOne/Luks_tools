@@ -22,10 +22,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 <style>
 /* Status output container */
 #statusOutput {
-  background-color: #1a1a1a;
-  color: #fff;
   padding: 15px;
   border-radius: 5px;
+  border: 1px solid #ccc;
   min-height: 400px;
   max-height: 600px;
   overflow-y: auto;
@@ -470,9 +469,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   </dl>
 
 <!-- Loading Spinner (hidden by default, positioned above status output) -->
-<div id="status-loading" style="display: none; text-align: center; padding: 15px; background: #2a2a2a; border-radius: 5px; margin: 10px 0; border: 1px solid #444;">
+<div id="status-loading" style="display: none; text-align: center; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #ccc;">
   <div class="spinner" style="margin: 0 auto 10px auto; width: 120px; height: 70px;"></div>
-  <div id="loading-message" style="color: #fff; font-size: 16px;">Processing request...</div>
+  <div id="loading-message" style="font-size: 16px;">Processing request...</div>
 </div>
 
 <pre id="statusOutput">No operations performed yet. Output from all plugin operations will appear here.</pre>
