@@ -20,29 +20,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 </div>
 
 <style>
-/* CSS Variables for Light/Dark Mode Support */
-:root {
-  --note-bg: #f5f5f5;
-  --important-bg: #e8f4f8;
-  --text-color: #000000;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --note-bg: #2a2a2a;
-    --important-bg: #1e3a4a;
-    --text-color: #ffffff;
-  }
-}
-
-/* Unraid dark mode class support */
-.theme-dark {
-  --note-bg: #2a2a2a;
-  --important-bg: #1e3a4a;
-  --text-color: #ffffff;
-}
-
 /* Status output container */
 #statusOutput {
   background-color: #1a1a1a;
@@ -361,7 +338,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     </dl>
   </form>
   
-  <div style="margin-top: 15px; padding: 10px; background: var(--note-bg, #f5f5f5); color: var(--text-color, #000000); border-radius: 5px; border-left: 4px solid #FF9800;">
+  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
     <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
   </div>
 </div>
@@ -428,7 +405,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     </dl>
   </form>
   
-  <div style="margin-top: 15px; padding: 10px; background: var(--note-bg, #f5f5f5); color: var(--text-color, #000000); border-radius: 5px; border-left: 4px solid #FF9800;">
+  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
     <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
   </div>
 </div>
@@ -440,7 +417,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   
   <p>To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.</p>
   
-  <div style="background: var(--important-bg, #e8f4f8); color: var(--text-color, #000000); border: 1px solid #FF9800; padding: 15px; margin: 15px 0; border-radius: 5px;">
+  <div style="border: 1px solid #FF9800; padding: 15px; margin: 15px 0; border-radius: 5px;">
     <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
     Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
   </div>
@@ -462,7 +439,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     <li>Click "APPLY" to save the changes, then "DONE" to close the dialog</li>
   </ol>
   
-  <div style="margin-top: 15px; padding: 10px; background: var(--note-bg, #f5f5f5); color: var(--text-color, #000000); border-radius: 5px; border-left: 4px solid #FF9800;">
+  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
     <strong>Troubleshooting:</strong> If the "Existing encryption key" dropdown is greyed out and cannot be changed, go to the Main tab in Unraid and click "Delete keyfile" under Array Operations (this only removes the stored keyfile reference, not your LUKS encryption key).
   </div>
   
@@ -473,7 +450,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     </dd>
   </dl>
   
-  <div style="margin-top: 15px; padding: 10px; background: var(--note-bg, #f5f5f5); color: var(--text-color, #000000); border-radius: 5px; border-left: 4px solid #FF9800;">
+  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
     <strong>Note:</strong> This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface.
   </div>
 </div>
