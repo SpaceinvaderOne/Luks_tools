@@ -545,6 +545,12 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     document.getElementById('statusOutput').textContent = 'Output cleared.\n';
   }
 
+  // Clear status silently without any message (for operation starts)
+  function clearStatusSilently() {
+    hideStatusLoading();
+    document.getElementById('statusOutput').textContent = '';
+  }
+
   // Loading spinner control functions
   function showStatusLoading(message) {
     console.log('DEBUG: showStatusLoading called with message:', message);
@@ -585,6 +591,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function runAutoStartSetup() {
+    // Clear any previous status output
+    clearStatusSilently();
+    
     console.log('DEBUG: runAutoStartSetup called');
     
     // Auto-scroll to Status section immediately to show we're starting
@@ -728,6 +737,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function runGoCommand() {
+    // Clear any previous status output
+    clearStatusSilently();
+    
     const action = document.getElementById('goAction').value;
 
     // Auto-scroll to Status section to show operation progress
@@ -752,6 +764,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function runHeadersBackup() {
+    // Clear any previous status output
+    clearStatusSilently();
+    
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('headers');
     if (validationError) {
@@ -844,6 +859,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function runEncryptionInfo() {
+    // Clear any previous status output
+    clearStatusSilently();
+    
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('encinfo');
     if (validationError) {
@@ -936,6 +954,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function downloadEncryptionInfo() {
+    // Clear any previous status output
+    clearStatusSilently();
+    
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('encinfo');
     if (validationError) {
