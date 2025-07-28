@@ -2,10 +2,10 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.28.2201">
+<!ENTITY plugin_version       "2025.07.28.2214">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.28.2201-x86_64.txz">
-<!ENTITY plugin_md5           "9a9a9dcc6ca29f2dbd6738bdb2e1510a">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.28.2214-x86_64.txz">
+<!ENTITY plugin_md5           "cc1a48474702c44ab6d75ba0c879b0ef">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">

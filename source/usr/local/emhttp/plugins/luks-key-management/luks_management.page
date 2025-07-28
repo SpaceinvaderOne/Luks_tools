@@ -211,11 +211,11 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     <dl>
       <dt>Header Backup Location</dt>
       <dd>
-        <select id="backupLocation" name="backupLocation" class="short">
+        <select id="backupLocation" name="backupLocation" class="short" onchange="updateBackupLocationDescription()">
           <option value="download" selected>Download to PC</option>
-          <option value="yes">Save to server</option>
+          <option value="yes">Save to boot device</option>
         </select>
-        <div class="description">LUKS headers will always be backed up for safety. Choose where to save the encrypted backup.</div>
+        <div class="description" id="backupLocationDescription">LUKS headers will always be backed up for safety. Files will be downloaded to your browser's download folder.</div>
       </dd>
     </dl>
     
@@ -223,10 +223,10 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       <dt>Dry Run</dt>
       <dd>
         <select id="dryRun" name="dryRun" class="short">
-          <option value="yes" selected>Yes</option>
-          <option value="no">No</option>
+          <option value="no" selected>No - Apply changes</option>
+          <option value="yes">Yes - Simulate only</option>
         </select>
-        <div class="description">Simulates the process without making changes. Select 'No' to apply changes.</div>
+        <div class="description">Choose 'Yes' to preview actions without making changes, or 'No' to execute the setup.</div>
       </dd>
     </dl>
     
@@ -293,11 +293,11 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     <dl>
       <dt>Header Backup Location</dt>
       <dd>
-        <select id="headersBackupLocation" name="headersBackupLocation" class="short">
-          <option value="yes">Save to server</option>
+        <select id="headersBackupLocation" name="headersBackupLocation" class="short" onchange="updateHeadersBackupLocationDescription()">
+          <option value="yes">Save to boot device</option>
           <option value="download" selected>Download to PC</option>
         </select>
-        <div class="description">Choose to save the encrypted backup on the server or download it to your computer.</div>
+        <div class="description" id="headersBackupLocationDescription">Choose to save the encrypted backup on the server or download it to your computer.</div>
       </dd>
     </dl>
     
@@ -1388,5 +1388,35 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       passwordInput.type = 'password';
     }
   }
+
+  // Update backup location description for auto-start tab
+  function updateBackupLocationDescription() {
+    const location = document.getElementById('backupLocation').value;
+    const desc = document.getElementById('backupLocationDescription');
+    
+    if (location === 'download') {
+      desc.textContent = 'LUKS headers will always be backed up for safety. Files will be downloaded to your browser\'s download folder.';
+    } else {
+      desc.textContent = 'LUKS headers will always be backed up for safety. Files will be saved to /boot/config/luksheaders/ on your Unraid boot device.';
+    }
+  }
+
+  // Update backup location description for LUKS headers tab
+  function updateHeadersBackupLocationDescription() {
+    const location = document.getElementById('headersBackupLocation').value;
+    const desc = document.getElementById('headersBackupLocationDescription');
+    
+    if (location === 'download') {
+      desc.textContent = 'Files will be downloaded to your browser\'s download folder.';
+    } else {
+      desc.textContent = 'Files will be saved to /boot/config/luksheaders/ on your Unraid boot device.';
+    }
+  }
+
+  // Initialize descriptions on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    updateBackupLocationDescription();
+    updateHeadersBackupLocationDescription();
+  });
 
 </script>
