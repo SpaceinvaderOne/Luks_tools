@@ -11,7 +11,7 @@ $version_file = '/boot/config/plugins/luks-key-management/VERSION';
 $version = file_exists($version_file) ? trim(file_get_contents($version_file)) : 'Unknown';
 ?>
 
-<div style="color: #F15A2C; font-weight: bold; font-size: 16px; margin-bottom: 10px;">
+<div style="color: #F15A2C; font-weight: bold; font-size: 12px; margin-bottom: 10px;">
 Plugin Version: <?=$version?>
 </div>
 
