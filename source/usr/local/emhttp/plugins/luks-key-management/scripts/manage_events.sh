@@ -27,7 +27,9 @@ error_exit() {
 }
 
 debug_log() {
+    # Send debug output to both stderr and stdout for visibility
     echo "DEBUG: $1" >&2
+    echo "DEBUG: $1"
 }
 
 verbose_log() {
@@ -45,6 +47,8 @@ check_hardware_keys_exist() {
     local luks_devices=()
     mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
     
+    debug_log "Found ${#luks_devices[@]} LUKS devices: ${luks_devices[*]}"
+    
     if [[ ${#luks_devices[@]} -eq 0 ]]; then
         debug_log "No LUKS devices found"
         echo "false"
@@ -60,23 +64,43 @@ check_hardware_keys_exist() {
         dump_output=$(cryptsetup luksDump "$device" 2>/dev/null)
         
         if [[ -n "$dump_output" ]]; then
-            # Look for different possible patterns
-            if echo "$dump_output" | grep -qi "unraid-derived\|hardware-derived\|Hardware-derived"; then
-                debug_log "Found hardware-derived token on $device"
+            debug_log "Got luksDump output for $device, checking for tokens..."
+            
+            # Look for different possible patterns (case-insensitive)
+            if echo "$dump_output" | grep -qi "unraid-derived\|hardware-derived"; then
+                debug_log "Found hardware-derived token via grep on $device"
                 echo "true"
                 return 0
             fi
             
-            # Also check if luks_management.sh finds derived slots
+            # Check for JSON token structure
+            if echo "$dump_output" | grep -q '"type".*"unraid-derived"'; then
+                debug_log "Found unraid-derived JSON token on $device"
+                echo "true"
+                return 0
+            fi
+            
+            # Use the main script's working detection logic
             local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
             if [[ -f "$luks_script" ]]; then
-                # Use the working detection logic from the main script
-                if echo "$dump_output" | grep -q '"type".*"unraid-derived"'; then
-                    debug_log "Found unraid-derived JSON token on $device"
-                    echo "true"
-                    return 0
+                debug_log "Using main LUKS script to check derived slots on $device"
+                
+                # Source the find_unraid_derived_slots function from the main script
+                if source "$luks_script" 2>/dev/null; then
+                    # Try to use the main script's detection function
+                    local derived_slots
+                    derived_slots=$(find_unraid_derived_slots "$device" 2>/dev/null)
+                    if [[ -n "$derived_slots" ]]; then
+                        debug_log "Main script found derived slots on $device: $derived_slots"
+                        echo "true"
+                        return 0
+                    fi
                 fi
             fi
+            
+            debug_log "No hardware-derived tokens found on $device"
+        else
+            debug_log "No luksDump output for $device"
         fi
     done
     
@@ -152,19 +176,35 @@ test_hardware_keys_work() {
 get_hardware_fingerprint() {
     debug_log "Getting hardware fingerprint..."
     
-    # Get motherboard serial
-    local motherboard_id
-    motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
-    
-    # Get gateway MAC
-    local gateway_mac
-    gateway_mac=$(ip route show default | head -1 | awk '{print $3}' | xargs -I {} arp -n {} 2>/dev/null | awk '{print $3}' | head -1)
-    
-    if [[ -n "$motherboard_id" ]] && [[ -n "$gateway_mac" ]]; then
-        echo "MB:${motherboard_id} / GW:${gateway_mac}"
+    # Use the same method as fetch_key.sh to ensure consistency
+    local fetch_key_script="$PERSISTENT_DIR/fetch_key"
+    if [[ -f "$fetch_key_script" ]]; then
+        # Use fetch_key script to get hardware info (it has the working logic)
+        debug_log "Using fetch_key script for hardware detection"
+        
+        # Extract hardware info from the fetch_key script output
+        local motherboard_id gateway_mac
+        
+        # Get motherboard serial (same method as fetch_key.sh)
+        motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
+        if [[ -z "$motherboard_id" ]] || [[ "$motherboard_id" == "Not Specified" ]] || [[ "$motherboard_id" == "000000000" ]]; then
+            # Try alternative methods
+            motherboard_id=$(dmidecode -s system-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
+        fi
+        
+        # Get gateway MAC (same method as fetch_key.sh)  
+        gateway_mac=$(ip route show default | head -1 | awk '{print $3}' | xargs -I {} arp -n {} 2>/dev/null | awk '{print $3}' | head -1)
+        
+        debug_log "Detected hardware: MB='$motherboard_id' GW='$gateway_mac'"
+        
+        if [[ -n "$motherboard_id" ]] && [[ -n "$gateway_mac" ]] && [[ "$motherboard_id" != "000000000" ]]; then
+            echo "MB:${motherboard_id} / GW:${gateway_mac}"
+        else
+            echo "unknown (MB:${motherboard_id:-none} / GW:${gateway_mac:-none})"
+        fi
     else
-        debug_log "Failed to get hardware components: MB='$motherboard_id' GW='$gateway_mac'"
-        echo "unknown"
+        debug_log "fetch_key script not found at $fetch_key_script"
+        echo "unknown (script not found)"
     fi
 }
 
