@@ -152,6 +152,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     <li><button onclick="showTab('auto-start')" id="tab-auto-start" class="active"><i class="fa fa-play"></i>Auto Start</button></li>
     <li><button onclick="showTab('luks-headers')" id="tab-luks-headers"><i class="fa fa-shield"></i>LUKS Headers</button></li>
     <li><button onclick="showTab('encryption-info')" id="tab-encryption-info"><i class="fa fa-info"></i>Encryption Info</button></li>
+    <li><button onclick="showTab('status')" id="tab-status"><i class="fa fa-terminal"></i>Status</button></li>
   </ul>
 </div>
 
@@ -443,14 +444,28 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   </div>
 </div>
 
+<div id="content-status" class="tab-content">
+  <h2><i class="fa fa-terminal"></i> Status</h2>
+  
+  <p>Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.</p>
+  
+  <h3>Current Operation Status</h3>
+  
+  <dl>
+    <dt>&nbsp;</dt>
+    <dd>
+      <span><button type="button" onclick="clearStatus()">Clear Output</button></span>
+    </dd>
+  </dl>
 
-<!-- Hidden output area used by all tabs -->
-<div id="statusOutput" style="display: none; padding: 15px; border-radius: 5px; border: 1px solid #ccc; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 12px; margin-top: 15px;"></div>
+  <!-- Loading Spinner for status tab -->
+  <div id="status-loading" style="display: none; text-align: center; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #ccc;">
+    <div class="spinner" style="margin: 0 auto 10px auto; width: 120px; height: 70px;"></div>
+    <div id="loading-message" style="font-size: 16px;">Processing request...</div>
+  </div>
 
-<!-- Loading Spinner (hidden by default) -->
-<div id="status-loading" style="display: none; text-align: center; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #ccc;">
-  <div class="spinner" style="margin: 0 auto 10px auto; width: 120px; height: 70px;"></div>
-  <div id="loading-message" style="font-size: 16px;">Processing request...</div>
+  <!-- Main status output area -->
+  <pre id="statusOutput" style="padding: 15px; border-radius: 5px; border: 1px solid #ccc; min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">No operations performed yet. Output from all plugin operations will appear here.</pre>
 </div>
 
 <script>
@@ -668,6 +683,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       success: function(data) {
         console.log('DEBUG: AJAX success, response length:', data.length);
         console.log('DEBUG: Response data:', data);
+        
+        // Always show output in Status tab
+        showTab('status');
         setStatus(data);
         
         // Use shared download detection function
@@ -684,7 +702,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           setTimeout(function() {
             hideSetupForm();
             loadSmartStatus();
-          }, 2000); // 2 second delay to let user see the success message
+            // Return to Auto Start tab to show new status
+            showTab('auto-start');
+          }, 3000); // 3 second delay to let user see the success message
         }
       },
       error: function(xhr, status, error) {
@@ -826,10 +846,12 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function showStatusInTab(message) {
     let statusOutput = document.getElementById('statusOutput');
     
-    // Show the status output area
-    statusOutput.style.display = 'block';
+    // Update the status content (statusOutput is always visible in Status tab)
     statusOutput.textContent = message;
     statusOutput.scrollTop = statusOutput.scrollHeight;
+    
+    // Also show in Status tab for full output
+    showTab('status');
   }
 
   function runHeadersBackup() {
@@ -909,6 +931,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       type: 'POST',
       data: postData,
       success: function(data) {
+        // Always show output in Status tab
+        showTab('status');
         setStatus(data);
         
         // Check if we need to download a backup file

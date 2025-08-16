@@ -38,78 +38,137 @@ verbose_log() {
 
 # Check if hardware keys have been generated before
 check_hardware_keys_exist() {
-    # Check if we have evidence of previous key generation
-    # This could be from LUKS token metadata or successful previous unlocks
+    # Check if we have evidence of previous key generation by looking for unraid-derived tokens
+    debug_log "Checking for existing hardware keys..."
     
-    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
-    if [[ ! -f "$luks_script" ]]; then
+    # Find LUKS devices to check
+    local luks_devices=()
+    mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
+    
+    if [[ ${#luks_devices[@]} -eq 0 ]]; then
+        debug_log "No LUKS devices found"
         echo "false"
         return 1
     fi
     
-    # Use the LUKS management script to check for existing derived slots
-    local result
-    result=$("$luks_script" check_derived_keys 2>/dev/null)
-    if [[ $? -eq 0 ]] && [[ "$result" =~ "found" ]]; then
-        echo "true"
-        return 0
-    else
-        echo "false"
-        return 1
-    fi
+    # Check each device for unraid-derived tokens
+    for device in "${luks_devices[@]}"; do
+        debug_log "Checking device: $device"
+        
+        # Use cryptsetup to check for LUKS2 tokens
+        if cryptsetup luksDump "$device" 2>/dev/null | grep -q "unraid-derived"; then
+            debug_log "Found unraid-derived token on $device"
+            echo "true"
+            return 0
+        fi
+    done
+    
+    debug_log "No unraid-derived tokens found"
+    echo "false"
+    return 1
 }
 
 # Test if current hardware keys can unlock LUKS devices
 test_hardware_keys_work() {
-    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
-    if [[ ! -f "$luks_script" ]]; then
+    debug_log "Testing if current hardware keys work..."
+    
+    # Generate current hardware key
+    local fetch_key_script="$PERSISTENT_DIR/fetch_key"
+    if [[ ! -f "$fetch_key_script" ]]; then
+        debug_log "fetch_key script not found"
         echo "false"
         return 1
     fi
     
-    # Test hardware key generation and validation
-    local result
-    result=$("$luks_script" test_hardware_key 2>/dev/null)
-    if [[ $? -eq 0 ]] && [[ "$result" =~ "success" ]]; then
-        echo "true"
-        return 0
-    else
+    # Get current hardware-derived key
+    local current_key
+    current_key=$("$fetch_key_script" 2>/dev/null)
+    if [[ -z "$current_key" ]]; then
+        debug_log "Failed to generate current hardware key"
         echo "false"
         return 1
     fi
+    
+    # Find LUKS devices to test
+    local luks_devices=()
+    mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
+    
+    if [[ ${#luks_devices[@]} -eq 0 ]]; then
+        debug_log "No LUKS devices found"
+        echo "false"
+        return 1
+    fi
+    
+    # Test if current key works on any device with unraid-derived tokens
+    for device in "${luks_devices[@]}"; do
+        debug_log "Testing key on device: $device"
+        
+        # Check if device has unraid-derived tokens
+        if cryptsetup luksDump "$device" 2>/dev/null | grep -q "unraid-derived"; then
+            # Test the key (this just validates, doesn't actually unlock)
+            if echo "$current_key" | cryptsetup luksOpen --test-passphrase "$device" 2>/dev/null; then
+                debug_log "Hardware key works on $device"
+                echo "true"
+                return 0
+            fi
+        fi
+    done
+    
+    debug_log "Hardware key doesn't work on any device"
+    echo "false"
+    return 1
 }
 
 # Get current hardware fingerprint for display
 get_hardware_fingerprint() {
-    local fetch_key_script="$PERSISTENT_DIR/fetch_key"
-    if [[ ! -f "$fetch_key_script" ]]; then
-        echo "unknown"
-        return 1
-    fi
+    debug_log "Getting hardware fingerprint..."
     
-    # Extract hardware info using the fetch_key script
-    local output
-    output=$("$fetch_key_script" info 2>/dev/null)
-    if [[ $? -eq 0 ]]; then
-        echo "$output"
+    # Get motherboard serial
+    local motherboard_id
+    motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
+    
+    # Get gateway MAC
+    local gateway_mac
+    gateway_mac=$(ip route show default | head -1 | awk '{print $3}' | xargs -I {} arp -n {} 2>/dev/null | awk '{print $3}' | head -1)
+    
+    if [[ -n "$motherboard_id" ]] && [[ -n "$gateway_mac" ]]; then
+        echo "MB:${motherboard_id} / GW:${gateway_mac}"
     else
+        debug_log "Failed to get hardware components: MB='$motherboard_id' GW='$gateway_mac'"
         echo "unknown"
     fi
 }
 
 # Get list of LUKS devices that can be unlocked
 get_unlockable_devices() {
-    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
-    if [[ ! -f "$luks_script" ]]; then
+    debug_log "Getting list of unlockable LUKS devices..."
+    
+    # Find all LUKS devices
+    local luks_devices=()
+    mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
+    
+    if [[ ${#luks_devices[@]} -eq 0 ]]; then
+        debug_log "No LUKS devices found"
         echo "none"
         return 1
     fi
     
-    # Get list of LUKS devices
-    local result
-    result=$("$luks_script" list_devices 2>/dev/null)
-    if [[ $? -eq 0 ]] && [[ -n "$result" ]]; then
-        echo "$result"
+    # Count devices with unraid-derived tokens
+    local unlockable_count=0
+    local device_list=""
+    
+    for device in "${luks_devices[@]}"; do
+        if cryptsetup luksDump "$device" 2>/dev/null | grep -q "unraid-derived"; then
+            unlockable_count=$((unlockable_count + 1))
+            if [[ -n "$device_list" ]]; then
+                device_list="$device_list, "
+            fi
+            device_list="$device_list$(basename "$device")"
+        fi
+    done
+    
+    if [[ $unlockable_count -gt 0 ]]; then
+        echo "$unlockable_count device(s): $device_list"
     else
         echo "none"
     fi
