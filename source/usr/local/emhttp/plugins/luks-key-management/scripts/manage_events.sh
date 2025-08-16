@@ -128,22 +128,28 @@ test_hardware_keys_work() {
         return 1
     fi
     
-    # Generate current hardware key using fetch_key
-    local fetch_key_script="$PERSISTENT_DIR/fetch_key"
-    if [[ ! -f "$fetch_key_script" ]]; then
-        debug_log "fetch_key script not found"
+    # Generate current hardware key using same method as fetch_key.sh
+    debug_log "Generating hardware key using same method as fetch_key.sh"
+    
+    # Get hardware components (same method as fetch_key.sh)
+    local motherboard_id mac_address
+    motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
+    if [[ -z "$motherboard_id" ]] || [[ "$motherboard_id" == "Not Specified" ]] || [[ "$motherboard_id" == "000000000" ]]; then
+        motherboard_id=$(dmidecode -s system-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
+    fi
+    
+    mac_address=$(ip route show default | head -1 | awk '{print $3}' | xargs -I {} arp -n {} 2>/dev/null | awk '{print $3}' | head -1)
+    
+    if [[ -z "$motherboard_id" ]] || [[ "$motherboard_id" == "unknown" ]] || [[ -z "$mac_address" ]]; then
+        debug_log "Failed to get hardware components: MB='$motherboard_id' MAC='$mac_address'"
         echo "false"
         return 1
     fi
     
-    # Get current hardware-derived key
+    # Generate the key (same method as fetch_key.sh line 103)
     local current_key
-    current_key=$("$fetch_key_script" 2>/dev/null)
-    if [[ -z "$current_key" ]]; then
-        debug_log "Failed to generate current hardware key"
-        echo "false"
-        return 1
-    fi
+    current_key=$(echo -n "${motherboard_id}_${mac_address}" | sha256sum | awk '{print $1}')
+    debug_log "Generated hardware key from MB:${motherboard_id} / MAC:${mac_address}"
     
     # Find LUKS devices to test
     local luks_devices=()
@@ -155,17 +161,29 @@ test_hardware_keys_work() {
         return 1
     fi
     
-    # Test if current key works on any LUKS device
+    # Create temporary file for key testing (same method as old plugin)
+    local temp_keyfile="/tmp/luks_test_key_$$"
+    debug_log "Creating temporary keyfile: $temp_keyfile"
+    
+    # Write key to file with no newline (same as old plugin: echo -n)
+    echo -n "$current_key" > "$temp_keyfile"
+    
+    # Test if current key works on any LUKS device using file method
     for device in "${luks_devices[@]}"; do
-        debug_log "Testing hardware key on device: $device"
+        debug_log "Testing hardware key on device: $device using file method"
         
-        # Test the key (this just validates, doesn't actually unlock)
-        if echo "$current_key" | cryptsetup luksOpen --test-passphrase "$device" 2>/dev/null; then
+        # Test the key using --key-file method (same as old plugin)
+        if cryptsetup luksOpen --test-passphrase --key-file="$temp_keyfile" "$device" &>/dev/null; then
             debug_log "Hardware key works on $device"
+            # Clean up temp file
+            rm -f "$temp_keyfile"
             echo "true"
             return 0
         fi
     done
+    
+    # Clean up temp file
+    rm -f "$temp_keyfile"
     
     debug_log "Hardware key doesn't work on any device"
     echo "false"
