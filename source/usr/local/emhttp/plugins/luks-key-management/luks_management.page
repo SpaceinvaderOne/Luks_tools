@@ -166,6 +166,21 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     <strong>Loading system status...</strong>
   </div>
   
+  <!-- Manual refresh option if smart detection fails -->
+  <div id="manualRefreshOption" style="display: none; margin: 20px 0; padding: 15px; border-radius: 5px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+    <h3 style="margin-top: 0; color: #ffa726;"><i class="fa fa-refresh"></i> Status Detection Issue</h3>
+    <p>The automatic status detection encountered an issue. You can manually refresh the detection or proceed with setup.</p>
+    
+    <dl>
+      <dt>&nbsp;</dt>
+      <dd>
+        <span><button type="button" onclick="loadSmartStatus()" style="background: #ffa726; color: white; padding: 10px 20px; margin-right: 10px;">Retry Detection</button></span>
+        <span><button type="button" onclick="showSetupForm()">Manual Setup</button></span>
+        <div class="description">If detection continues to fail, you can proceed with manual hardware key setup.</div>
+      </dd>
+    </dl>
+  </div>
+  
   <!-- State: Setup Required -->
   <div id="stateSetupRequired" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
@@ -1539,16 +1554,34 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       method: 'GET',
       credentials: 'same-origin'
     })
-    .then(response => response.json())
-    .then(data => {
-      console.log('DEBUG: Smart status response:', data);
-      displaySmartState(data);
+    .then(response => {
+      console.log('DEBUG: Smart status HTTP response status:', response.status);
+      console.log('DEBUG: Smart status response headers:', response.headers);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.text(); // Get as text first to see raw response
+    })
+    .then(text => {
+      console.log('DEBUG: Smart status raw response text:', text);
+      
+      try {
+        const data = JSON.parse(text);
+        console.log('DEBUG: Smart status parsed JSON:', data);
+        displaySmartState(data);
+      } catch (parseError) {
+        console.error('DEBUG: JSON parse error:', parseError);
+        throw new Error(`Invalid JSON response: ${text.substring(0, 200)}...`);
+      }
     })
     .catch(error => {
       console.error('DEBUG: Smart status error:', error);
-      // Show error state
-      document.getElementById('smartStatusLoading').innerHTML = 
-        '<strong style="color: #ff6b6b;">Error loading system status. Please refresh the page.</strong>';
+      // Hide loading indicator and show manual refresh option
+      document.getElementById('smartStatusLoading').style.display = 'none';
+      document.getElementById('manualRefreshOption').style.display = 'block';
+      hideAllStateCards();
     });
   }
   
@@ -1596,6 +1629,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     document.getElementById('stateSetupRequired').style.display = 'none';
     document.getElementById('stateReady').style.display = 'none';
     document.getElementById('stateRefreshNeeded').style.display = 'none';
+    document.getElementById('manualRefreshOption').style.display = 'none';
   }
   
   function updateAutoUnlockToggle(isEnabled) {
@@ -1716,6 +1750,39 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       cancelButton.remove();
     }
   }
+
+  // Manual test functions for debugging (can be called from browser console)
+  window.testSmartDetection = function() {
+    console.log('=== Manual Smart Detection Test ===');
+    loadSmartStatus();
+  };
+  
+  window.testDetectionFunction = function(functionName) {
+    console.log('=== Manual Detection Function Test: ' + functionName + ' ===');
+    
+    fetch('/plugins/luks-key-management/scripts/run_event_script.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'action=' + encodeURIComponent(functionName) + (csrf_token ? '&csrf_token=' + encodeURIComponent(csrf_token) : '')
+    })
+    .then(response => response.text())
+    .then(data => {
+      console.log('Response for ' + functionName + ':', data);
+    })
+    .catch(error => {
+      console.error('Error testing ' + functionName + ':', error);
+    });
+  };
+  
+  window.testAllDetectionFunctions = function() {
+    console.log('=== Testing All Detection Functions ===');
+    const functions = ['check_keys_exist', 'test_keys_work', 'hardware_fingerprint', 'unlockable_devices', 'system_state'];
+    functions.forEach(func => {
+      setTimeout(() => testDetectionFunction(func), 500);
+    });
+  };
 
   // Initialize descriptions and status on page load
   document.addEventListener('DOMContentLoaded', function() {

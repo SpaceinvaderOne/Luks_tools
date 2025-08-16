@@ -34,6 +34,14 @@ function executeCommand($action) {
         
         $return_code = proc_close($process);
         
+        // Log debug information
+        error_log("LUKS Debug: Command: " . implode(' ', $command));
+        error_log("LUKS Debug: Return code: " . $return_code);
+        error_log("LUKS Debug: Output: " . $output);
+        if (!empty($errors)) {
+            error_log("LUKS Debug: Errors: " . $errors);
+        }
+        
         if ($return_code === 0) {
             return $output;
         } else {
