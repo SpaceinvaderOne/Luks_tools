@@ -27,9 +27,8 @@ error_exit() {
 }
 
 debug_log() {
-    # Send debug output to both stderr and stdout for visibility
+    # Send debug output only to stderr to prevent contamination of function results
     echo "DEBUG: $1" >&2
-    echo "DEBUG: $1"
 }
 
 verbose_log() {
@@ -43,9 +42,9 @@ check_hardware_keys_exist() {
     # Check if we have evidence of previous key generation by looking for hardware-derived entries
     debug_log "Checking for existing hardware keys..."
     
-    # Find LUKS devices to check
+    # Find LUKS devices to check (same method as old working plugin)
     local luks_devices=()
-    mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
+    mapfile -t luks_devices < <(lsblk --noheadings --pairs --output NAME,TYPE | grep 'TYPE="crypt"' | awk -F'"' '{print "/dev/" $2}' 2>/dev/null)
     
     debug_log "Found ${#luks_devices[@]} LUKS devices: ${luks_devices[*]}"
     
@@ -151,9 +150,9 @@ test_hardware_keys_work() {
     current_key=$(echo -n "${motherboard_id}_${mac_address}" | sha256sum | awk '{print $1}')
     debug_log "Generated hardware key from MB:${motherboard_id} / MAC:${mac_address}"
     
-    # Find LUKS devices to test
+    # Find LUKS devices to test (same method as old working plugin)
     local luks_devices=()
-    mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
+    mapfile -t luks_devices < <(lsblk --noheadings --pairs --output NAME,TYPE | grep 'TYPE="crypt"' | awk -F'"' '{print "/dev/" $2}' 2>/dev/null)
     
     if [[ ${#luks_devices[@]} -eq 0 ]]; then
         debug_log "No LUKS devices found"
@@ -230,9 +229,9 @@ get_hardware_fingerprint() {
 get_unlockable_devices() {
     debug_log "Getting list of unlockable LUKS devices..."
     
-    # Find all LUKS devices
+    # Find all LUKS devices (same method as old working plugin)
     local luks_devices=()
-    mapfile -t luks_devices < <(lsblk -rno NAME,FSTYPE | awk '$2=="crypto_LUKS" {print "/dev/"$1}' 2>/dev/null)
+    mapfile -t luks_devices < <(lsblk --noheadings --pairs --output NAME,TYPE | grep 'TYPE="crypt"' | awk -F'"' '{print "/dev/" $2}' 2>/dev/null)
     
     if [[ ${#luks_devices[@]} -eq 0 ]]; then
         debug_log "No LUKS devices found"
