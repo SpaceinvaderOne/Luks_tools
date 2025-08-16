@@ -30,6 +30,10 @@ debug_log() {
     echo "DEBUG: $1" >&2
 }
 
+verbose_log() {
+    echo "VERBOSE: $1"
+}
+
 # Load plugin configuration
 load_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -91,45 +95,150 @@ get_current_status() {
 enable_auto_unlock() {
     echo "Enabling LUKS auto-unlock..."
     
+    # Enhanced debugging and verification
+    verbose_log "Starting enable_auto_unlock process"
+    verbose_log "Source directory: $PERSISTENT_DIR"
+    verbose_log "Target starting dir: $EVENT_STARTING_DIR"
+    verbose_log "Target started dir: $EVENT_STARTED_DIR"
+    
+    # Check if source directory exists
+    if [[ ! -d "$PERSISTENT_DIR" ]]; then
+        error_exit "Source directory does not exist: $PERSISTENT_DIR"
+    fi
+    verbose_log "Source directory exists: $PERSISTENT_DIR"
+    
+    # Create event directories if they don't exist
+    verbose_log "Creating event directories if needed..."
+    mkdir -p "$EVENT_STARTING_DIR"
+    mkdir -p "$EVENT_STARTED_DIR"
+    
+    # Verify directories were created
+    if [[ ! -d "$EVENT_STARTING_DIR" ]]; then
+        error_exit "Failed to create starting event directory: $EVENT_STARTING_DIR"
+    fi
+    if [[ ! -d "$EVENT_STARTED_DIR" ]]; then
+        error_exit "Failed to create started event directory: $EVENT_STARTED_DIR"
+    fi
+    verbose_log "Event directories verified to exist"
+    
+    # Test write permissions
+    verbose_log "Testing write permissions..."
+    if ! touch "$EVENT_STARTING_DIR/.test" 2>/dev/null; then
+        error_exit "No write permission to starting event directory: $EVENT_STARTING_DIR"
+    fi
+    rm -f "$EVENT_STARTING_DIR/.test"
+    
+    if ! touch "$EVENT_STARTED_DIR/.test" 2>/dev/null; then
+        error_exit "No write permission to started event directory: $EVENT_STARTED_DIR"
+    fi
+    rm -f "$EVENT_STARTED_DIR/.test"
+    verbose_log "Write permissions verified"
+    
     verify_prerequisites
+    
+    # Check source files exist and are readable
+    verbose_log "Verifying source files..."
+    if [[ ! -f "$FETCH_KEY_SOURCE" ]]; then
+        error_exit "Source file does not exist: $FETCH_KEY_SOURCE"
+    fi
+    if [[ ! -r "$FETCH_KEY_SOURCE" ]]; then
+        error_exit "Source file is not readable: $FETCH_KEY_SOURCE"
+    fi
+    if [[ ! -f "$DELETE_KEY_SOURCE" ]]; then
+        error_exit "Source file does not exist: $DELETE_KEY_SOURCE"
+    fi
+    if [[ ! -r "$DELETE_KEY_SOURCE" ]]; then
+        error_exit "Source file is not readable: $DELETE_KEY_SOURCE"
+    fi
+    verbose_log "Source files verified: both exist and are readable"
     
     # Remove any existing files first
     if [[ -f "$FETCH_KEY_EVENT" ]]; then
         rm "$FETCH_KEY_EVENT"
-        debug_log "Removed existing fetch_key file"
+        verbose_log "Removed existing fetch_key file"
     fi
     
     if [[ -f "$DELETE_KEY_EVENT" ]]; then
         rm "$DELETE_KEY_EVENT"
-        debug_log "Removed existing delete_key file"
+        verbose_log "Removed existing delete_key file"
     fi
     
-    # Copy files to event directories (same as old working plugin)
-    install -D "$FETCH_KEY_SOURCE" "$FETCH_KEY_EVENT"
-    if [[ $? -eq 0 ]]; then
-        echo "   → Created fetch_key event handler"
-        debug_log "Copied file: $FETCH_KEY_SOURCE -> $FETCH_KEY_EVENT"
+    # Copy files to event directories with enhanced error handling
+    verbose_log "Attempting to copy fetch_key using install -D..."
+    install_output=$(install -D "$FETCH_KEY_SOURCE" "$FETCH_KEY_EVENT" 2>&1)
+    install_result=$?
+    
+    if [[ $install_result -eq 0 ]]; then
+        verbose_log "install -D succeeded for fetch_key"
     else
-        error_exit "Failed to copy fetch_key to event directory"
+        verbose_log "install -D failed for fetch_key. Output: $install_output"
+        verbose_log "Attempting fallback copy method..."
+        
+        if cp "$FETCH_KEY_SOURCE" "$FETCH_KEY_EVENT" 2>&1; then
+            verbose_log "Fallback copy succeeded for fetch_key"
+        else
+            error_exit "Both install -D and cp failed for fetch_key. Last error: $install_output"
+        fi
     fi
     
-    install -D "$DELETE_KEY_SOURCE" "$DELETE_KEY_EVENT"
-    if [[ $? -eq 0 ]]; then
-        echo "   → Created delete_key event handler"
-        debug_log "Copied file: $DELETE_KEY_SOURCE -> $DELETE_KEY_EVENT"
-    else
-        error_exit "Failed to copy delete_key to event directory"
+    # Verify fetch_key was created
+    if [[ ! -f "$FETCH_KEY_EVENT" ]]; then
+        error_exit "fetch_key file was not created at: $FETCH_KEY_EVENT"
     fi
+    echo "   → Created fetch_key event handler"
+    verbose_log "Verified fetch_key file exists at: $FETCH_KEY_EVENT"
+    
+    verbose_log "Attempting to copy delete_key using install -D..."
+    install_output=$(install -D "$DELETE_KEY_SOURCE" "$DELETE_KEY_EVENT" 2>&1)
+    install_result=$?
+    
+    if [[ $install_result -eq 0 ]]; then
+        verbose_log "install -D succeeded for delete_key"
+    else
+        verbose_log "install -D failed for delete_key. Output: $install_output"
+        verbose_log "Attempting fallback copy method..."
+        
+        if cp "$DELETE_KEY_SOURCE" "$DELETE_KEY_EVENT" 2>&1; then
+            verbose_log "Fallback copy succeeded for delete_key"
+        else
+            error_exit "Both install -D and cp failed for delete_key. Last error: $install_output"
+        fi
+    fi
+    
+    # Verify delete_key was created
+    if [[ ! -f "$DELETE_KEY_EVENT" ]]; then
+        error_exit "delete_key file was not created at: $DELETE_KEY_EVENT"
+    fi
+    echo "   → Created delete_key event handler"
+    verbose_log "Verified delete_key file exists at: $DELETE_KEY_EVENT"
     
     # Ensure copied files are executable
+    verbose_log "Setting executable permissions..."
     chmod +x "$FETCH_KEY_EVENT" "$DELETE_KEY_EVENT"
-    debug_log "Set executable permissions on event files"
+    
+    # Verify permissions were set
+    if [[ ! -x "$FETCH_KEY_EVENT" ]]; then
+        error_exit "Failed to set executable permission on: $FETCH_KEY_EVENT"
+    fi
+    if [[ ! -x "$DELETE_KEY_EVENT" ]]; then
+        error_exit "Failed to set executable permission on: $DELETE_KEY_EVENT"
+    fi
+    verbose_log "Executable permissions verified"
     
     # Update config
     save_config "true"
+    verbose_log "Config saved: AUTO_UNLOCK_ENABLED=true"
+    
+    # Final verification
+    verbose_log "Performing final verification..."
+    local final_status=$(get_current_status)
+    if [[ "$final_status" != "enabled" ]]; then
+        error_exit "Final verification failed. Status: $final_status"
+    fi
     
     echo "   → Auto-unlock enabled successfully"
     echo "   → Hardware keys will be applied at next boot"
+    verbose_log "Enable operation completed successfully"
 }
 
 # Disable auto-unlock by removing files
