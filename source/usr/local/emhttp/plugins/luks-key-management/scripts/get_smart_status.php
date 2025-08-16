@@ -71,6 +71,14 @@ $status['keys_exist'] = ($keys_exist === 'true');
 $keys_work = executeCommand('test_keys_work');
 $status['keys_work'] = ($keys_work === 'true');
 
+// Add debug information
+$status['debug'] = array(
+    'keys_exist_raw' => $keys_exist,
+    'keys_work_raw' => $keys_work,
+    'system_state_raw' => $system_state,
+    'auto_unlock_raw' => $auto_unlock_status
+);
+
 // Add timestamp
 $status['timestamp'] = date('Y-m-d H:i:s');
 

@@ -1562,7 +1562,10 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     const hardwareFingerprint = statusData.hardware_fingerprint || 'unknown';
     const unlockableDevices = statusData.unlockable_devices || 'none';
     
-    console.log('DEBUG: Displaying state:', systemState, 'Auto-unlock enabled:', autoUnlockEnabled);
+    console.log('DEBUG: Smart status data received:', statusData);
+    console.log('DEBUG: System state:', systemState, 'Auto-unlock enabled:', autoUnlockEnabled);
+    console.log('DEBUG: Keys exist:', statusData.keys_exist, 'Keys work:', statusData.keys_work);
+    console.log('DEBUG: Debug info:', statusData.debug);
     
     switch (systemState) {
       case 'setup_required':

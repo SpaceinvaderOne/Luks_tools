@@ -38,7 +38,7 @@ verbose_log() {
 
 # Check if hardware keys have been generated before
 check_hardware_keys_exist() {
-    # Check if we have evidence of previous key generation by looking for unraid-derived tokens
+    # Check if we have evidence of previous key generation by looking for hardware-derived entries
     debug_log "Checking for existing hardware keys..."
     
     # Find LUKS devices to check
@@ -51,19 +51,36 @@ check_hardware_keys_exist() {
         return 1
     fi
     
-    # Check each device for unraid-derived tokens
+    # Check each device for hardware-derived tokens or metadata
     for device in "${luks_devices[@]}"; do
         debug_log "Checking device: $device"
         
-        # Use cryptsetup to check for LUKS2 tokens
-        if cryptsetup luksDump "$device" 2>/dev/null | grep -q "unraid-derived"; then
-            debug_log "Found unraid-derived token on $device"
-            echo "true"
-            return 0
+        # Check for multiple patterns that indicate hardware-derived keys
+        local dump_output
+        dump_output=$(cryptsetup luksDump "$device" 2>/dev/null)
+        
+        if [[ -n "$dump_output" ]]; then
+            # Look for different possible patterns
+            if echo "$dump_output" | grep -qi "unraid-derived\|hardware-derived\|Hardware-derived"; then
+                debug_log "Found hardware-derived token on $device"
+                echo "true"
+                return 0
+            fi
+            
+            # Also check if luks_management.sh finds derived slots
+            local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
+            if [[ -f "$luks_script" ]]; then
+                # Use the working detection logic from the main script
+                if echo "$dump_output" | grep -q '"type".*"unraid-derived"'; then
+                    debug_log "Found unraid-derived JSON token on $device"
+                    echo "true"
+                    return 0
+                fi
+            fi
         fi
     done
     
-    debug_log "No unraid-derived tokens found"
+    debug_log "No hardware-derived tokens found"
     echo "false"
     return 1
 }
@@ -72,7 +89,22 @@ check_hardware_keys_exist() {
 test_hardware_keys_work() {
     debug_log "Testing if current hardware keys work..."
     
-    # Generate current hardware key
+    # First check if keys exist at all
+    if [[ "$(check_hardware_keys_exist)" == "false" ]]; then
+        debug_log "No hardware keys exist to test"
+        echo "false"
+        return 1
+    fi
+    
+    # Use the main LUKS script to test - it has working logic
+    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
+    if [[ ! -f "$luks_script" ]]; then
+        debug_log "LUKS management script not found"
+        echo "false"
+        return 1
+    fi
+    
+    # Generate current hardware key using fetch_key
     local fetch_key_script="$PERSISTENT_DIR/fetch_key"
     if [[ ! -f "$fetch_key_script" ]]; then
         debug_log "fetch_key script not found"
@@ -99,18 +131,15 @@ test_hardware_keys_work() {
         return 1
     fi
     
-    # Test if current key works on any device with unraid-derived tokens
+    # Test if current key works on any LUKS device
     for device in "${luks_devices[@]}"; do
-        debug_log "Testing key on device: $device"
+        debug_log "Testing hardware key on device: $device"
         
-        # Check if device has unraid-derived tokens
-        if cryptsetup luksDump "$device" 2>/dev/null | grep -q "unraid-derived"; then
-            # Test the key (this just validates, doesn't actually unlock)
-            if echo "$current_key" | cryptsetup luksOpen --test-passphrase "$device" 2>/dev/null; then
-                debug_log "Hardware key works on $device"
-                echo "true"
-                return 0
-            fi
+        # Test the key (this just validates, doesn't actually unlock)
+        if echo "$current_key" | cryptsetup luksOpen --test-passphrase "$device" 2>/dev/null; then
+            debug_log "Hardware key works on $device"
+            echo "true"
+            return 0
         fi
     done
     
