@@ -2,10 +2,10 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.08.16.1223">
+<!ENTITY plugin_version       "2025.08.16.1352">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.08.16.1223-x86_64.txz">
-<!ENTITY plugin_md5           "78bcb899e99c512cf3c45be06af08d54">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.08.16.1352-x86_64.txz">
+<!ENTITY plugin_md5           "6d5bede3bf68656298ff45747b11228d">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
@@ -135,12 +135,12 @@ echo "----------------------------------------------------"
 EVENT_STARTING_DIR="/usr/local/emhttp/webGui/event/starting"
 EVENT_STARTED_DIR="/usr/local/emhttp/webGui/event/started"
 
-if [[ -L "$EVENT_STARTING_DIR/fetch_key" ]]; then
+if [[ -f "$EVENT_STARTING_DIR/fetch_key" ]]; then
     rm "$EVENT_STARTING_DIR/fetch_key"
     echo " Removed fetch_key event script"
 fi
 
-if [[ -L "$EVENT_STARTED_DIR/delete_key" ]]; then
+if [[ -f "$EVENT_STARTED_DIR/delete_key" ]]; then
     rm "$EVENT_STARTED_DIR/delete_key"
     echo " Removed delete_key event script"
 fi

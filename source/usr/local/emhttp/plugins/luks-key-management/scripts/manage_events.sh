@@ -78,48 +78,52 @@ verify_prerequisites() {
     debug_log "Verified source scripts are executable"
 }
 
-# Check current auto-unlock status by examining symlinks
+# Check current auto-unlock status by examining actual files
 get_current_status() {
-    if [[ -L "$FETCH_KEY_EVENT" ]] && [[ -L "$DELETE_KEY_EVENT" ]]; then
+    if [[ -f "$FETCH_KEY_EVENT" ]] && [[ -f "$DELETE_KEY_EVENT" ]]; then
         echo "enabled"
     else
         echo "disabled"
     fi
 }
 
-# Enable auto-unlock by creating symlinks
+# Enable auto-unlock by copying files to event directories
 enable_auto_unlock() {
     echo "Enabling LUKS auto-unlock..."
     
     verify_prerequisites
     
-    # Remove any existing symlinks first
-    if [[ -L "$FETCH_KEY_EVENT" ]]; then
+    # Remove any existing files first
+    if [[ -f "$FETCH_KEY_EVENT" ]]; then
         rm "$FETCH_KEY_EVENT"
-        debug_log "Removed existing fetch_key symlink"
+        debug_log "Removed existing fetch_key file"
     fi
     
-    if [[ -L "$DELETE_KEY_EVENT" ]]; then
+    if [[ -f "$DELETE_KEY_EVENT" ]]; then
         rm "$DELETE_KEY_EVENT"
-        debug_log "Removed existing delete_key symlink"
+        debug_log "Removed existing delete_key file"
     fi
     
-    # Create new symlinks
-    ln -s "$FETCH_KEY_SOURCE" "$FETCH_KEY_EVENT"
+    # Copy files to event directories (same as old working plugin)
+    install -D "$FETCH_KEY_SOURCE" "$FETCH_KEY_EVENT"
     if [[ $? -eq 0 ]]; then
         echo "   → Created fetch_key event handler"
-        debug_log "Created symlink: $FETCH_KEY_EVENT -> $FETCH_KEY_SOURCE"
+        debug_log "Copied file: $FETCH_KEY_SOURCE -> $FETCH_KEY_EVENT"
     else
-        error_exit "Failed to create fetch_key symlink"
+        error_exit "Failed to copy fetch_key to event directory"
     fi
     
-    ln -s "$DELETE_KEY_SOURCE" "$DELETE_KEY_EVENT"
+    install -D "$DELETE_KEY_SOURCE" "$DELETE_KEY_EVENT"
     if [[ $? -eq 0 ]]; then
         echo "   → Created delete_key event handler"
-        debug_log "Created symlink: $DELETE_KEY_EVENT -> $DELETE_KEY_SOURCE"
+        debug_log "Copied file: $DELETE_KEY_SOURCE -> $DELETE_KEY_EVENT"
     else
-        error_exit "Failed to create delete_key symlink"
+        error_exit "Failed to copy delete_key to event directory"
     fi
+    
+    # Ensure copied files are executable
+    chmod +x "$FETCH_KEY_EVENT" "$DELETE_KEY_EVENT"
+    debug_log "Set executable permissions on event files"
     
     # Update config
     save_config "true"
@@ -128,24 +132,24 @@ enable_auto_unlock() {
     echo "   → Hardware keys will be applied at next boot"
 }
 
-# Disable auto-unlock by removing symlinks
+# Disable auto-unlock by removing files
 disable_auto_unlock() {
     echo "Disabling LUKS auto-unlock..."
     
     local changes_made=false
     
-    # Remove symlinks
-    if [[ -L "$FETCH_KEY_EVENT" ]]; then
+    # Remove files
+    if [[ -f "$FETCH_KEY_EVENT" ]]; then
         rm "$FETCH_KEY_EVENT"
         echo "   → Removed fetch_key event handler"
-        debug_log "Removed symlink: $FETCH_KEY_EVENT"
+        debug_log "Removed file: $FETCH_KEY_EVENT"
         changes_made=true
     fi
     
-    if [[ -L "$DELETE_KEY_EVENT" ]]; then
+    if [[ -f "$DELETE_KEY_EVENT" ]]; then
         rm "$DELETE_KEY_EVENT"
         echo "   → Removed delete_key event handler"
-        debug_log "Removed symlink: $DELETE_KEY_EVENT"
+        debug_log "Removed file: $DELETE_KEY_EVENT"
         changes_made=true
     fi
     
@@ -173,17 +177,15 @@ get_status() {
     local actual_status=$(get_current_status)
     echo "Event scripts status: $actual_status"
     
-    # Check individual symlinks
-    if [[ -L "$FETCH_KEY_EVENT" ]]; then
-        local target=$(readlink "$FETCH_KEY_EVENT")
-        echo "fetch_key event: enabled (-> $target)"
+    # Check individual files
+    if [[ -f "$FETCH_KEY_EVENT" ]]; then
+        echo "fetch_key event: enabled (file present)"
     else
         echo "fetch_key event: disabled"
     fi
     
-    if [[ -L "$DELETE_KEY_EVENT" ]]; then
-        local target=$(readlink "$DELETE_KEY_EVENT")
-        echo "delete_key event: enabled (-> $target)"
+    if [[ -f "$DELETE_KEY_EVENT" ]]; then
+        echo "delete_key event: enabled (file present)"
     else
         echo "delete_key event: disabled"
     fi
