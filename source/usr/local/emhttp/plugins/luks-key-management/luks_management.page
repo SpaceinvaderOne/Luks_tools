@@ -151,23 +151,50 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   <ul>
     <li><button onclick="showTab('auto-start')" id="tab-auto-start" class="active"><i class="fa fa-play"></i>Auto Start</button></li>
     <li><button onclick="showTab('luks-headers')" id="tab-luks-headers"><i class="fa fa-shield"></i>LUKS Headers</button></li>
-    <li><button onclick="showTab('go-file')" id="tab-go-file"><i class="fa fa-file-code-o"></i>Go File</button></li>
     <li><button onclick="showTab('encryption-info')" id="tab-encryption-info"><i class="fa fa-info"></i>Encryption Info</button></li>
-    <li><button onclick="showTab('change-key')" id="tab-change-key"><i class="fa fa-key"></i>Change Encryption Key</button></li>
-    <li><button onclick="showTab('status')" id="tab-status"><i class="fa fa-terminal"></i>Status</button></li>
   </ul>
 </div>
 
 <div id="content-auto-start" class="tab-content active">
   <h2><i class="fa fa-play"></i> Auto Start</h2>
   
-  <p>This tool provides complete auto-unlock setup in one action. It will backup your LUKS headers, refresh the hardware-derived key, and automatically enable auto-unlock at boot. Manual unlock is always possible using your original passphrase. Auto-unlock only works when the server runs on the original hardware and router.</p>
+  <p>This plugin manages LUKS auto-unlock using hardware-derived keys. The plugin automatically sets up event handlers during boot - no go file modification needed. Manual unlock is always possible using your original passphrase.</p>
   
-  <p><strong>Backup Security:</strong> When using passphrase authentication, header backups are encrypted with your LUKS passphrase. When using keyfile authentication, you can provide a custom password to encrypt the backup ZIP file for security.</p>
+  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #F15A2C;">
+    <strong>Current Status:</strong> <span id="autoUnlockStatus">Checking...</span>
+  </div>
+  
+  <h3>Auto-Unlock Control</h3>
+  
+  <dl>
+    <dt>Auto-Unlock Status</dt>
+    <dd>
+      <span><button type="button" onclick="refreshAutoUnlockStatus()">Refresh Status</button></span>
+      <div class="description">Check the current auto-unlock configuration status.</div>
+    </dd>
+  </dl>
+  
+  <dl>
+    <dt>Enable Auto-Unlock</dt>
+    <dd>
+      <span><button type="button" onclick="enableAutoUnlock()">Enable Auto-Unlock</button></span>
+      <div class="description">Enable automatic LUKS unlock at boot using hardware-derived keys.</div>
+    </dd>
+  </dl>
+  
+  <dl>
+    <dt>Disable Auto-Unlock</dt>
+    <dd>
+      <span><button type="button" onclick="disableAutoUnlock()">Disable Auto-Unlock</button></span>
+      <div class="description">Disable automatic LUKS unlock at boot. Manual unlock will be required.</div>
+    </dd>
+  </dl>
+  
+  <h3>Complete Setup (First Time)</h3>
+  
+  <p>Use this section for initial setup or to refresh hardware keys with header backup:</p>
   
   <form id="autostartForm">
-    <h3>Complete Auto-Unlock Setup</h3>
-    
     <dl>
       <dt>Existing Encryption Key</dt>
       <dd>
@@ -230,11 +257,10 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       </dd>
     </dl>
     
-    
     <dl>
       <dt>&nbsp;</dt>
       <dd>
-        <span><input type="submit" value="ENABLE AUTO-UNLOCK" onclick="runAutoStartSetup(); return false;"></span>
+        <span><input type="submit" value="SETUP AND ENABLE" onclick="runAutoStartSetup(); return false;"></span>
       </dd>
     </dl>
   </form>
@@ -310,37 +336,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   </form>
 </div>
 
-<div id="content-go-file" class="tab-content">
-  <h2><i class="fa fa-file-code-o"></i> Go File</h2>
-  
-  <p>Control auto-unlock functionality by managing the startup configuration in your go file. This allows you to enable or disable auto-unlock without affecting your LUKS keys.</p>
-  
-  <form id="gofileForm">
-    <h3>Boot Auto-Unlock Control</h3>
-    
-    <dl>
-      <dt>Action</dt>
-      <dd>
-        <select id="goAction" name="goAction" class="short">
-          <option value="add" selected>Enable auto-unlock at boot</option>
-          <option value="remove">Disable auto-unlock at boot</option>
-        </select>
-        <div class="description">Choose whether to enable or disable automatic LUKS unlocking during system startup.</div>
-      </dd>
-    </dl>
-    
-    <dl>
-      <dt>&nbsp;</dt>
-      <dd>
-        <span><button type="button" onclick="runGoCommand()">Update Boot Configuration</button></span>
-      </dd>
-    </dl>
-  </form>
-  
-  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
-    <strong>Note:</strong> This only controls whether auto-unlock runs at boot. It does not affect your LUKS keys or hardware key configuration. Use this to temporarily disable auto-unlock or re-enable it after maintenance.
-  </div>
-</div>
 
 <div id="content-encryption-info" class="tab-content">
   <h2><i class="fa fa-info"></i> Encryption Info</h2>
@@ -409,72 +404,14 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   </div>
 </div>
 
-<div id="content-change-key" class="tab-content">
-  <h2><i class="fa fa-key"></i> Change Encryption Key</h2>
-  
-  <h3>Change Primary Encryption Key</h3>
-  
-  <p>To modify your primary LUKS encryption authentication method, use Unraid's built-in disk management interface. This is the recommended and safest method for changing your encryption key or switching between passphrases and keyfiles.</p>
-  
-  <div style="border: 1px solid #FF9800; padding: 15px; margin: 15px 0; border-radius: 5px;">
-    <strong>Important:</strong> This process changes your <em>primary encryption authentication method</em> (passphrase or keyfile). 
-    Your hardware-derived auto-unlock key (managed by this plugin) operates independently in a separate slot and will continue to function normally regardless of changes to your primary encryption method.
-  </div>
-  
-  <h4>Instructions:</h4>
-  <ol>
-    <li>Click the button below to open Unraid's Disk Settings page and automatically scroll to the Encryption section</li>
-    <li>Find your encrypted array or pool devices and click the "Change" button next to the device you want to modify</li>
-    <li>In the "Change encryption key" dialog that opens:
-      <ul>
-        <li>Select your current encryption method in "Existing encryption key" (Passphrase or Keyfile)</li>
-        <li>Enter your current passphrase OR select your current keyfile</li>
-        <li>Choose your desired new encryption method in "Change encryption key" (Passphrase or Keyfile)</li>
-        <li><em>Note: You can switch between methods - change from passphrase to keyfile or vice versa</em></li>
-        <li>Enter your new passphrase OR select your new keyfile</li>
-        <li>Complete any additional fields as required (retype passphrase if applicable)</li>
-      </ul>
-    </li>
-    <li>Click "APPLY" to save the changes, then "DONE" to close the dialog</li>
-  </ol>
-  
-  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
-    <strong>Troubleshooting:</strong> If the "Existing encryption key" dropdown is greyed out and cannot be changed, go to the Main tab in Unraid and click "Delete keyfile" under Array Operations (this only removes the stored keyfile reference, not your LUKS encryption key).
-  </div>
-  
-  <dl>
-    <dt>&nbsp;</dt>
-    <dd>
-      <span><button type="button" onclick="goToDiskSettings()">Go to Disk Settings → Encryption</button></span>
-    </dd>
-  </dl>
-  
-  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
-    <strong>Note:</strong> This feature uses Unraid's native encryption key management system. If the button doesn't work, manually navigate to Settings → Disk Settings in the main Unraid interface.
-  </div>
-</div>
 
-<div id="content-status" class="tab-content">
-  <h2><i class="fa fa-terminal"></i> Status</h2>
-  
-  <p>Operation output and status information will be displayed here. All plugin operations will automatically show their output in this section.</p>
-  
-  <h3>Current Operation Status</h3>
-  
-  <dl>
-    <dt>&nbsp;</dt>
-    <dd>
-      <span><button type="button" onclick="clearStatus()">Clear Output</button></span>
-    </dd>
-  </dl>
+<!-- Hidden output area used by all tabs -->
+<div id="statusOutput" style="display: none; padding: 15px; border-radius: 5px; border: 1px solid #ccc; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 12px; margin-top: 15px;"></div>
 
-<!-- Loading Spinner (hidden by default, positioned above status output) -->
+<!-- Loading Spinner (hidden by default) -->
 <div id="status-loading" style="display: none; text-align: center; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #ccc;">
   <div class="spinner" style="margin: 0 auto 10px auto; width: 120px; height: 70px;"></div>
   <div id="loading-message" style="font-size: 16px;">Processing request...</div>
-</div>
-
-<pre id="statusOutput">No operations performed yet. Output from all plugin operations will appear here.</pre>
 </div>
 
 <script>
@@ -736,31 +673,112 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     }, 5000); // 5 second delay to ensure download completes
   }
 
-  function runGoCommand() {
-    // Clear any previous status output
-    clearStatusSilently();
+  // Event management functions for new plugin architecture
+  function refreshAutoUnlockStatus() {
+    console.log('DEBUG: refreshAutoUnlockStatus called');
     
-    const action = document.getElementById('goAction').value;
-
-    // Auto-scroll to Status section to show operation progress
-    showTab('status');
-    showStatusLoading('Configuring startup script...');
-    updateStatus('Starting go file configuration...\nExecuting startup script configuration, please wait...');
-
-    console.log('DEBUG: CSRF token for go command:', csrf_token);
+    // Show status in the Auto Start tab itself
+    showStatusInTab('Checking auto-unlock status...');
     
-    const postData = { action: action };
+    const postData = { action: 'status' };
     if (csrf_token) {
       postData.csrf_token = csrf_token;
-    } else {
-      console.log('WARNING: No CSRF token available for go command');
     }
     
-    $.post('/plugins/luks-key-management/scripts/run_go_script.php', postData, function(data) {
-      setStatus(data);
-    }).fail(function() {
-      setStatus('Error: Failed to execute the go file script. Check browser console for more details.');
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_event_script.php',
+      type: 'POST',
+      data: postData,
+      success: function(data) {
+        console.log('DEBUG: Status check response:', data);
+        
+        // Parse the response to extract status
+        let statusText = "Unknown";
+        if (data.includes('enabled')) {
+          statusText = "Enabled ✅";
+        } else if (data.includes('disabled')) {
+          statusText = "Disabled ❌";
+        }
+        
+        // Update the status display
+        document.getElementById('autoUnlockStatus').textContent = statusText;
+        
+        // Show full output in the status area
+        showStatusInTab(data);
+      },
+      error: function() {
+        document.getElementById('autoUnlockStatus').textContent = "Error checking status";
+        showStatusInTab('Error: Failed to check auto-unlock status');
+      }
     });
+  }
+  
+  function enableAutoUnlock() {
+    console.log('DEBUG: enableAutoUnlock called');
+    
+    showStatusInTab('Enabling auto-unlock...');
+    
+    const postData = { action: 'enable' };
+    if (csrf_token) {
+      postData.csrf_token = csrf_token;
+    }
+    
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_event_script.php',
+      type: 'POST',
+      data: postData,
+      success: function(data) {
+        console.log('DEBUG: Enable response:', data);
+        showStatusInTab(data);
+        
+        // Update status display after successful enable
+        if (data.includes('enabled successfully')) {
+          document.getElementById('autoUnlockStatus').textContent = "Enabled ✅";
+        }
+      },
+      error: function() {
+        showStatusInTab('Error: Failed to enable auto-unlock');
+      }
+    });
+  }
+  
+  function disableAutoUnlock() {
+    console.log('DEBUG: disableAutoUnlock called');
+    
+    showStatusInTab('Disabling auto-unlock...');
+    
+    const postData = { action: 'disable' };
+    if (csrf_token) {
+      postData.csrf_token = csrf_token;
+    }
+    
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_event_script.php',
+      type: 'POST',
+      data: postData,
+      success: function(data) {
+        console.log('DEBUG: Disable response:', data);
+        showStatusInTab(data);
+        
+        // Update status display after successful disable
+        if (data.includes('disabled successfully')) {
+          document.getElementById('autoUnlockStatus').textContent = "Disabled ❌";
+        }
+      },
+      error: function() {
+        showStatusInTab('Error: Failed to disable auto-unlock');
+      }
+    });
+  }
+  
+  // Helper function to show status within the current tab instead of switching to status tab
+  function showStatusInTab(message) {
+    let statusOutput = document.getElementById('statusOutput');
+    
+    // Show the status output area
+    statusOutput.style.display = 'block';
+    statusOutput.textContent = message;
+    statusOutput.scrollTop = statusOutput.scrollHeight;
   }
 
   function runHeadersBackup() {
@@ -1434,10 +1452,13 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     }
   }
 
-  // Initialize descriptions on page load
+  // Initialize descriptions and status on page load
   document.addEventListener('DOMContentLoaded', function() {
     updateBackupLocationDescription();
     updateHeadersBackupLocationDescription();
+    
+    // Initialize auto-unlock status check
+    refreshAutoUnlockStatus();
   });
 
 </script>

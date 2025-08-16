@@ -2,10 +2,10 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name                 "luks-key-management">
 <!ENTITY author               "SpaceInvaderOne">
-<!ENTITY plugin_version       "2025.07.29.0748">
+<!ENTITY plugin_version       "2025.08.16.1223">
 <!ENTITY launch_page          "Settings/&name;">
-<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.07.29.0748-x86_64.txz">
-<!ENTITY plugin_md5           "24edbe2c4107a6cd6f6945dfaf24d8ca">
+<!ENTITY plugin_url           "https://github.com/SpaceinvaderOne/Luks_tools/raw/main/packages/pluginmain/luks-key-management-2025.08.16.1223-x86_64.txz">
+<!ENTITY plugin_md5           "78bcb899e99c512cf3c45be06af08d54">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&plugin_version;" min="6.9.0" launch="&launch_page;" icon="key">
@@ -36,20 +36,27 @@ removepkg &name;-&plugin_version;-x86_64
   <MD5>&plugin_md5;</MD5>
 </FILE>
 
-<!-- POST-INSTALL: Setup plugin scripts and persistent files -->
+<!-- POST-INSTALL: Setup plugin scripts and event infrastructure -->
 <FILE Run="/bin/bash">
 <INLINE><![CDATA[
 echo ""
 echo "----------------------------------------------------"
-echo " Setting up plugin scripts and persistent files..."
+echo " Setting up plugin scripts and event infrastructure..."
 echo "----------------------------------------------------"
 
 PLUGIN_SCRIPTS_DIR="/usr/local/emhttp/plugins/luks-key-management/scripts"
 PERSISTENT_DIR="/boot/config/plugins/luks-key-management"
+EVENT_STARTING_DIR="/usr/local/emhttp/webGui/event/starting"
+EVENT_STARTED_DIR="/usr/local/emhttp/webGui/event/started"
 
 # Create persistent directory
 mkdir -p "$PERSISTENT_DIR"
 echo " Created persistent directory: $PERSISTENT_DIR"
+
+# Create event directories
+mkdir -p "$EVENT_STARTING_DIR"
+mkdir -p "$EVENT_STARTED_DIR"
+echo " Created event directories for auto-unlock functionality"
 
 # Create version file for display in plugin UI by extracting from package filename
 PACKAGE_FILE=$(ls "$PERSISTENT_DIR"/luks-key-management-*.txz 2>/dev/null | head -1)
@@ -62,28 +69,29 @@ else
     echo " Warning: Could not determine version, set to Unknown"
 fi
 
-# First, set executable permissions on plugin scripts
+# Create plugin config file with default settings
+CONFIG_FILE="$PERSISTENT_DIR/config"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "AUTO_UNLOCK_ENABLED=false" > "$CONFIG_FILE"
+    echo " Created plugin config file with auto-unlock disabled by default"
+fi
+
+# Set executable permissions on plugin scripts
 if [[ -d "$PLUGIN_SCRIPTS_DIR" ]]; then
     chmod +x "$PLUGIN_SCRIPTS_DIR"/*.sh 2>/dev/null || true
     chmod +x "$PLUGIN_SCRIPTS_DIR"/*.php 2>/dev/null || true
     echo " Set permissions for plugin script files"
-    
-    # Debug: List what's actually in the plugin directory
-    echo " Debug: Contents of $PLUGIN_SCRIPTS_DIR:"
-    ls -la "$PLUGIN_SCRIPTS_DIR/" || echo " Failed to list plugin directory"
 else
     echo " Warning: Scripts directory not found at $PLUGIN_SCRIPTS_DIR"
 fi
 
-# Copy scripts to persistent location (without .sh extension for go file compatibility)
+# Copy scripts to persistent location for event system use
 if [[ -f "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" ]]; then
     cp "$PLUGIN_SCRIPTS_DIR/fetch_key.sh" "$PERSISTENT_DIR/fetch_key"
     chmod +x "$PERSISTENT_DIR/fetch_key"
     echo " Copied fetch_key script to persistent location"
 else
     echo " Warning: fetch_key.sh not found in $PLUGIN_SCRIPTS_DIR"
-    echo " Debug: Attempting to list plugin scripts directory..."
-    ls -la "$PLUGIN_SCRIPTS_DIR/" 2>/dev/null || echo " Could not list directory"
 fi
 
 if [[ -f "$PLUGIN_SCRIPTS_DIR/delete_key.sh" ]]; then
@@ -94,20 +102,28 @@ else
     echo " Warning: delete_key.sh not found in $PLUGIN_SCRIPTS_DIR"
 fi
 
-# Final verification
-echo " Final verification - contents of $PERSISTENT_DIR:"
-ls -la "$PERSISTENT_DIR/" 2>/dev/null || echo " Could not list persistent directory"
+# Ensure event scripts are disabled by default (remove any existing symlinks)
+if [[ -L "$EVENT_STARTING_DIR/fetch_key" ]]; then
+    rm "$EVENT_STARTING_DIR/fetch_key"
+    echo " Removed existing fetch_key event script (auto-unlock disabled)"
+fi
+
+if [[ -L "$EVENT_STARTED_DIR/delete_key" ]]; then
+    rm "$EVENT_STARTED_DIR/delete_key"
+    echo " Removed existing delete_key event script (auto-unlock disabled)"
+fi
 
 echo ""
 echo "----------------------------------------------------"
 echo " luks-key-management version &plugin_version; has been installed."
+echo " Event infrastructure ready - use plugin UI to enable auto-unlock"
 echo " Scripts are available at: $PERSISTENT_DIR"
 echo "----------------------------------------------------"
 echo ""
 ]]></INLINE>
 </FILE>
 
-<!-- UNINSTALL: Complete cleanup including go file modifications -->
+<!-- UNINSTALL: Complete cleanup including event scripts -->
 <FILE Run="/bin/bash" Method="remove">
 <INLINE><![CDATA[
 echo ""
@@ -115,17 +131,29 @@ echo "----------------------------------------------------"
 echo " Performing complete luks-key-management cleanup..."
 echo "----------------------------------------------------"
 
-# FIRST: Remove go file modifications (before removing scripts)
+# FIRST: Remove event scripts (disable auto-unlock)
+EVENT_STARTING_DIR="/usr/local/emhttp/webGui/event/starting"
+EVENT_STARTED_DIR="/usr/local/emhttp/webGui/event/started"
+
+if [[ -L "$EVENT_STARTING_DIR/fetch_key" ]]; then
+    rm "$EVENT_STARTING_DIR/fetch_key"
+    echo " Removed fetch_key event script"
+fi
+
+if [[ -L "$EVENT_STARTED_DIR/delete_key" ]]; then
+    rm "$EVENT_STARTED_DIR/delete_key"
+    echo " Removed delete_key event script"
+fi
+
+# Remove any legacy go file modifications (from previous versions)
 GO_FILE="/boot/config/go"
 START_MARKER="# auto unlock block start"
 END_MARKER="# auto unlock block end"
 
 if [[ -f "$GO_FILE" ]] && grep -q "$START_MARKER" "$GO_FILE"; then
-    echo " Removing auto-unlock block from go file..."
+    echo " Removing legacy auto-unlock block from go file..."
     sed -i.bak "/$START_MARKER/,$END_MARKER/d" "$GO_FILE"
-    echo " Auto-unlock block removed (backup saved as ${GO_FILE}.bak)"
-else
-    echo " No auto-unlock block found in go file"
+    echo " Legacy auto-unlock block removed (backup saved as ${GO_FILE}.bak)"
 fi
 
 # Remove plugin packages from the system
