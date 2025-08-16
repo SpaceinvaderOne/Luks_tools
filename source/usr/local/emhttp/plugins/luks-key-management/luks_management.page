@@ -160,110 +160,149 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   
   <p>This plugin manages LUKS auto-unlock using hardware-derived keys. The plugin automatically sets up event handlers during boot - no go file modification needed. Manual unlock is always possible using your original passphrase.</p>
   
-  <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #F15A2C;">
-    <strong>Current Status:</strong> <span id="autoUnlockStatus">Checking...</span>
+  <!-- Loading indicator -->
+  <div id="smartStatusLoading" style="display: block; margin: 20px 0; padding: 10px; border-radius: 5px; border-left: 4px solid #F15A2C;">
+    <strong>Loading system status...</strong>
   </div>
   
-  <h3>Auto-Unlock Control</h3>
-  
-  <dl>
-    <dt>Auto-Unlock Status</dt>
-    <dd>
-      <span><button type="button" onclick="refreshAutoUnlockStatus()">Refresh Status</button></span>
-      <div class="description">Check the current auto-unlock configuration status.</div>
-    </dd>
-  </dl>
-  
-  <dl>
-    <dt>Enable Auto-Unlock</dt>
-    <dd>
-      <span><button type="button" onclick="enableAutoUnlock()">Enable Auto-Unlock</button></span>
-      <div class="description">Enable automatic LUKS unlock at boot using hardware-derived keys.</div>
-    </dd>
-  </dl>
-  
-  <dl>
-    <dt>Disable Auto-Unlock</dt>
-    <dd>
-      <span><button type="button" onclick="disableAutoUnlock()">Disable Auto-Unlock</button></span>
-      <div class="description">Disable automatic LUKS unlock at boot. Manual unlock will be required.</div>
-    </dd>
-  </dl>
-  
-  <h3>Complete Setup (First Time)</h3>
-  
-  <p>Use this section for initial setup or to refresh hardware keys with header backup:</p>
-  
-  <form id="autostartForm">
-    <dl>
-      <dt>Existing Encryption Key</dt>
-      <dd>
-        <select id="keyType_autostart" class="short" onchange="toggleKeyInput('autostart')">
-          <option value="passphrase" selected>Passphrase</option>
-          <option value="keyfile">Keyfile</option>
-        </select>
-      </dd>
-    </dl>
-    
-    <div id="passphraseSection_autostart">
+  <!-- State: Setup Required -->
+  <div id="stateSetupRequired" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
+      <h3 style="margin-top: 0; color: #ff6b6b;"><i class="fa fa-exclamation-triangle"></i> Hardware Keys Not Found</h3>
+      <p>Your system needs initial LUKS key setup to enable auto-unlock. This will generate hardware-bound keys for your current system.</p>
+      
       <dl>
-        <dt>Enter Existing Passphrase</dt>
+        <dt>&nbsp;</dt>
         <dd>
-          <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
-          <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
-          <div class="description">Enter your original LUKS encryption passphrase.</div>
+          <span><button type="button" onclick="showSetupForm()" style="background: #ff6b6b; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">SETUP HARDWARE KEYS</button></span>
+          <div class="description">Click to configure hardware-derived keys for this system.</div>
         </dd>
       </dl>
     </div>
-    
-    <div id="keyfileSection_autostart" style="display: none;">
+  </div>
+  
+  <!-- State: Ready -->
+  <div id="stateReady" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
+      <h3 style="margin-top: 0; color: #51cf66;"><i class="fa fa-check-circle"></i> Hardware Keys Ready</h3>
+      <p><strong>Hardware Fingerprint:</strong> <span id="hardwareFingerprint">Loading...</span></p>
+      <p><strong>Unlockable Devices:</strong> <span id="unlockableDevices">Loading...</span></p>
+      <p>Auto-unlock can be enabled for this hardware configuration.</p>
+      
       <dl>
-        <dt>Select Existing Keyfile</dt>
+        <dt>Auto-Unlock Status</dt>
         <dd>
-          <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
-          <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
+          <div id="autoUnlockToggle">
+            <!-- Dynamic content based on current status -->
+          </div>
+          <div class="description">Enable or disable automatic LUKS unlock at boot.</div>
         </dd>
       </dl>
       
       <dl>
-        <dt>Backup ZIP Password</dt>
+        <dt>Advanced Options</dt>
         <dd>
-          <input type="password" id="zipPassword_autostart" class="short" maxlength="512">
-          <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_autostart" onchange="togglePasswordVisibility('autostart')"> Show password</label>
-          <div class="description">Password to encrypt the LUKS headers backup ZIP file. Required for keyfile authentication.</div>
+          <span><button type="button" onclick="showSetupForm()">Refresh Hardware Keys</button></span>
+          <div class="description">Generate new keys if hardware has changed or to update header backups.</div>
         </dd>
       </dl>
     </div>
+  </div>
+  
+  <!-- State: Refresh Needed -->
+  <div id="stateRefreshNeeded" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+      <h3 style="margin-top: 0; color: #ffa726;"><i class="fa fa-refresh"></i> Hardware Keys Need Refresh</h3>
+      <p>Hardware keys were found but don't match this system's current hardware configuration.</p>
+      <p><strong>Current Hardware:</strong> <span id="currentHardwareFingerprint">Loading...</span></p>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="showSetupForm()" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">REFRESH HARDWARE KEYS</button></span>
+          <div class="description">Update keys to match your current hardware configuration.</div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+  
+  <!-- Setup Form (hidden by default) -->
+  <div id="setupForm" style="display: none; margin-top: 20px;">
+    <h3>Hardware Key Setup</h3>
+    <p>Enter your existing LUKS encryption credentials to generate hardware-bound keys:</p>
     
-    <dl>
-      <dt>Header Backup Location</dt>
-      <dd>
-        <select id="backupLocation" name="backupLocation" class="short" onchange="updateBackupLocationDescription()">
-          <option value="download" selected>Download to PC</option>
-          <option value="yes">Save to boot device</option>
-        </select>
-        <div class="description" id="backupLocationDescription">LUKS headers will always be backed up for safety. Files will be downloaded to your browser's download folder.</div>
-      </dd>
-    </dl>
-    
-    <dl>
-      <dt>Dry Run</dt>
-      <dd>
-        <select id="dryRun" name="dryRun" class="short">
-          <option value="no" selected>No - Apply changes</option>
-          <option value="yes">Yes - Simulate only</option>
-        </select>
-        <div class="description">Choose 'Yes' to preview actions without making changes, or 'No' to execute the setup.</div>
-      </dd>
-    </dl>
-    
-    <dl>
-      <dt>&nbsp;</dt>
-      <dd>
-        <span><input type="submit" value="SETUP AND ENABLE" onclick="runAutoStartSetup(); return false;"></span>
-      </dd>
-    </dl>
-  </form>
+    <form id="autostartForm">
+      <dl>
+        <dt>Existing Encryption Key</dt>
+        <dd>
+          <select id="keyType_autostart" class="short" onchange="toggleKeyInput('autostart')">
+            <option value="passphrase" selected>Passphrase</option>
+            <option value="keyfile">Keyfile</option>
+          </select>
+        </dd>
+      </dl>
+      
+      <div id="passphraseSection_autostart">
+        <dl>
+          <dt>Enter Existing Passphrase</dt>
+          <dd>
+            <input type="password" id="passphrase_autostart" name="passphrase" class="short" maxlength="512" required>
+            <label><input type="checkbox" onchange="togglePasswordVisibility('autostart')"> show passphrase</label>
+            <div class="description">Enter your original LUKS encryption passphrase.</div>
+          </dd>
+        </dl>
+      </div>
+      
+      <div id="keyfileSection_autostart" style="display: none;">
+        <dl>
+          <dt>Select Existing Keyfile</dt>
+          <dd>
+            <input type="file" id="keyfile_autostart" name="keyfile" onchange="validateKeyfileSize(this, 'autostart')">
+            <div class="description">Select your original LUKS encryption keyfile. Maximum size: 8 MiB. Any file type accepted.</div>
+          </dd>
+        </dl>
+        
+        <dl>
+          <dt>Backup ZIP Password</dt>
+          <dd>
+            <input type="password" id="zipPassword_autostart" class="short" maxlength="512">
+            <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_autostart" onchange="togglePasswordVisibility('autostart')"> Show password</label>
+            <div class="description">Password to encrypt the LUKS headers backup ZIP file. Required for keyfile authentication.</div>
+          </dd>
+        </dl>
+      </div>
+      
+      <dl>
+        <dt>Header Backup Location</dt>
+        <dd>
+          <select id="backupLocation" name="backupLocation" class="short" onchange="updateBackupLocationDescription()">
+            <option value="download" selected>Download to PC</option>
+            <option value="yes">Save to boot device</option>
+          </select>
+          <div class="description" id="backupLocationDescription">LUKS headers will always be backed up for safety. Files will be downloaded to your browser's download folder.</div>
+        </dd>
+      </dl>
+      
+      <dl>
+        <dt>Dry Run</dt>
+        <dd>
+          <select id="dryRun" name="dryRun" class="short">
+            <option value="no" selected>No - Apply changes</option>
+            <option value="yes">Yes - Simulate only</option>
+          </select>
+          <div class="description">Choose 'Yes' to preview actions without making changes, or 'No' to execute the setup.</div>
+        </dd>
+      </dl>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><input type="submit" value="SETUP AND ENABLE" onclick="runAutoStartSetup(); return false;"></span>
+          <span><button type="button" onclick="hideSetupForm()" style="margin-left: 10px;">Cancel</button></span>
+        </dd>
+      </dl>
+    </form>
+  </div>
 </div>
 
 <div id="content-luks-headers" class="tab-content">
@@ -635,6 +674,18 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         const finalBackupLocation = document.getElementById('backupLocation').value;
         const finalDryRun = document.getElementById('dryRun').value;
         handleDownloadDetection(data, finalBackupLocation, finalDryRun);
+        
+        // If this was a successful setup operation (not dry run), refresh smart status
+        const isDryRun = document.getElementById('dryRun').value === 'yes';
+        if (!isDryRun && data.includes('✅')) {
+          console.log('DEBUG: Setup completed successfully, refreshing smart status...');
+          
+          // Hide setup form and refresh status after a short delay
+          setTimeout(function() {
+            hideSetupForm();
+            loadSmartStatus();
+          }, 2000); // 2 second delay to let user see the success message
+        }
       },
       error: function(xhr, status, error) {
         console.log('DEBUG: AJAX error - Status:', status, 'Error:', error);
@@ -1452,13 +1503,200 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     }
   }
 
+  // Smart state detection functions for new interface
+  function loadSmartStatus() {
+    console.log('DEBUG: Loading smart status...');
+    
+    // Show loading indicator
+    document.getElementById('smartStatusLoading').style.display = 'block';
+    hideAllStateCards();
+    
+    fetch('/plugins/luks-key-management/scripts/get_smart_status.php', {
+      method: 'GET',
+      credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('DEBUG: Smart status response:', data);
+      displaySmartState(data);
+    })
+    .catch(error => {
+      console.error('DEBUG: Smart status error:', error);
+      // Show error state
+      document.getElementById('smartStatusLoading').innerHTML = 
+        '<strong style="color: #ff6b6b;">Error loading system status. Please refresh the page.</strong>';
+    });
+  }
+  
+  function displaySmartState(statusData) {
+    // Hide loading indicator
+    document.getElementById('smartStatusLoading').style.display = 'none';
+    hideAllStateCards();
+    
+    const systemState = statusData.system_state || 'unknown';
+    const autoUnlockEnabled = statusData.auto_unlock_enabled || false;
+    const hardwareFingerprint = statusData.hardware_fingerprint || 'unknown';
+    const unlockableDevices = statusData.unlockable_devices || 'none';
+    
+    console.log('DEBUG: Displaying state:', systemState, 'Auto-unlock enabled:', autoUnlockEnabled);
+    
+    switch (systemState) {
+      case 'setup_required':
+        document.getElementById('stateSetupRequired').style.display = 'block';
+        break;
+        
+      case 'ready':
+        document.getElementById('stateReady').style.display = 'block';
+        document.getElementById('hardwareFingerprint').textContent = hardwareFingerprint;
+        document.getElementById('unlockableDevices').textContent = unlockableDevices;
+        updateAutoUnlockToggle(autoUnlockEnabled);
+        break;
+        
+      case 'refresh_needed':
+        document.getElementById('stateRefreshNeeded').style.display = 'block';
+        document.getElementById('currentHardwareFingerprint').textContent = hardwareFingerprint;
+        break;
+        
+      default:
+        // Show error state
+        document.getElementById('smartStatusLoading').style.display = 'block';
+        document.getElementById('smartStatusLoading').innerHTML = 
+          '<strong style="color: #ff6b6b;">Unknown system state: ' + systemState + '. Please refresh the page.</strong>';
+    }
+  }
+  
+  function hideAllStateCards() {
+    document.getElementById('stateSetupRequired').style.display = 'none';
+    document.getElementById('stateReady').style.display = 'none';
+    document.getElementById('stateRefreshNeeded').style.display = 'none';
+  }
+  
+  function updateAutoUnlockToggle(isEnabled) {
+    const toggleDiv = document.getElementById('autoUnlockToggle');
+    
+    if (isEnabled) {
+      toggleDiv.innerHTML = 
+        '<span style="color: #51cf66; font-weight: bold;">✅ Enabled</span> ' +
+        '<button type="button" onclick="toggleAutoUnlock(false)" style="margin-left: 10px;">Disable</button>';
+    } else {
+      toggleDiv.innerHTML = 
+        '<span style="color: #868e96; font-weight: bold;">❌ Disabled</span> ' +
+        '<button type="button" onclick="toggleAutoUnlock(true)" style="margin-left: 10px;">Enable</button>';
+    }
+  }
+  
+  function toggleAutoUnlock(enable) {
+    console.log('DEBUG: toggleAutoUnlock called with enable:', enable);
+    
+    // Show loading in toggle area
+    const toggleDiv = document.getElementById('autoUnlockToggle');
+    toggleDiv.innerHTML = '<span style="color: #868e96;">⏳ Processing...</span>';
+    
+    const action = enable ? 'enable' : 'disable';
+    const postData = { action: action };
+    
+    if (csrf_token) {
+      postData.csrf_token = csrf_token;
+    }
+    
+    fetch('/plugins/luks-key-management/scripts/run_event_script.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(postData).toString()
+    })
+    .then(response => response.text())
+    .then(data => {
+      console.log('DEBUG: Toggle response:', data);
+      
+      // Check for success/failure in response
+      if (data.includes('successfully')) {
+        // Update toggle display
+        updateAutoUnlockToggle(enable);
+        
+        // Show brief success message
+        showStatusInTab(data);
+      } else {
+        // Show error
+        showStatusInTab('Error: ' + data);
+        // Reload status to get current state
+        loadSmartStatus();
+      }
+    })
+    .catch(error => {
+      console.error('DEBUG: Toggle error:', error);
+      showStatusInTab('Error: Failed to toggle auto-unlock');
+      // Reload status to get current state
+      loadSmartStatus();
+    });
+  }
+  
+  function showSetupForm() {
+    console.log('DEBUG: showSetupForm called');
+    
+    // Hide all state cards
+    hideAllStateCards();
+    
+    // Show the setup form
+    document.getElementById('setupForm').style.display = 'block';
+    
+    // Clear any previous form data
+    document.getElementById('passphrase_autostart').value = '';
+    document.getElementById('keyfile_autostart').value = '';
+    document.getElementById('zipPassword_autostart').value = '';
+    
+    // Reset to passphrase mode
+    document.getElementById('keyType_autostart').value = 'passphrase';
+    toggleKeyInput('autostart');
+    
+    // Add cancel button functionality
+    addCancelButton();
+  }
+  
+  function addCancelButton() {
+    // Check if cancel button already exists
+    if (document.getElementById('cancelSetupButton')) {
+      return;
+    }
+    
+    // Find the submit button container and add cancel button
+    const submitContainer = document.querySelector('#setupForm dl:last-of-type dd');
+    if (submitContainer) {
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.id = 'cancelSetupButton';
+      cancelButton.textContent = 'Cancel';
+      cancelButton.style.marginLeft = '10px';
+      cancelButton.onclick = function() {
+        hideSetupForm();
+        loadSmartStatus(); // Reload the smart status
+      };
+      
+      submitContainer.appendChild(cancelButton);
+    }
+  }
+  
+  function hideSetupForm() {
+    console.log('DEBUG: hideSetupForm called');
+    
+    // Hide the setup form
+    document.getElementById('setupForm').style.display = 'none';
+    
+    // Remove cancel button if it exists
+    const cancelButton = document.getElementById('cancelSetupButton');
+    if (cancelButton) {
+      cancelButton.remove();
+    }
+  }
+
   // Initialize descriptions and status on page load
   document.addEventListener('DOMContentLoaded', function() {
     updateBackupLocationDescription();
     updateHeadersBackupLocationDescription();
     
-    // Initialize auto-unlock status check
-    refreshAutoUnlockStatus();
+    // Initialize smart status detection
+    loadSmartStatus();
   });
 
 </script>

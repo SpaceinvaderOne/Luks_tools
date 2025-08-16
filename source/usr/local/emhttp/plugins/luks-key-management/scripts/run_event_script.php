@@ -18,7 +18,7 @@ $script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/manage_eve
 $action = $_POST['action'] ?? 'status'; // Default to 'status' if nothing is received
 
 // Validate action parameter
-$valid_actions = ['enable', 'disable', 'status', 'get_status'];
+$valid_actions = ['enable', 'disable', 'status', 'get_status', 'system_state', 'hardware_fingerprint', 'unlockable_devices', 'check_keys_exist', 'test_keys_work'];
 if (!in_array($action, $valid_actions)) {
     echo "Error: Invalid action '$action'. Valid actions are: " . implode(', ', $valid_actions) . "\n";
     exit(1);

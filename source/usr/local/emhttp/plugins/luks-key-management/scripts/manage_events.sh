@@ -34,6 +34,104 @@ verbose_log() {
     echo "VERBOSE: $1"
 }
 
+# Hardware key detection functions for smart UX
+
+# Check if hardware keys have been generated before
+check_hardware_keys_exist() {
+    # Check if we have evidence of previous key generation
+    # This could be from LUKS token metadata or successful previous unlocks
+    
+    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
+    if [[ ! -f "$luks_script" ]]; then
+        echo "false"
+        return 1
+    fi
+    
+    # Use the LUKS management script to check for existing derived slots
+    local result
+    result=$("$luks_script" check_derived_keys 2>/dev/null)
+    if [[ $? -eq 0 ]] && [[ "$result" =~ "found" ]]; then
+        echo "true"
+        return 0
+    else
+        echo "false"
+        return 1
+    fi
+}
+
+# Test if current hardware keys can unlock LUKS devices
+test_hardware_keys_work() {
+    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
+    if [[ ! -f "$luks_script" ]]; then
+        echo "false"
+        return 1
+    fi
+    
+    # Test hardware key generation and validation
+    local result
+    result=$("$luks_script" test_hardware_key 2>/dev/null)
+    if [[ $? -eq 0 ]] && [[ "$result" =~ "success" ]]; then
+        echo "true"
+        return 0
+    else
+        echo "false"
+        return 1
+    fi
+}
+
+# Get current hardware fingerprint for display
+get_hardware_fingerprint() {
+    local fetch_key_script="$PERSISTENT_DIR/fetch_key"
+    if [[ ! -f "$fetch_key_script" ]]; then
+        echo "unknown"
+        return 1
+    fi
+    
+    # Extract hardware info using the fetch_key script
+    local output
+    output=$("$fetch_key_script" info 2>/dev/null)
+    if [[ $? -eq 0 ]]; then
+        echo "$output"
+    else
+        echo "unknown"
+    fi
+}
+
+# Get list of LUKS devices that can be unlocked
+get_unlockable_devices() {
+    local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
+    if [[ ! -f "$luks_script" ]]; then
+        echo "none"
+        return 1
+    fi
+    
+    # Get list of LUKS devices
+    local result
+    result=$("$luks_script" list_devices 2>/dev/null)
+    if [[ $? -eq 0 ]] && [[ -n "$result" ]]; then
+        echo "$result"
+    else
+        echo "none"
+    fi
+}
+
+# Determine overall system state for smart UX
+get_system_state() {
+    local keys_exist
+    local keys_work
+    
+    keys_exist=$(check_hardware_keys_exist)
+    keys_work=$(test_hardware_keys_work)
+    
+    if [[ "$keys_exist" == "false" ]]; then
+        echo "setup_required"
+    elif [[ "$keys_work" == "true" ]]; then
+        echo "ready"
+    else
+        echo "refresh_needed"
+    fi
+}
+
 # Load plugin configuration
 load_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -222,14 +320,39 @@ main() {
             # Simple status for programmatic use
             get_current_status
             ;;
+        "system_state")
+            # Get overall system state for smart UX
+            get_system_state
+            ;;
+        "hardware_fingerprint")
+            # Get hardware fingerprint for display
+            get_hardware_fingerprint
+            ;;
+        "unlockable_devices")
+            # Get list of unlockable LUKS devices
+            get_unlockable_devices
+            ;;
+        "check_keys_exist")
+            # Check if hardware keys exist
+            check_hardware_keys_exist
+            ;;
+        "test_keys_work")
+            # Test if hardware keys work
+            test_hardware_keys_work
+            ;;
         *)
-            echo "Usage: $0 {enable|disable|status|get_status}"
+            echo "Usage: $0 {enable|disable|status|get_status|system_state|hardware_fingerprint|unlockable_devices|check_keys_exist|test_keys_work}"
             echo ""
             echo "Commands:"
-            echo "  enable     - Enable LUKS auto-unlock (create event symlinks)"
-            echo "  disable    - Disable LUKS auto-unlock (remove event symlinks)"
-            echo "  status     - Show detailed auto-unlock status"
-            echo "  get_status - Get simple status (enabled/disabled)"
+            echo "  enable              - Enable LUKS auto-unlock"
+            echo "  disable             - Disable LUKS auto-unlock"
+            echo "  status              - Show detailed auto-unlock status"
+            echo "  get_status          - Get simple status (enabled/disabled)"
+            echo "  system_state        - Get system state (setup_required/ready/refresh_needed)"
+            echo "  hardware_fingerprint - Get current hardware fingerprint"
+            echo "  unlockable_devices  - Get list of unlockable LUKS devices"
+            echo "  check_keys_exist    - Check if hardware keys have been generated"
+            echo "  test_keys_work      - Test if hardware keys work with current system"
             exit 1
             ;;
     esac
