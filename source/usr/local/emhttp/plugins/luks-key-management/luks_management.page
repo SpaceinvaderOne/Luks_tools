@@ -623,11 +623,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         </dd>
       </dl>
     </div>
-    
-    <!-- Security Note -->
-    <div style="margin-top: 15px; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
-      <strong>Security Note:</strong> Your passphrase is required to access LUKS metadata. This is read-only analysis and makes no changes to your encryption configuration.
-    </div>
   </div>
 </div>
 
@@ -1509,8 +1504,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function proceedToActions() {
     console.log('DEBUG: proceedToActions called');
     
-    // Validate encryption key input using shared component
-    const validationError = validateEncryptionKeyInput('encinfo');
+    // Validate encryption key input for encinfo workflow
+    const validationError = validateEncinfoKeyInput();
     if (validationError) {
       alert('Error: ' + validationError);
       return;
@@ -1519,6 +1514,26 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     // Hide Step 3 and show Step 4
     document.getElementById('encinfoStep3').style.display = 'none';
     document.getElementById('encinfoStep4').style.display = 'block';
+  }
+  
+  // Custom validation for encinfo workflow
+  function validateEncinfoKeyInput() {
+    if (encinfoWorkflowState.keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_encinfo').value;
+      if (!passphrase) {
+        return 'Please enter your encryption passphrase.';
+      }
+      if (passphrase.length > 512) {
+        return 'Passphrase exceeds 512 character limit (Unraid standard).';
+      }
+    } else {
+      const keyfileInput = document.getElementById('keyfile_encinfo');
+      if (!keyfileInput.files || !keyfileInput.files[0]) {
+        return 'Please select your encryption keyfile.';
+      }
+    }
+    
+    return null; // No validation errors
   }
   
   // Navigation: Go Back to Previous Step
