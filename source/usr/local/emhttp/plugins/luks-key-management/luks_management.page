@@ -248,6 +248,23 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     </div>
   </div>
   
+  <!-- State: No Encrypted Disks -->
+  <div id="stateNoEncryptedDisks" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
+      <h3 style="margin-top: 0; color: #ff6b6b;"><i class="fa fa-info-circle"></i> No Encrypted Disks Found</h3>
+      <p>This plugin requires LUKS encrypted arrays or pools to function.</p>
+      <p>Please encrypt your drives first using Unraid's disk encryption settings.</p>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="goToMainTab()" style="background: #ff6b6b; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Main Tab → Array Operations</button></span>
+          <div class="description">Navigate to disk encryption settings.</div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+  
   
   <!-- Setup Form (hidden by default) -->
   <div id="setupForm" style="display: none; margin-top: 20px;">
@@ -1506,6 +1523,10 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         document.getElementById('stateSetupRequired').style.display = 'block';
         break;
         
+      case 'no_encrypted_disks':
+        document.getElementById('stateNoEncryptedDisks').style.display = 'block';
+        break;
+        
       case 'ready_disabled':
         document.getElementById('stateReadyDisabled').style.display = 'block';
         document.getElementById('unlockableDevicesDisabled').textContent = deviceCountOnly;
@@ -1527,6 +1548,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function hideAllStateCards() {
     document.getElementById('stateArrayStopped').style.display = 'none';
     document.getElementById('stateSetupRequired').style.display = 'none';
+    document.getElementById('stateNoEncryptedDisks').style.display = 'none';
     document.getElementById('stateReadyDisabled').style.display = 'none';
     document.getElementById('stateReadyEnabled').style.display = 'none';
     document.getElementById('manualRefreshOption').style.display = 'none';

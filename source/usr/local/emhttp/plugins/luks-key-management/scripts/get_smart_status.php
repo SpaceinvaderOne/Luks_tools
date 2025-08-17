@@ -68,24 +68,30 @@ $status['array_running'] = ($system_state !== 'array_stopped');
 
 // Hardware fingerprint removed for security reasons
 
-// Get unlockable devices
-$unlockable_devices = executeCommand('unlockable_devices');
-$status['unlockable_devices'] = $unlockable_devices ?: 'none';
-
-// Check if keys exist
-$keys_exist = executeCommand('check_keys_exist');
-$status['keys_exist'] = ($keys_exist === 'true');
+// Get unlockable devices (optimization: skip if no encrypted disks)
+if ($system_state === 'no_encrypted_disks') {
+    $status['unlockable_devices'] = 'none';
+    $status['keys_exist'] = false;
+} else {
+    $unlockable_devices = executeCommand('unlockable_devices');
+    $status['unlockable_devices'] = $unlockable_devices ?: 'none';
+    
+    // Check if keys exist
+    $keys_exist = executeCommand('check_keys_exist');
+    $status['keys_exist'] = ($keys_exist === 'true');
+}
 
 // Derive keys work status from system state (optimization: eliminate redundant call)
+// Note: 'no_encrypted_disks' means keys_work is not applicable (false)
 $status['keys_work'] = ($system_state === 'ready_enabled' || $system_state === 'ready_disabled');
 
 // Add debug information
 $status['debug'] = array(
-    'keys_exist_raw' => $keys_exist,
+    'keys_exist_raw' => ($system_state === 'no_encrypted_disks') ? 'skipped_no_devices' : $keys_exist,
     'keys_work_derived' => ($system_state === 'ready_enabled' || $system_state === 'ready_disabled') ? 'true' : 'false',
     'system_state_raw' => $system_state,
     'auto_unlock_raw' => $auto_unlock_status,
-    'optimizations' => 'Single device testing + eliminated redundant calls'
+    'optimizations' => 'Single device testing + eliminated redundant calls + no_encrypted_disks detection'
 );
 
 // Add timestamp

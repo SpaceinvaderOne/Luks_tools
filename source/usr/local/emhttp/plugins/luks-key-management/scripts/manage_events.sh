@@ -268,7 +268,7 @@ get_unlockable_devices() {
 
 # Determine overall system state for smart UX (4-state logic with array detection)
 get_system_state() {
-    local array_running keys_work auto_unlock_enabled
+    local array_running luks_devices keys_work auto_unlock_enabled
     
     # First check if array is running
     array_running=$(check_array_status)
@@ -278,7 +278,19 @@ get_system_state() {
         return 0
     fi
     
-    # Array is running, now check key status
+    # Array is running, now check for LUKS devices (optimization: scan once, reuse result)
+    debug_log "Scanning for LUKS devices..."
+    mapfile -t luks_devices < <(lsblk --noheadings --pairs --output NAME,TYPE | grep 'TYPE="crypt"' | awk -F'"' '{print "/dev/" $2}' 2>/dev/null)
+    
+    if [[ ${#luks_devices[@]} -eq 0 ]]; then
+        debug_log "No LUKS devices found - plugin not applicable"
+        echo "no_encrypted_disks"
+        return 0
+    fi
+    
+    debug_log "Found ${#luks_devices[@]} LUKS devices, checking key status..."
+    
+    # LUKS devices exist, now check key status
     keys_work=$(test_hardware_keys_work)
     
     if [[ "$keys_work" == "false" ]]; then
