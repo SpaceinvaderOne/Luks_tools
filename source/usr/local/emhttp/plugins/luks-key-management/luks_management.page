@@ -263,6 +263,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     <h3>Hardware Key Setup</h3>
     <p>Enter your existing LUKS encryption credentials to generate hardware keys:</p>
     
+    <!-- Message area for setup form feedback -->
+    <div id="setupFormMessage" style="display: none; margin: 15px 0; padding: 10px; border-radius: 4px; background-color: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; font-size: 14px;"></div>
+    
     <form id="autostartForm">
       <dl>
         <dt>Existing Encryption Key</dt>
@@ -836,6 +839,25 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   // Show temporary message in current Auto Start state card
   function showInCardMessage(message, duration = 3000) {
     console.log('DEBUG: showInCardMessage called with:', message, 'duration:', duration);
+    
+    // Check if setup form is visible first
+    const setupForm = document.getElementById('setupForm');
+    if (setupForm && setupForm.style.display !== 'none') {
+      console.log('DEBUG: Setup form visible, using setup form message area');
+      const setupMessageArea = document.getElementById('setupFormMessage');
+      if (setupMessageArea) {
+        setupMessageArea.textContent = message;
+        setupMessageArea.style.display = 'block';
+        
+        // Auto-hide after specified time
+        if (duration > 0) {
+          setTimeout(function() {
+            setupMessageArea.style.display = 'none';
+          }, duration);
+        }
+        return;
+      }
+    }
     
     // Find the currently visible state card
     const stateCards = [
