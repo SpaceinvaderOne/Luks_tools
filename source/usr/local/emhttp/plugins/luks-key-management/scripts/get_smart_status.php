@@ -63,6 +63,10 @@ $status['system_state'] = $system_state ?: 'unknown';
 $auto_unlock_status = executeCommand('get_status');
 $status['auto_unlock_enabled'] = ($auto_unlock_status === 'enabled');
 
+// Get array status for accurate information
+$array_status = executeCommand('check_array_status');
+$status['array_running'] = ($array_status === 'true');
+
 // Hardware fingerprint removed for security reasons
 
 // Get unlockable devices

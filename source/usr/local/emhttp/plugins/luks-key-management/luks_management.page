@@ -181,6 +181,23 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     </dl>
   </div>
   
+  <!-- State: Array Stopped -->
+  <div id="stateArrayStopped" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+      <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-info-circle"></i> Array Status Check Required</h3>
+      <p>Please start your Unraid array to detect LUKS devices and verify hardware key status.</p>
+      <p>Accurate information requires access to running encrypted drives.</p>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="goToDiskSettings()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Disk Settings → Start Array</button></span>
+          <div class="description">Start your array to enable LUKS device detection and key verification.</div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+  
   <!-- State: Setup Required -->
   <div id="stateSetupRequired" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
@@ -197,23 +214,37 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     </div>
   </div>
   
-  <!-- State: Ready -->
-  <div id="stateReady" style="display: none;">
-    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
-      <h3 style="margin-top: 0; color: #51cf66;"><i class="fa fa-check-circle"></i> Hardware Keys Ready</h3>
-      <p>Hardware keys ready for auto-unlock.</p>
-      <p><strong>Unlockable Devices:</strong> <span id="unlockableDevices">Loading...</span></p>
+  <!-- State: Ready but Disabled (Orange) -->
+  <div id="stateReadyDisabled" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+      <h3 style="margin-top: 0; color: #ffa726;"><i class="fa fa-key"></i> Hardware Keys Ready</h3>
+      <p>Hardware keys ready - auto-unlock disabled.</p>
+      <p><strong>Unlockable Devices:</strong> <span id="unlockableDevicesDisabled">Loading...</span></p>
       
       <dl>
-        <dt>Auto-Unlock Status</dt>
+        <dt>&nbsp;</dt>
         <dd>
-          <div id="autoUnlockToggle">
-            <!-- Dynamic content based on current status -->
-          </div>
-          <div class="description">Enable or disable automatic LUKS unlock at boot.</div>
+          <span><button type="button" onclick="toggleAutoUnlock(true)" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Enable Auto-Unlock</button></span>
+          <div class="description">Enable automatic LUKS unlock at boot.</div>
         </dd>
       </dl>
+    </div>
+  </div>
+  
+  <!-- State: Ready and Enabled (Green) -->
+  <div id="stateReadyEnabled" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
+      <h3 style="margin-top: 0; color: #51cf66;"><i class="fa fa-check-circle"></i> Auto-Unlock Active</h3>
+      <p>Hardware keys will unlock devices at boot.</p>
+      <p><strong>Unlockable Devices:</strong> <span id="unlockableDevicesEnabled">Loading...</span></p>
       
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="toggleAutoUnlock(false)" style="background: #51cf66; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Disable Auto-Unlock</button></span>
+          <div class="description">Disable automatic LUKS unlock at boot.</div>
+        </dd>
+      </dl>
     </div>
   </div>
   
@@ -1576,14 +1607,22 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     console.log('DEBUG: Debug info:', statusData.debug);
     
     switch (systemState) {
+      case 'array_stopped':
+        document.getElementById('stateArrayStopped').style.display = 'block';
+        break;
+        
       case 'setup_required':
         document.getElementById('stateSetupRequired').style.display = 'block';
         break;
         
-      case 'ready':
-        document.getElementById('stateReady').style.display = 'block';
-        document.getElementById('unlockableDevices').textContent = unlockableDevices;
-        updateAutoUnlockToggle(autoUnlockEnabled);
+      case 'ready_disabled':
+        document.getElementById('stateReadyDisabled').style.display = 'block';
+        document.getElementById('unlockableDevicesDisabled').textContent = unlockableDevices;
+        break;
+        
+      case 'ready_enabled':
+        document.getElementById('stateReadyEnabled').style.display = 'block';
+        document.getElementById('unlockableDevicesEnabled').textContent = unlockableDevices;
         break;
         
       default:
@@ -1595,24 +1634,13 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
   
   function hideAllStateCards() {
+    document.getElementById('stateArrayStopped').style.display = 'none';
     document.getElementById('stateSetupRequired').style.display = 'none';
-    document.getElementById('stateReady').style.display = 'none';
+    document.getElementById('stateReadyDisabled').style.display = 'none';
+    document.getElementById('stateReadyEnabled').style.display = 'none';
     document.getElementById('manualRefreshOption').style.display = 'none';
   }
   
-  function updateAutoUnlockToggle(isEnabled) {
-    const toggleDiv = document.getElementById('autoUnlockToggle');
-    
-    if (isEnabled) {
-      toggleDiv.innerHTML = 
-        '<span style="color: #51cf66; font-weight: bold;">✅ Enabled</span> ' +
-        '<button type="button" onclick="toggleAutoUnlock(false)" style="margin-left: 10px;">Disable</button>';
-    } else {
-      toggleDiv.innerHTML = 
-        '<span style="color: #868e96; font-weight: bold;">❌ Disabled</span> ' +
-        '<button type="button" onclick="toggleAutoUnlock(true)" style="margin-left: 10px;">Enable</button>';
-    }
-  }
   
   function toggleAutoUnlock(enable) {
     console.log('DEBUG: toggleAutoUnlock called with enable:', enable);
@@ -1641,8 +1669,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       
       // Check for success/failure in response
       if (data.includes('successfully')) {
-        // Update toggle display
-        updateAutoUnlockToggle(enable);
+        // Refresh smart status to update state cards
+        loadSmartStatus();
         
         // Show brief success message
         showStatusInTab(data);

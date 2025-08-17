@@ -35,6 +35,38 @@ verbose_log() {
     echo "VERBOSE: $1"
 }
 
+# Array status detection for accurate LUKS information
+
+# Check if Unraid array is started and LUKS devices are accessible
+check_array_status() {
+    debug_log "Checking Unraid array status..."
+    
+    # Check if /proc/mdstat exists and has active arrays
+    if [[ ! -f "/proc/mdstat" ]]; then
+        debug_log "No /proc/mdstat found"
+        echo "false"
+        return 1
+    fi
+    
+    # Look for active MD arrays (Unraid uses md1, md2, etc.)
+    if grep -q "active" /proc/mdstat 2>/dev/null; then
+        debug_log "Found active MD arrays in /proc/mdstat"
+        echo "true"
+        return 0
+    fi
+    
+    # Alternative check: Look for mounted /mnt/user or /mnt/disk* (Unraid mount points)
+    if mount | grep -q "/mnt/disk\|/mnt/user" 2>/dev/null; then
+        debug_log "Found Unraid mount points, array appears to be started"
+        echo "true"
+        return 0
+    fi
+    
+    debug_log "No active arrays or Unraid mount points found"
+    echo "false"
+    return 1
+}
+
 # Hardware key detection functions for smart UX
 
 # Check if hardware keys have been generated before
@@ -239,17 +271,32 @@ get_unlockable_devices() {
     fi
 }
 
-# Determine overall system state for smart UX (simplified 2-state logic)
+# Determine overall system state for smart UX (4-state logic with array detection)
 get_system_state() {
-    local keys_work
+    local array_running keys_work auto_unlock_enabled
     
-    # Only test if keys work - this covers all scenarios
+    # First check if array is running
+    array_running=$(check_array_status)
+    
+    if [[ "$array_running" == "false" ]]; then
+        echo "array_stopped"
+        return 0
+    fi
+    
+    # Array is running, now check key status
     keys_work=$(test_hardware_keys_work)
     
-    if [[ "$keys_work" == "true" ]]; then
-        echo "ready"
-    else
+    if [[ "$keys_work" == "false" ]]; then
         echo "setup_required"
+        return 0
+    fi
+    
+    # Keys work, now check if auto-unlock is enabled
+    load_config
+    if [[ "$AUTO_UNLOCK_ENABLED" == "true" ]]; then
+        echo "ready_enabled"
+    else
+        echo "ready_disabled"
     fi
 }
 
@@ -457,18 +504,23 @@ main() {
             # Test if hardware keys work
             test_hardware_keys_work
             ;;
+        "check_array_status")
+            # Check if Unraid array is running
+            check_array_status
+            ;;
         *)
-            echo "Usage: $0 {enable|disable|status|get_status|system_state|unlockable_devices|check_keys_exist|test_keys_work}"
+            echo "Usage: $0 {enable|disable|status|get_status|system_state|unlockable_devices|check_keys_exist|test_keys_work|check_array_status}"
             echo ""
             echo "Commands:"
             echo "  enable              - Enable LUKS auto-unlock"
             echo "  disable             - Disable LUKS auto-unlock"
             echo "  status              - Show detailed auto-unlock status"
             echo "  get_status          - Get simple status (enabled/disabled)"
-            echo "  system_state        - Get system state (setup_required/ready)"
+            echo "  system_state        - Get system state (array_stopped/setup_required/ready_disabled/ready_enabled)"
             echo "  unlockable_devices  - Get list of unlockable LUKS devices"
             echo "  check_keys_exist    - Check if hardware keys have been generated"
             echo "  test_keys_work      - Test if hardware keys work with current system"
+            echo "  check_array_status  - Check if Unraid array is running"
             exit 1
             ;;
     esac
