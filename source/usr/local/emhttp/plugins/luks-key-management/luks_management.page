@@ -340,6 +340,23 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 <div id="content-luks-headers" class="tab-content">
   <h2><i class="fa fa-shield"></i> LUKS Headers</h2>
   
+  <!-- Array Stopped Message for Headers Tab -->
+  <div id="headersArrayStoppedMessage" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+      <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-info-circle"></i> Start Your Array First</h3>
+      <p>The Unraid array must be started before using this plugin. LUKS encrypted devices need to be accessible for the plugin to work properly.</p>
+      <p><strong>Why?</strong> The plugin needs to detect encrypted drives, verify hardware keys, and manage LUKS tokens - all of which require the array to be running.</p>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="goToDiskSettings()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Main Tab → Start Array</button></span>
+          <div class="description">Start your array to enable LUKS device detection and key verification.</div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+  
   <!-- No Encrypted Disks Message for Headers Tab -->
   <div id="headersNoDisksMessage" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
@@ -423,6 +440,23 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 <div id="content-encryption-info" class="tab-content">
   <h2><i class="fa fa-info"></i> Encryption Info</h2>
   
+  <!-- Array Stopped Message for Encryption Info Tab -->
+  <div id="encinfoArrayStoppedMessage" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+      <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-info-circle"></i> Start Your Array First</h3>
+      <p>The Unraid array must be started before using this plugin. LUKS encrypted devices need to be accessible for the plugin to work properly.</p>
+      <p><strong>Why?</strong> The plugin needs to detect encrypted drives, verify hardware keys, and manage LUKS tokens - all of which require the array to be running.</p>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="goToDiskSettings()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Main Tab → Start Array</button></span>
+          <div class="description">Start your array to enable LUKS device detection and key verification.</div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+  
   <!-- No Encrypted Disks Message for Encryption Info Tab -->
   <div id="encinfoNoDisksMessage" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
@@ -501,6 +535,23 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 
 <div id="content-status" class="tab-content">
   <h2><i class="fa fa-terminal"></i> Status</h2>
+  
+  <!-- Array Stopped Message for Status Tab -->
+  <div id="statusArrayStoppedMessage" style="display: none;">
+    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+      <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-info-circle"></i> Start Your Array First</h3>
+      <p>The Unraid array must be started before using this plugin. LUKS encrypted devices need to be accessible for the plugin to work properly.</p>
+      <p><strong>Why?</strong> The plugin needs to detect encrypted drives, verify hardware keys, and manage LUKS tokens - all of which require the array to be running.</p>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="goToDiskSettings()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Main Tab → Start Array</button></span>
+          <div class="description">Start your array to enable LUKS device detection and key verification.</div>
+        </dd>
+      </dl>
+    </div>
+  </div>
   
   <!-- No Encrypted Disks Message for Status Tab -->
   <div id="statusNoDisksMessage" style="display: none;">
@@ -612,51 +663,96 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       });
     })
     .then(data => {
-      const hasEncryptedDisks = data.system_state !== 'no_encrypted_disks';
+      const systemState = data.system_state;
+      const arrayRunning = systemState !== 'array_stopped';
+      const hasEncryptedDisks = systemState !== 'no_encrypted_disks';
+      
       console.log('DEBUG: API response for tab', tabId, ':', data);
-      console.log('DEBUG: System state:', data.system_state);
+      console.log('DEBUG: System state:', systemState);
+      console.log('DEBUG: Array running:', arrayRunning);
       console.log('DEBUG: Has encrypted disks:', hasEncryptedDisks);
       
-      // Update each tab based on encrypted disks availability
+      // Update each tab based on system state
       if (tabId === 'luks-headers') {
-        console.log('DEBUG: Updating LUKS Headers tab, hasEncryptedDisks:', hasEncryptedDisks);
+        console.log('DEBUG: Updating LUKS Headers tab');
+        const arrayStoppedMsg = document.getElementById('headersArrayStoppedMessage');
         const noDisksMsg = document.getElementById('headersNoDisksMessage');
         const normalContent = document.getElementById('headersNormalContent');
         const form = document.getElementById('headersForm');
         
-        if (noDisksMsg) noDisksMsg.style.display = hasEncryptedDisks ? 'none' : 'block';
-        if (normalContent) normalContent.style.display = hasEncryptedDisks ? 'block' : 'none';
-        if (form) form.style.display = hasEncryptedDisks ? 'block' : 'none';
+        // Hide all messages first
+        if (arrayStoppedMsg) arrayStoppedMsg.style.display = 'none';
+        if (noDisksMsg) noDisksMsg.style.display = 'none';
+        if (normalContent) normalContent.style.display = 'none';
+        if (form) form.style.display = 'none';
         
-        console.log('DEBUG: Headers elements found:', !!noDisksMsg, !!normalContent, !!form);
+        // Show appropriate content based on state
+        if (!arrayRunning) {
+          if (arrayStoppedMsg) arrayStoppedMsg.style.display = 'block';
+        } else if (!hasEncryptedDisks) {
+          if (noDisksMsg) noDisksMsg.style.display = 'block';
+        } else {
+          if (normalContent) normalContent.style.display = 'block';
+          if (form) form.style.display = 'block';
+        }
+        
+        console.log('DEBUG: Headers elements found:', !!arrayStoppedMsg, !!noDisksMsg, !!normalContent, !!form);
         
       } else if (tabId === 'encryption-info') {
-        console.log('DEBUG: Updating Encryption Info tab, hasEncryptedDisks:', hasEncryptedDisks);
+        console.log('DEBUG: Updating Encryption Info tab');
+        const arrayStoppedMsg = document.getElementById('encinfoArrayStoppedMessage');
         const noDisksMsg = document.getElementById('encinfoNoDisksMessage');
         const normalContent = document.getElementById('encinfoNormalContent');
         const form = document.getElementById('encinfoForm');
         
-        if (noDisksMsg) noDisksMsg.style.display = hasEncryptedDisks ? 'none' : 'block';
-        if (normalContent) normalContent.style.display = hasEncryptedDisks ? 'block' : 'none';
-        if (form) form.style.display = hasEncryptedDisks ? 'block' : 'none';
+        // Hide all messages first
+        if (arrayStoppedMsg) arrayStoppedMsg.style.display = 'none';
+        if (noDisksMsg) noDisksMsg.style.display = 'none';
+        if (normalContent) normalContent.style.display = 'none';
+        if (form) form.style.display = 'none';
         
-        console.log('DEBUG: Encinfo elements found:', !!noDisksMsg, !!normalContent, !!form);
+        // Show appropriate content based on state
+        if (!arrayRunning) {
+          if (arrayStoppedMsg) arrayStoppedMsg.style.display = 'block';
+        } else if (!hasEncryptedDisks) {
+          if (noDisksMsg) noDisksMsg.style.display = 'block';
+        } else {
+          if (normalContent) normalContent.style.display = 'block';
+          if (form) form.style.display = 'block';
+        }
+        
+        console.log('DEBUG: Encinfo elements found:', !!arrayStoppedMsg, !!noDisksMsg, !!normalContent, !!form);
         
       } else if (tabId === 'status') {
-        console.log('DEBUG: Updating Status tab, hasEncryptedDisks:', hasEncryptedDisks);
+        console.log('DEBUG: Updating Status tab');
+        const arrayStoppedMsg = document.getElementById('statusArrayStoppedMessage');
         const noDisksMsg = document.getElementById('statusNoDisksMessage');
         const normalContent = document.getElementById('statusNormalContent');
         const clearButton = document.querySelector('#content-status dl');
         const statusOutput = document.getElementById('statusOutput');
         const statusLoading = document.getElementById('status-loading');
         
-        if (noDisksMsg) noDisksMsg.style.display = hasEncryptedDisks ? 'none' : 'block';
-        if (normalContent) normalContent.style.display = hasEncryptedDisks ? 'block' : 'none';
-        if (clearButton) clearButton.style.display = hasEncryptedDisks ? 'block' : 'none';
-        if (statusOutput) statusOutput.style.display = hasEncryptedDisks ? 'block' : 'none';
-        if (statusLoading) statusLoading.style.display = hasEncryptedDisks ? 'block' : 'none';
+        // Hide all messages first
+        if (arrayStoppedMsg) arrayStoppedMsg.style.display = 'none';
+        if (noDisksMsg) noDisksMsg.style.display = 'none';
+        if (normalContent) normalContent.style.display = 'none';
+        if (clearButton) clearButton.style.display = 'none';
+        if (statusOutput) statusOutput.style.display = 'none';
+        if (statusLoading) statusLoading.style.display = 'none';
         
-        console.log('DEBUG: Status elements found:', !!noDisksMsg, !!normalContent, !!clearButton, !!statusOutput, !!statusLoading);
+        // Show appropriate content based on state
+        if (!arrayRunning) {
+          if (arrayStoppedMsg) arrayStoppedMsg.style.display = 'block';
+        } else if (!hasEncryptedDisks) {
+          if (noDisksMsg) noDisksMsg.style.display = 'block';
+        } else {
+          if (normalContent) normalContent.style.display = 'block';
+          if (clearButton) clearButton.style.display = 'block';
+          if (statusOutput) statusOutput.style.display = 'block';
+          if (statusLoading) statusLoading.style.display = 'block';
+        }
+        
+        console.log('DEBUG: Status elements found:', !!arrayStoppedMsg, !!noDisksMsg, !!normalContent, !!clearButton, !!statusOutput, !!statusLoading);
       }
     })
     .catch(error => {
