@@ -1446,10 +1446,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     console.log('DEBUG: selectDetailLevel called with:', level);
     encinfoWorkflowState.detailLevel = level;
     
-    // Update the selected detail level display
+    // Update the selected detail level display (only Step 2 and Step 3 now exist)
     document.getElementById('selectedDetailLevel').textContent = level.charAt(0).toUpperCase() + level.slice(1).replace('_', ' ');
     document.getElementById('selectedDetailLevel2').textContent = level.charAt(0).toUpperCase() + level.slice(1).replace('_', ' ');
-    document.getElementById('selectedDetailLevel3').textContent = level.charAt(0).toUpperCase() + level.slice(1).replace('_', ' ');
     
     // Hide Step 1 and show Step 2
     document.getElementById('encinfoStep1').style.display = 'none';
@@ -1461,10 +1460,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     console.log('DEBUG: selectKeyType called with:', keyType);
     encinfoWorkflowState.keyType = keyType;
     
-    // Update the selected key type display
+    // Update the selected key type display (only Step 3 now exists)
     const displayKeyType = keyType.charAt(0).toUpperCase() + keyType.slice(1);
     document.getElementById('selectedKeyType').textContent = displayKeyType;
-    document.getElementById('selectedKeyType2').textContent = displayKeyType;
     
     // Show/hide appropriate input sections
     const passphraseSection = document.getElementById('passphraseSection_encinfo');
