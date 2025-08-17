@@ -985,7 +985,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         
         // Handle response based on context
         if (context === 'auto-start') {
-          // For Auto Start operations, show message in card instead of status tab
+          // For Auto Start operations, stay on Auto Start page with in-card messaging
           const isDryRun = document.getElementById('dryRun').value === 'yes';
           
           if (data.includes('✅')) {
@@ -997,12 +997,18 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
               loadSmartStatus(); // This will transition to the appropriate state card
             }, 2000);
           } else if (data.includes('Error:') || data.includes('Failed:')) {
-            showInCardMessage('Operation failed. Check Status tab for details.', 5000);
-            // For errors, still show in status tab for debugging
-            showTab('status');
-            setStatus(data);
+            // Show error in Auto Start card, don't redirect to Status tab
+            const errorText = data.replace(/^.*Error:\s*/i, '').split('\n')[0]; // Extract first error line
+            showInCardMessage('Error: ' + errorText, 8000); // Longer timeout for errors
           } else {
-            showInCardMessage('Operation completed. Check Status tab for full details.', 4000);
+            // For other messages, show summary in card
+            showInCardMessage('Operation completed successfully!', 4000);
+            
+            // Hide setup form and refresh status for state transition
+            setTimeout(function() {
+              hideSetupForm();
+              loadSmartStatus();
+            }, 3000);
           }
         } else {
           // For other tabs (headers, encryption-info), use original behavior
@@ -1022,11 +1028,11 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         const errorMessage = 'Error: AJAX failed - Status: ' + status + ', Error: ' + error + '\nCheck browser console for more details.';
         
         if (context === 'auto-start') {
-          showInCardMessage('Network error occurred. Check Status tab for details.', 5000);
-          // Also show in status tab for debugging
-          showTab('status');
-          setStatus(errorMessage);
+          // Stay on Auto Start page, show network error in card
+          showInCardMessage('Network error: ' + status + ' - ' + error + '. Check browser console for details.', 8000);
         } else {
+          // For other tabs, use original behavior
+          showTab('status');
           setStatus(errorMessage);
         }
       }
