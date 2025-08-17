@@ -1040,7 +1040,19 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           // For Auto Start operations, stay on Auto Start page with in-card messaging
           const isDryRun = document.getElementById('dryRun').value === 'yes';
           
-          if (data.includes('✅')) {
+          console.log('DEBUG: Auto-start response analysis:', {
+            hasCheckmark: data.includes('✅'),
+            hasSUCCESS: data.includes('SUCCESS'),
+            hasCompletedSuccessfully: data.includes('completed successfully'),
+            hasSetupCompleted: data.includes('Setup completed'),
+            hasError: data.includes('Error:'),
+            hasFailed: data.includes('Failed:'),
+            dataLength: data.length,
+            dataPreview: data.substring(0, 200)
+          });
+          
+          if (data.includes('✅') || data.includes('SUCCESS') || data.includes('completed successfully') || data.includes('Setup completed')) {
+            console.log('DEBUG: Success detected, transitioning to ready state');
             hideInCardSpinner();
             showInCardMessage('Setup completed successfully! Transitioning to next state...', 3000);
             
@@ -1050,20 +1062,22 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
               loadSmartStatus(); // This will transition to the appropriate state card
             }, 2000);
           } else if (data.includes('Error:') || data.includes('Failed:')) {
+            console.log('DEBUG: Error detected');
             // Show error in Auto Start card, don't redirect to Status tab
             hideInCardSpinner();
             const errorText = data.replace(/^.*Error:\s*/i, '').split('\n')[0]; // Extract first error line
             showInCardMessage('Error: ' + errorText, 8000); // Longer timeout for errors
           } else {
-            // For other messages, show summary in card
+            console.log('DEBUG: Generic completion - treating as success');
+            // For other messages, treat as success and transition
             hideInCardSpinner();
-            showInCardMessage('Operation completed successfully!', 4000);
+            showInCardMessage('Operation completed successfully! Transitioning to next state...', 3000);
             
             // Hide setup form and refresh status for state transition
             setTimeout(function() {
               hideSetupForm();
               loadSmartStatus();
-            }, 3000);
+            }, 2000);
           }
         } else {
           // For other tabs (headers, encryption-info), use original behavior
