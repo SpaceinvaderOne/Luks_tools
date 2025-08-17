@@ -159,7 +159,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
 <div id="content-auto-start" class="tab-content active">
   <h2><i class="fa fa-play"></i> Auto Start</h2>
   
-  <p>This plugin manages LUKS auto-unlock using hardware-derived keys. The plugin automatically sets up event handlers during boot - no go file modification needed. Manual unlock is always possible using your original passphrase.</p>
+  <p>This plugin manages LUKS auto-unlock using hardware keys. Manual unlock is always possible using your original passphrase.</p>
   
   <!-- Loading indicator -->
   <div id="smartStatusLoading" style="display: block; margin: 20px 0; padding: 10px; border-radius: 5px; border-left: 4px solid #F15A2C;">
@@ -184,14 +184,14 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   <!-- State: Setup Required -->
   <div id="stateSetupRequired" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
-      <h3 style="margin-top: 0; color: #ff6b6b;"><i class="fa fa-exclamation-triangle"></i> Hardware Keys Not Found</h3>
-      <p>Your system needs initial LUKS key setup to enable auto-unlock. This will generate hardware-bound keys for your current system.</p>
+      <h3 style="margin-top: 0; color: #ff6b6b;"><i class="fa fa-exclamation-triangle"></i> Hardware Keys Required</h3>
+      <p>Hardware keys required for auto-unlock.</p>
       
       <dl>
         <dt>&nbsp;</dt>
         <dd>
-          <span><button type="button" onclick="showSetupForm()" style="background: #ff6b6b; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">SETUP HARDWARE KEYS</button></span>
-          <div class="description">Click to configure hardware-derived keys for this system.</div>
+          <span><button type="button" onclick="showSetupForm()" style="background: #ff6b6b; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Generate Hardware Keys</button></span>
+          <div class="description">Generate hardware keys for auto-unlock functionality.</div>
         </dd>
       </dl>
     </div>
@@ -201,9 +201,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   <div id="stateReady" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
       <h3 style="margin-top: 0; color: #51cf66;"><i class="fa fa-check-circle"></i> Hardware Keys Ready</h3>
-      <p><strong>Hardware Fingerprint:</strong> <span id="hardwareFingerprint">Loading...</span></p>
+      <p>Hardware keys ready for auto-unlock.</p>
       <p><strong>Unlockable Devices:</strong> <span id="unlockableDevices">Loading...</span></p>
-      <p>Auto-unlock can be enabled for this hardware configuration.</p>
       
       <dl>
         <dt>Auto-Unlock Status</dt>
@@ -215,37 +214,14 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         </dd>
       </dl>
       
-      <dl>
-        <dt>Advanced Options</dt>
-        <dd>
-          <span><button type="button" onclick="showSetupForm()">Refresh Hardware Keys</button></span>
-          <div class="description">Generate new keys if hardware has changed or to update header backups.</div>
-        </dd>
-      </dl>
     </div>
   </div>
   
-  <!-- State: Refresh Needed -->
-  <div id="stateRefreshNeeded" style="display: none;">
-    <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
-      <h3 style="margin-top: 0; color: #ffa726;"><i class="fa fa-refresh"></i> Hardware Keys Need Refresh</h3>
-      <p>Hardware keys were found but don't match this system's current hardware configuration.</p>
-      <p><strong>Current Hardware:</strong> <span id="currentHardwareFingerprint">Loading...</span></p>
-      
-      <dl>
-        <dt>&nbsp;</dt>
-        <dd>
-          <span><button type="button" onclick="showSetupForm()" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">REFRESH HARDWARE KEYS</button></span>
-          <div class="description">Update keys to match your current hardware configuration.</div>
-        </dd>
-      </dl>
-    </div>
-  </div>
   
   <!-- Setup Form (hidden by default) -->
   <div id="setupForm" style="display: none; margin-top: 20px;">
     <h3>Hardware Key Setup</h3>
-    <p>Enter your existing LUKS encryption credentials to generate hardware-bound keys:</p>
+    <p>Enter your existing LUKS encryption credentials to generate hardware keys:</p>
     
     <form id="autostartForm">
       <dl>
@@ -1592,7 +1568,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     
     const systemState = statusData.system_state || 'unknown';
     const autoUnlockEnabled = statusData.auto_unlock_enabled || false;
-    const hardwareFingerprint = statusData.hardware_fingerprint || 'unknown';
     const unlockableDevices = statusData.unlockable_devices || 'none';
     
     console.log('DEBUG: Smart status data received:', statusData);
@@ -1607,14 +1582,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         
       case 'ready':
         document.getElementById('stateReady').style.display = 'block';
-        document.getElementById('hardwareFingerprint').textContent = hardwareFingerprint;
         document.getElementById('unlockableDevices').textContent = unlockableDevices;
         updateAutoUnlockToggle(autoUnlockEnabled);
-        break;
-        
-      case 'refresh_needed':
-        document.getElementById('stateRefreshNeeded').style.display = 'block';
-        document.getElementById('currentHardwareFingerprint').textContent = hardwareFingerprint;
         break;
         
       default:
@@ -1628,7 +1597,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function hideAllStateCards() {
     document.getElementById('stateSetupRequired').style.display = 'none';
     document.getElementById('stateReady').style.display = 'none';
-    document.getElementById('stateRefreshNeeded').style.display = 'none';
     document.getElementById('manualRefreshOption').style.display = 'none';
   }
   
@@ -1778,7 +1746,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   
   window.testAllDetectionFunctions = function() {
     console.log('=== Testing All Detection Functions ===');
-    const functions = ['check_keys_exist', 'test_keys_work', 'hardware_fingerprint', 'unlockable_devices', 'system_state'];
+    const functions = ['check_keys_exist', 'test_keys_work', 'unlockable_devices', 'system_state'];
     functions.forEach(func => {
       setTimeout(() => testDetectionFunction(func), 500);
     });

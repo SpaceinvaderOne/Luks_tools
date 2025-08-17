@@ -203,53 +203,6 @@ test_hardware_keys_work() {
     return 1
 }
 
-# Get current hardware fingerprint for display
-get_hardware_fingerprint() {
-    debug_log "Getting hardware fingerprint..."
-    
-    # Use the same method as fetch_key.sh to ensure consistency
-    local fetch_key_script="$PERSISTENT_DIR/fetch_key"
-    if [[ -f "$fetch_key_script" ]]; then
-        # Use fetch_key script to get hardware info (it has the working logic)
-        debug_log "Using fetch_key script for hardware detection"
-        
-        # Extract hardware info from the fetch_key script output
-        local motherboard_id gateway_mac
-        
-        # Get motherboard serial (EXACT same method as old working plugin)
-        motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null)
-        
-        # Get gateway MAC (EXACT same method as old working plugin)
-        local interface gateway_ip
-        mapfile -t routes < <(ip route show default | awk '/default/ {print $5 " " $3}')
-        
-        if [[ ${#routes[@]} -eq 0 ]]; then
-            debug_log "No default gateway found"
-            gateway_mac=""
-        else
-            for route in "${routes[@]}"; do
-                interface=$(echo "$route" | awk '{print $1}')
-                gateway_ip=$(echo "$route" | awk '{print $2}')
-                # Use arping to find the MAC address (same as old plugin)
-                gateway_mac=$(arping -c 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
-                if [[ -n "$gateway_mac" ]]; then
-                    break
-                fi
-            done
-        fi
-        
-        debug_log "Detected hardware: MB='$motherboard_id' GW='$gateway_mac'"
-        
-        if [[ -n "$motherboard_id" ]] && [[ -n "$gateway_mac" ]]; then
-            echo "MB:${motherboard_id} / GW:${gateway_mac}"
-        else
-            echo "unknown (MB:${motherboard_id:-none} / GW:${gateway_mac:-none})"
-        fi
-    else
-        debug_log "fetch_key script not found at $fetch_key_script"
-        echo "unknown (script not found)"
-    fi
-}
 
 # Get list of LUKS devices that can be unlocked
 get_unlockable_devices() {
@@ -286,20 +239,17 @@ get_unlockable_devices() {
     fi
 }
 
-# Determine overall system state for smart UX
+# Determine overall system state for smart UX (simplified 2-state logic)
 get_system_state() {
-    local keys_exist
     local keys_work
     
-    keys_exist=$(check_hardware_keys_exist)
+    # Only test if keys work - this covers all scenarios
     keys_work=$(test_hardware_keys_work)
     
-    if [[ "$keys_exist" == "false" ]]; then
-        echo "setup_required"
-    elif [[ "$keys_work" == "true" ]]; then
+    if [[ "$keys_work" == "true" ]]; then
         echo "ready"
     else
-        echo "refresh_needed"
+        echo "setup_required"
     fi
 }
 
@@ -495,10 +445,6 @@ main() {
             # Get overall system state for smart UX
             get_system_state
             ;;
-        "hardware_fingerprint")
-            # Get hardware fingerprint for display
-            get_hardware_fingerprint
-            ;;
         "unlockable_devices")
             # Get list of unlockable LUKS devices
             get_unlockable_devices
@@ -512,15 +458,14 @@ main() {
             test_hardware_keys_work
             ;;
         *)
-            echo "Usage: $0 {enable|disable|status|get_status|system_state|hardware_fingerprint|unlockable_devices|check_keys_exist|test_keys_work}"
+            echo "Usage: $0 {enable|disable|status|get_status|system_state|unlockable_devices|check_keys_exist|test_keys_work}"
             echo ""
             echo "Commands:"
             echo "  enable              - Enable LUKS auto-unlock"
             echo "  disable             - Disable LUKS auto-unlock"
             echo "  status              - Show detailed auto-unlock status"
             echo "  get_status          - Get simple status (enabled/disabled)"
-            echo "  system_state        - Get system state (setup_required/ready/refresh_needed)"
-            echo "  hardware_fingerprint - Get current hardware fingerprint"
+            echo "  system_state        - Get system state (setup_required/ready)"
             echo "  unlockable_devices  - Get list of unlockable LUKS devices"
             echo "  check_keys_exist    - Check if hardware keys have been generated"
             echo "  test_keys_work      - Test if hardware keys work with current system"

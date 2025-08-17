@@ -63,9 +63,7 @@ $status['system_state'] = $system_state ?: 'unknown';
 $auto_unlock_status = executeCommand('get_status');
 $status['auto_unlock_enabled'] = ($auto_unlock_status === 'enabled');
 
-// Get hardware fingerprint
-$hardware_fingerprint = executeCommand('hardware_fingerprint');
-$status['hardware_fingerprint'] = $hardware_fingerprint ?: 'unknown';
+// Hardware fingerprint removed for security reasons
 
 // Get unlockable devices
 $unlockable_devices = executeCommand('unlockable_devices');
