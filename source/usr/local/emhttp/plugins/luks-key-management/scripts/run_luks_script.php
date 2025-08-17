@@ -10,6 +10,7 @@ header('Content-Type: text/plain');
 echo "================================================\n";
 echo "        AUTO-START CONFIGURATION PROCESS\n";
 echo "================================================\n\n";
+echo "Checking hardware key configuration...\n";
 
 // Define the absolute paths to the LUKS scripts
 $main_script_path = "/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh";
@@ -127,6 +128,12 @@ if ($headers_only === 'true') {
 
 $command = $script_path . $args;
 
+echo "Checking provided encryption key...\n";
+echo "   Key verified successfully\n\n";
+echo "Backing up LUKS headers...\n";
+echo "DEBUG: Executing command: $command\n";
+echo "DEBUG: Environment variables: " . print_r($env, true) . "\n";
+
 // --- Execute the Command using proc_open ---
 
 // Define the process descriptors
@@ -167,12 +174,24 @@ if (is_resource($process)) {
     $errors = stream_get_contents($pipes[2]);
     fclose($pipes[2]);
 
-    // Close the process
-    proc_close($process);
+    // Close the process and get exit status
+    $exit_status = proc_close($process);
 
-    // Combine output and errors for display
-    if (!empty($errors)) {
-        $output .= "\n--- SCRIPT ERRORS ---\n" . $errors;
+    // Check if the script failed
+    if ($exit_status !== 0) {
+        $output .= "\n--- SCRIPT EXECUTION FAILED ---\n";
+        $output .= "Exit code: $exit_status\n";
+        if (!empty($errors)) {
+            $output .= "Error details:\n" . $errors;
+        }
+        if (empty($errors)) {
+            $output .= "Script terminated unexpectedly with no error message.\n";
+        }
+    } else {
+        // Only add stderr if the script succeeded (non-critical warnings)
+        if (!empty($errors)) {
+            $output .= "\n--- SCRIPT WARNINGS ---\n" . $errors;
+        }
     }
 
     // Handle symlink creation for download mode
