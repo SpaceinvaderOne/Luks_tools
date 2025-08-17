@@ -836,6 +836,32 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     }
   }
 
+  // Show spinner in setup form message area
+  function showInCardSpinner() {
+    const setupForm = document.getElementById('setupForm');
+    if (setupForm && setupForm.style.display !== 'none') {
+      const setupMessageArea = document.getElementById('setupFormMessage');
+      if (setupMessageArea) {
+        // Add spinner HTML to the message area
+        const currentText = setupMessageArea.textContent;
+        setupMessageArea.innerHTML = '<i class="fa fa-spinner fa-spin" style="margin-right: 8px;"></i>' + currentText;
+      }
+    }
+  }
+
+  // Hide spinner in setup form message area
+  function hideInCardSpinner() {
+    const setupForm = document.getElementById('setupForm');
+    if (setupForm && setupForm.style.display !== 'none') {
+      const setupMessageArea = document.getElementById('setupFormMessage');
+      if (setupMessageArea) {
+        // Remove spinner HTML from the message area
+        const text = setupMessageArea.textContent; // This gets text without HTML
+        setupMessageArea.textContent = text;
+      }
+    }
+  }
+
   // Show temporary message in current Auto Start state card
   function showInCardMessage(message, duration = 3000) {
     console.log('DEBUG: showInCardMessage called with:', message, 'duration:', duration);
@@ -923,8 +949,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     const backupLocation = document.getElementById('backupLocation').value;
     const dryRun = document.getElementById('dryRun').value;
 
-    // Update the in-card message instead of status tab
-    showInCardMessage('This will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...', 0);
+    // Update the in-card message with proper description and show spinner
+    showInCardMessage('Generating hardware keys and downloading LUKS headers. Please wait...', 0);
+    showInCardSpinner();
     
     console.log('DEBUG: Status set, preparing form data');
 
@@ -1011,6 +1038,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           const isDryRun = document.getElementById('dryRun').value === 'yes';
           
           if (data.includes('✅')) {
+            hideInCardSpinner();
             showInCardMessage('Setup completed successfully! Transitioning to next state...', 3000);
             
             // Hide setup form and refresh status after a short delay for smooth transition
@@ -1020,10 +1048,12 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
             }, 2000);
           } else if (data.includes('Error:') || data.includes('Failed:')) {
             // Show error in Auto Start card, don't redirect to Status tab
+            hideInCardSpinner();
             const errorText = data.replace(/^.*Error:\s*/i, '').split('\n')[0]; // Extract first error line
             showInCardMessage('Error: ' + errorText, 8000); // Longer timeout for errors
           } else {
             // For other messages, show summary in card
+            hideInCardSpinner();
             showInCardMessage('Operation completed successfully!', 4000);
             
             // Hide setup form and refresh status for state transition
@@ -1038,10 +1068,10 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           setStatus(data);
         }
         
-        // Use shared download detection function (works regardless of context)
+        // Use shared download detection function with context awareness
         const finalBackupLocation = document.getElementById('backupLocation').value;
         const finalDryRun = document.getElementById('dryRun').value;
-        handleDownloadDetection(data, finalBackupLocation, finalDryRun);
+        handleDownloadDetection(data, finalBackupLocation, finalDryRun, context);
       },
       error: function(xhr, status, error) {
         console.log('DEBUG: AJAX error - Status:', status, 'Error:', error);
@@ -1051,6 +1081,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         
         if (context === 'auto-start') {
           // Stay on Auto Start page, show network error in card
+          hideInCardSpinner();
           showInCardMessage('Network error: ' + status + ' - ' + error + '. Check browser console for details.', 8000);
         } else {
           // For other tabs, use original behavior
@@ -1061,7 +1092,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     });
   }
 
-  function downloadBackupFile(filename) {
+  function downloadBackupFile(filename, context = 'default') {
     // Create direct download link - file is accessible via plugin downloads directory
     const downloadUrl = '/plugins/luks-key-management/downloads/' + filename;
     
@@ -1075,8 +1106,14 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     link.click();
     document.body.removeChild(link);
     
-    // Update status to inform user
-    updateStatus('\nBackup file download initiated. Check your browser\'s download folder.');
+    // Context-aware messaging - don't redirect to Status tab for Auto Start operations
+    if (context === 'auto-start') {
+      console.log('DEBUG: Download initiated for Auto Start context, not redirecting to Status tab');
+      // Download is silent for Auto Start operations, continue with current workflow
+    } else {
+      // For other contexts (headers, encryption-info), use original behavior
+      updateStatus('\nBackup file download initiated. Check your browser\'s download folder.');
+    }
     
     // Clean up the temporary file after a delay
     setTimeout(function() {
@@ -1634,8 +1671,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   // Shared download detection function - checks output for DOWNLOAD_READY and triggers download
-  function handleDownloadDetection(data, backupLocation, dryRun) {
-    console.log('DEBUG: Checking download - backupLocation:', backupLocation, 'dryRun:', dryRun);
+  function handleDownloadDetection(data, backupLocation, dryRun, context = 'default') {
+    console.log('DEBUG: Checking download - backupLocation:', backupLocation, 'dryRun:', dryRun, 'context:', context);
     if (backupLocation === 'download' && dryRun === 'no') {
       // Look for download ready indicator in the output
       console.log('DEBUG: Looking for DOWNLOAD_READY in output...');
@@ -1647,7 +1684,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         console.log('DEBUG: Starting download for file:', filename);
         console.log('DEBUG: Full download path:', downloadPath);
         console.log('DEBUG: Raw matched string:', downloadMatch[1]);
-        downloadBackupFile(filename);
+        downloadBackupFile(filename, context);
       } else {
         console.log('DEBUG: No DOWNLOAD_READY found in output');
       }
