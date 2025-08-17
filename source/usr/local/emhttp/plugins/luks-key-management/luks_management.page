@@ -593,11 +593,24 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     fetch('/plugins/luks-key-management/scripts/get_smart_status.php', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRF-TOKEN': csrf_token
-      }
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'csrf_token=' + encodeURIComponent(csrf_token)
     })
-    .then(response => response.json())
+    .then(response => {
+      console.log('DEBUG: Response status:', response.status);
+      console.log('DEBUG: Response headers:', response.headers);
+      return response.text().then(text => {
+        console.log('DEBUG: Raw response text:', text);
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error('DEBUG: JSON parse error:', e);
+          console.error('DEBUG: Response was:', text);
+          throw e;
+        }
+      });
+    })
     .then(data => {
       const hasEncryptedDisks = data.system_state !== 'no_encrypted_disks';
       console.log('DEBUG: API response for tab', tabId, ':', data);
