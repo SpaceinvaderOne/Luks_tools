@@ -184,9 +184,9 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   <!-- State: Array Stopped -->
   <div id="stateArrayStopped" style="display: none;">
     <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
-      <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-info-circle"></i> Array Status Check Required</h3>
-      <p>Please start your Unraid array to detect LUKS devices and verify hardware key status.</p>
-      <p>Accurate information requires access to running encrypted drives.</p>
+      <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-info-circle"></i> Start Your Array First</h3>
+      <p>The Unraid array must be started before using this plugin. LUKS encrypted devices need to be accessible for the plugin to work properly.</p>
+      <p><strong>Why?</strong> The plugin needs to detect encrypted drives, verify hardware keys, and manage LUKS tokens - all of which require the array to be running.</p>
       
       <dl>
         <dt>&nbsp;</dt>
@@ -1181,200 +1181,43 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   }
 
   function goToDiskSettings() {
-    console.log('DEBUG: goToDiskSettings function called');
-    
     // Get current protocol, hostname, and port from the current page
     const currentUrl = window.location;
     const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
     const mainTabUrl = `${baseUrl}/Main`;
     
-    console.log('DEBUG: Opening URL:', mainTabUrl);
-    
     // Open Main tab in a new tab
     const newWindow = window.open(mainTabUrl, '_blank');
     
-    console.log('DEBUG: New window object:', newWindow);
-    
-    // Wait for page to load, then scroll to Array Operation section
+    // Wait for page to load, then scroll to bottom (where Array Operation section is)
     if (newWindow) {
       const checkForLoad = setInterval(function() {
         try {
-          console.log('DEBUG: Checking page state:', newWindow.document.readyState);
           if (newWindow.document.readyState === 'complete') {
             clearInterval(checkForLoad);
-            console.log('DEBUG: Page loaded, attempting to scroll to Array Operation section');
             
             // Small delay to ensure content is fully rendered
             setTimeout(function() {
               try {
-                // Try multiple selectors to find the Array Operation section
-                const selectors = [
-                  'input[value="Start"]',              // START button
-                  'input[type="button"][value="Start"]', // More specific START button
-                  'input[onclick*="startArray"]',      // Array start function
-                  'input[onclick*="start"]',           // Start-related onclick
-                  'button[onclick*="start"]',          // Button with start onclick  
-                  'form[action*="array"]',             // Array operation form
-                  'form[action*="control"]',           // Control form (may contain array operations)
-                  '.title',                            // Any title element (fallback)
-                  'h2',                                // Main headings
-                  'h3',                                // Sub headings
-                ];
+                // Scroll to the bottom of the page where Array Operation section is located
+                const scrollHeight = Math.max(
+                  newWindow.document.body.scrollHeight,
+                  newWindow.document.documentElement.scrollHeight
+                );
                 
-                let arrayElement = null;
-                let usedSelector = '';
-                
-                for (const selector of selectors) {
-                  console.log('DEBUG: Trying selector:', selector);
-                  
-                  arrayElement = newWindow.document.querySelector(selector);
-                  
-                  if (arrayElement) {
-                    usedSelector = selector;
-                    console.log('DEBUG: Found element with selector:', usedSelector, arrayElement);
-                    break;
-                  }
-                }
-                
-                if (arrayElement) {
-                  // Try to find the best parent element to scroll to
-                  let scrollTarget = arrayElement;
-                  if (usedSelector.includes('input[value="Start"]')) {
-                    // If we found the START button, try to find its section container
-                    scrollTarget = arrayElement.closest('.title') || 
-                                 arrayElement.closest('h3') || 
-                                 arrayElement.closest('div') || 
-                                 arrayElement;
-                  }
-                  
-                  scrollTarget.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                  });
-                  console.log('DEBUG: Scrolled to Array Operation section using element:', scrollTarget);
-                } else {
-                  console.log('DEBUG: Could not find Array Operation section with any selector');
-                  
-                  // Debug: Let's see what's actually on the page
-                  console.log('DEBUG: Analyzing page structure...');
-                  
-                  // Look for all headings
-                  const headings = newWindow.document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-                  console.log('DEBUG: Found headings:', Array.from(headings).map(h => h.textContent.trim()));
-                  
-                  // Look for all elements with "title" class
-                  const titles = newWindow.document.querySelectorAll('.title');
-                  console.log('DEBUG: Found .title elements:', Array.from(titles).map(t => t.textContent.trim()));
-                  
-                  // Look for any FontAwesome icons
-                  const icons = newWindow.document.querySelectorAll('[class*="fa-"]');
-                  console.log('DEBUG: Found FontAwesome icons:', Array.from(icons).map(i => i.className));
-                  
-                  // Look for elements containing "start" or "array" anywhere in text
-                  const arrayElements = [];
-                  const walker = newWindow.document.createTreeWalker(
-                    newWindow.document.body,
-                    NodeFilter.SHOW_TEXT,
-                    null,
-                    false
-                  );
-                  
-                  let node;
-                  while (node = walker.nextNode()) {
-                    if (node.textContent.toLowerCase().includes('start') || node.textContent.toLowerCase().includes('array')) {
-                      arrayElements.push({
-                        text: node.textContent.trim(),
-                        parent: node.parentElement.tagName + (node.parentElement.className ? '.' + node.parentElement.className : '')
-                      });
-                    }
-                  }
-                  console.log('DEBUG: Found elements with "start" or "array" text:', arrayElements);
-                  
-                  // Fallback: try more basic selectors to find any array control area
-                  const fallbackSelectors = [
-                    'form',                           // Any form (likely array controls)
-                    'input[type="button"]',           // Button inputs (START button)
-                    'input[type="submit"]',           // Submit inputs 
-                    'button',                         // Button elements
-                    'table',                          // Table containing array info
-                    '.container',                     // Container divs
-                    'div[id*="array"]',               // Divs with array in ID
-                    'div[class*="array"]',            // Divs with array in class
-                  ];
-                  
-                  let scrollTarget = null;
-                  for (const selector of fallbackSelectors) {
-                    console.log('DEBUG: Trying fallback selector:', selector);
-                    
-                    scrollTarget = newWindow.document.querySelector(selector);
-                    if (scrollTarget) {
-                      console.log('DEBUG: Found fallback target with selector:', selector, scrollTarget);
-                      break;
-                    }
-                  }
-                  
-                  if (scrollTarget) {
-                    // Try to find a good parent element to scroll to
-                    const betterTarget = scrollTarget.closest('form') || 
-                                       scrollTarget.closest('.title') || 
-                                       scrollTarget.closest('div') || 
-                                       scrollTarget;
-                    
-                    betterTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    console.log('DEBUG: Fallback scroll successful to:', betterTarget.tagName, betterTarget.className);
-                  } else {
-                    console.log('DEBUG: No fallback targets found, trying generic text search');
-                    
-                    // Last resort: scan for specific encryption elements
-                    const encryptionElements = [
-                      // Look for specific form elements related to encryption
-                      'input[type="password"]',
-                      'input[name*="luks"]',
-                      'input[name*="encrypt"]', 
-                      'select[name*="encrypt"]',
-                      'form[method="POST"]',
-                    ];
-                    
-                    let foundElement = null;
-                    for (const selector of encryptionElements) {
-                      const elements = newWindow.document.querySelectorAll(selector);
-                      for (const el of elements) {
-                        // Check if this element or its nearby text mentions encryption
-                        const context = el.closest('form') || el.parentElement;
-                        if (context && context.textContent.toLowerCase().includes('encrypt')) {
-                          foundElement = context;
-                          console.log('DEBUG: Found encryption element via selector:', selector, el);
-                          break;
-                        }
-                      }
-                      if (foundElement) break;
-                    }
-                    
-                    if (foundElement) {
-                      foundElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      console.log('DEBUG: Scrolled to encryption form context:', foundElement.tagName, foundElement.className);
-                    } else {
-                      // Final fallback: look for visible elements (not HTML/BODY) with encrypt text
-                      const allElements = newWindow.document.querySelectorAll('form, div, dl, dt, dd, p, span, label');
-                      for (const el of allElements) {
-                        if (el.textContent && 
-                            el.textContent.toLowerCase().includes('encrypt') && 
-                            el.offsetHeight > 0 && 
-                            el.tagName !== 'HTML' && 
-                            el.tagName !== 'BODY') {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          console.log('DEBUG: Final fallback scroll to:', el.tagName, el.className, el.textContent.substring(0, 50));
-                          break;
-                        }
-                      }
-                    }
-                  }
-                }
+                newWindow.scrollTo({
+                  top: scrollHeight,
+                  behavior: 'smooth'
+                });
               } catch (e) {
-                // Ignore cross-origin errors if any
-                console.log('DEBUG: Could not scroll to encryption section due to browser restrictions:', e);
+                // Fallback for cross-origin restrictions
+                try {
+                  newWindow.scrollTo(0, 999999); // Large number to ensure bottom
+                } catch (scrollError) {
+                  // Browser restrictions prevent scrolling - user will need to scroll manually
+                }
               }
-            }, 500);
+            }, 500); // 500ms delay to ensure DOM is fully rendered
           }
         } catch (e) {
           // Ignore cross-origin errors during loading
