@@ -603,30 +603,76 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     }
   }
 
+  // Show temporary message in current Auto Start state card
+  function showInCardMessage(message, duration = 3000) {
+    console.log('DEBUG: showInCardMessage called with:', message, 'duration:', duration);
+    
+    // Find the currently visible state card
+    const stateCards = [
+      document.getElementById('stateArrayStopped'),
+      document.getElementById('stateSetupRequired'), 
+      document.getElementById('stateReadyDisabled'),
+      document.getElementById('stateReadyEnabled')
+    ];
+    
+    let currentCard = null;
+    for (const card of stateCards) {
+      if (card && card.style.display !== 'none') {
+        currentCard = card;
+        break;
+      }
+    }
+    
+    if (!currentCard) {
+      console.log('DEBUG: No visible state card found, falling back to status tab');
+      updateStatus(message);
+      return;
+    }
+    
+    // Create or update in-card message area
+    let messageArea = currentCard.querySelector('.in-card-message');
+    if (!messageArea) {
+      messageArea = document.createElement('div');
+      messageArea.className = 'in-card-message';
+      messageArea.style.cssText = 'margin-top: 10px; padding: 10px; border-radius: 4px; background-color: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; font-size: 14px;';
+      currentCard.insertBefore(messageArea, currentCard.firstChild.nextSibling);
+    }
+    
+    messageArea.textContent = message;
+    messageArea.style.display = 'block';
+    
+    // Auto-hide after duration (unless duration is 0)
+    if (duration > 0) {
+      setTimeout(() => {
+        if (messageArea && messageArea.parentNode) {
+          messageArea.style.display = 'none';
+        }
+      }, duration);
+    }
+  }
+
   function runAutoStartSetup() {
     // Clear any previous status output
     clearStatusSilently();
     
     console.log('DEBUG: runAutoStartSetup called');
     
-    // Auto-scroll to Status section immediately to show we're starting
-    showTab('status');
-    showStatusLoading('Starting complete auto-unlock setup...');
+    // Show progress in current Auto Start tab instead of redirecting to status
+    showInCardMessage('Starting auto-unlock setup...', 0); // 0 = don't auto-hide
     
     // Validate encryption key input using shared component
     const validationError = validateEncryptionKeyInput('autostart');
     console.log('DEBUG: Validation result:', validationError);
     if (validationError) {
-      hideStatusLoading();
-      setStatus('Error: ' + validationError);
+      showInCardMessage('Error: ' + validationError, 5000);
       return;
     }
     
     const backupLocation = document.getElementById('backupLocation').value;
     const dryRun = document.getElementById('dryRun').value;
 
-    // Update the status output without hiding the loading spinner
-    updateStatus('Starting complete auto-unlock setup...\nThis will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...');
+    // Update the in-card message instead of status tab
+    showInCardMessage('This will backup headers, refresh hardware key, and enable auto-unlock.\nExecuting LUKS management script, please wait...', 0);
     
     console.log('DEBUG: Status set, preparing form data');
 
@@ -671,13 +717,13 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           }
           
           console.log('DEBUG: Starting AJAX request with base64 keyfile');
-          makeAjaxRequest(postData);
+          makeAjaxRequest(postData, 'auto-start');
         };
         reader.readAsDataURL(keyfileInput.files[0]);
         return; // Exit here, the request will be made in the reader callback
       } else {
         console.log('DEBUG: No file selected!');
-        setStatus('Error: No keyfile selected');
+        showInCardMessage('Error: No keyfile selected', 5000);
         return;
       }
     }
@@ -691,10 +737,10 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     }
 
     console.log('DEBUG: Starting AJAX request to /plugins/luks-key-management/scripts/run_luks_script.php');
-    makeAjaxRequest(postData);
+    makeAjaxRequest(postData, 'auto-start');
   }
   
-  function makeAjaxRequest(postData) {
+  function makeAjaxRequest(postData, context = 'default') {
     $.ajax({
       url: '/plugins/luks-key-management/scripts/run_luks_script.php',
       type: 'POST',
@@ -705,34 +751,54 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       success: function(data) {
         console.log('DEBUG: AJAX success, response length:', data.length);
         console.log('DEBUG: Response data:', data);
+        console.log('DEBUG: Context:', context);
         
-        // Always show output in Status tab
-        showTab('status');
-        setStatus(data);
+        // Handle response based on context
+        if (context === 'auto-start') {
+          // For Auto Start operations, show message in card instead of status tab
+          const isDryRun = document.getElementById('dryRun').value === 'yes';
+          
+          if (data.includes('✅')) {
+            showInCardMessage('Setup completed successfully! Transitioning to next state...', 3000);
+            
+            // Hide setup form and refresh status after a short delay for smooth transition
+            setTimeout(function() {
+              hideSetupForm();
+              loadSmartStatus(); // This will transition to the appropriate state card
+            }, 2000);
+          } else if (data.includes('Error:') || data.includes('Failed:')) {
+            showInCardMessage('Operation failed. Check Status tab for details.', 5000);
+            // For errors, still show in status tab for debugging
+            showTab('status');
+            setStatus(data);
+          } else {
+            showInCardMessage('Operation completed. Check Status tab for full details.', 4000);
+          }
+        } else {
+          // For other tabs (headers, encryption-info), use original behavior
+          showTab('status');
+          setStatus(data);
+        }
         
-        // Use shared download detection function
+        // Use shared download detection function (works regardless of context)
         const finalBackupLocation = document.getElementById('backupLocation').value;
         const finalDryRun = document.getElementById('dryRun').value;
         handleDownloadDetection(data, finalBackupLocation, finalDryRun);
-        
-        // If this was a successful setup operation (not dry run), refresh smart status
-        const isDryRun = document.getElementById('dryRun').value === 'yes';
-        if (!isDryRun && data.includes('✅')) {
-          console.log('DEBUG: Setup completed successfully, refreshing smart status...');
-          
-          // Hide setup form and refresh status after a short delay
-          setTimeout(function() {
-            hideSetupForm();
-            loadSmartStatus();
-            // Return to Auto Start tab to show new status
-            showTab('auto-start');
-          }, 3000); // 3 second delay to let user see the success message
-        }
       },
       error: function(xhr, status, error) {
         console.log('DEBUG: AJAX error - Status:', status, 'Error:', error);
         console.log('DEBUG: XHR object:', xhr);
-        setStatus('Error: AJAX failed - Status: ' + status + ', Error: ' + error + '\nCheck browser console for more details.');
+        
+        const errorMessage = 'Error: AJAX failed - Status: ' + status + ', Error: ' + error + '\nCheck browser console for more details.';
+        
+        if (context === 'auto-start') {
+          showInCardMessage('Network error occurred. Check Status tab for details.', 5000);
+          // Also show in status tab for debugging
+          showTab('status');
+          setStatus(errorMessage);
+        } else {
+          setStatus(errorMessage);
+        }
       }
     });
   }
