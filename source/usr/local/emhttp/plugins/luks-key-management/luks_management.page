@@ -1486,9 +1486,15 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     const autoUnlockEnabled = statusData.auto_unlock_enabled || false;
     const unlockableDevices = statusData.unlockable_devices || 'none';
     
+    // Extract just the device count from the unlockableDevices string
+    // Format is typically: "2 device(s): md1p1, md2p1" - we want just "2 device(s)"
+    const deviceCountOnly = unlockableDevices.includes(':') ? 
+      unlockableDevices.split(':')[0].trim() : unlockableDevices;
+    
     console.log('DEBUG: Smart status data received:', statusData);
     console.log('DEBUG: System state:', systemState, 'Auto-unlock enabled:', autoUnlockEnabled);
     console.log('DEBUG: Keys exist:', statusData.keys_exist, 'Keys work:', statusData.keys_work);
+    console.log('DEBUG: Device count only:', deviceCountOnly);
     console.log('DEBUG: Debug info:', statusData.debug);
     
     switch (systemState) {
@@ -1502,12 +1508,12 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         
       case 'ready_disabled':
         document.getElementById('stateReadyDisabled').style.display = 'block';
-        document.getElementById('unlockableDevicesDisabled').textContent = unlockableDevices;
+        document.getElementById('unlockableDevicesDisabled').textContent = deviceCountOnly;
         break;
         
       case 'ready_enabled':
         document.getElementById('stateReadyEnabled').style.display = 'block';
-        document.getElementById('unlockableDevicesEnabled').textContent = unlockableDevices;
+        document.getElementById('unlockableDevicesEnabled').textContent = deviceCountOnly;
         break;
         
       default:
@@ -1530,8 +1536,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function toggleAutoUnlock(enable) {
     console.log('DEBUG: toggleAutoUnlock called with enable:', enable);
     
-    // Show loading message in status area
-    showStatusInTab(enable ? 'Enabling auto-unlock...' : 'Disabling auto-unlock...');
+    // Show loading message in current card instead of status tab
+    showInCardMessage(enable ? 'Enabling auto-unlock...' : 'Disabling auto-unlock...', 0);
     
     const action = enable ? 'enable' : 'disable';
     const postData = { action: action };
@@ -1553,21 +1559,27 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       
       // Check for success/failure in response
       if (data.includes('successfully')) {
-        // Refresh smart status to update state cards (orange → green or green → orange)
-        loadSmartStatus();
+        // Show brief success message in card
+        showInCardMessage(enable ? 'Auto-unlock enabled successfully! Transitioning...' : 'Auto-unlock disabled successfully! Transitioning...', 2000);
         
-        // Show brief success message
-        showStatusInTab(data);
+        // Refresh smart status to update state cards (orange ↔ green) after brief delay
+        setTimeout(() => {
+          loadSmartStatus();
+        }, 1500);
       } else {
-        // Show error
-        showStatusInTab('Error: ' + data);
-        // Reload status to get current state
-        loadSmartStatus();
+        // Show error in card
+        showInCardMessage('Operation failed. Check Status tab for details.', 5000);
+        // For errors, also show in status tab for debugging
+        showTab('status');
+        setStatus('Error: ' + data);
       }
     })
     .catch(error => {
       console.error('DEBUG: Toggle error:', error);
-      showStatusInTab('Error: Failed to toggle auto-unlock');
+      showInCardMessage('Network error occurred. Check Status tab for details.', 5000);
+      // Also show in status tab for debugging
+      showTab('status');
+      setStatus('Error: Failed to toggle auto-unlock - ' + error.message);
       // Reload status to get current state
       loadSmartStatus();
     });
