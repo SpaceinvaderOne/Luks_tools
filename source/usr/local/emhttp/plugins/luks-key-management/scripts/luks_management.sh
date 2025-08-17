@@ -638,7 +638,7 @@ get_gateway_mac() {
         interface=$(echo "$route" | awk '{print $1}')
         gateway_ip=$(echo "$route" | awk '{print $2}')
         # Use arping to find the MAC address for the gateway IP on the correct interface
-        mac_address=$(arping -c 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
+        mac_address=$(timeout 2 arping -c 1 -w 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
         if [[ -n "$mac_address" ]]; then
             echo "$mac_address"
             return 0 # Success

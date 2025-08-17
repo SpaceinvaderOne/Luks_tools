@@ -55,7 +55,7 @@ function executeCommand($action) {
 // Get all status information
 $status = array();
 
-// Get system state
+// Get system state (includes array status and key testing internally)
 $system_state = executeCommand('system_state');
 $status['system_state'] = $system_state ?: 'unknown';
 
@@ -63,9 +63,8 @@ $status['system_state'] = $system_state ?: 'unknown';
 $auto_unlock_status = executeCommand('get_status');
 $status['auto_unlock_enabled'] = ($auto_unlock_status === 'enabled');
 
-// Get array status for accurate information
-$array_status = executeCommand('check_array_status');
-$status['array_running'] = ($array_status === 'true');
+// Derive array status from system state (optimization: eliminate redundant call)
+$status['array_running'] = ($system_state !== 'array_stopped');
 
 // Hardware fingerprint removed for security reasons
 
@@ -77,16 +76,16 @@ $status['unlockable_devices'] = $unlockable_devices ?: 'none';
 $keys_exist = executeCommand('check_keys_exist');
 $status['keys_exist'] = ($keys_exist === 'true');
 
-// Test if keys work
-$keys_work = executeCommand('test_keys_work');
-$status['keys_work'] = ($keys_work === 'true');
+// Derive keys work status from system state (optimization: eliminate redundant call)
+$status['keys_work'] = ($system_state === 'ready_enabled' || $system_state === 'ready_disabled');
 
 // Add debug information
 $status['debug'] = array(
     'keys_exist_raw' => $keys_exist,
-    'keys_work_raw' => $keys_work,
+    'keys_work_derived' => ($system_state === 'ready_enabled' || $system_state === 'ready_disabled') ? 'true' : 'false',
     'system_state_raw' => $system_state,
-    'auto_unlock_raw' => $auto_unlock_status
+    'auto_unlock_raw' => $auto_unlock_status,
+    'optimizations' => 'Single device testing + eliminated redundant calls'
 );
 
 // Add timestamp

@@ -81,54 +81,54 @@ check_hardware_keys_exist() {
         return 1
     fi
     
-    # Check each device for hardware-derived tokens or metadata
-    for device in "${luks_devices[@]}"; do
-        debug_log "Checking device: $device"
+    # Check first device for hardware-derived tokens (optimization: single device check)
+    # Since hardware tokens are managed consistently across devices, checking one is sufficient
+    local first_device="${luks_devices[0]}"
+    debug_log "Checking first device: $first_device"
+    
+    # Check for multiple patterns that indicate hardware-derived keys
+    local dump_output
+    dump_output=$(cryptsetup luksDump "$first_device" 2>/dev/null)
+    
+    if [[ -n "$dump_output" ]]; then
+        debug_log "Got luksDump output for $first_device, checking for tokens..."
         
-        # Check for multiple patterns that indicate hardware-derived keys
-        local dump_output
-        dump_output=$(cryptsetup luksDump "$device" 2>/dev/null)
+        # Look for different possible patterns (case-insensitive)
+        if echo "$dump_output" | grep -qi "unraid-derived\|hardware-derived"; then
+            debug_log "Found hardware-derived token via grep on $first_device"
+            echo "true"
+            return 0
+        fi
         
-        if [[ -n "$dump_output" ]]; then
-            debug_log "Got luksDump output for $device, checking for tokens..."
+        # Check for JSON token structure
+        if echo "$dump_output" | grep -q '"type".*"unraid-derived"'; then
+            debug_log "Found unraid-derived JSON token on $first_device"
+            echo "true"
+            return 0
+        fi
+        
+        # Use the main script's working detection logic
+        local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
+        if [[ -f "$luks_script" ]]; then
+            debug_log "Using main LUKS script to check derived slots on $first_device"
             
-            # Look for different possible patterns (case-insensitive)
-            if echo "$dump_output" | grep -qi "unraid-derived\|hardware-derived"; then
-                debug_log "Found hardware-derived token via grep on $device"
-                echo "true"
-                return 0
-            fi
-            
-            # Check for JSON token structure
-            if echo "$dump_output" | grep -q '"type".*"unraid-derived"'; then
-                debug_log "Found unraid-derived JSON token on $device"
-                echo "true"
-                return 0
-            fi
-            
-            # Use the main script's working detection logic
-            local luks_script="/usr/local/emhttp/plugins/luks-key-management/scripts/luks_management.sh"
-            if [[ -f "$luks_script" ]]; then
-                debug_log "Using main LUKS script to check derived slots on $device"
-                
-                # Source the find_unraid_derived_slots function from the main script
-                if source "$luks_script" 2>/dev/null; then
-                    # Try to use the main script's detection function
-                    local derived_slots
-                    derived_slots=$(find_unraid_derived_slots "$device" 2>/dev/null)
-                    if [[ -n "$derived_slots" ]]; then
-                        debug_log "Main script found derived slots on $device: $derived_slots"
-                        echo "true"
-                        return 0
-                    fi
+            # Source the find_unraid_derived_slots function from the main script
+            if source "$luks_script" 2>/dev/null; then
+                # Try to use the main script's detection function
+                local derived_slots
+                derived_slots=$(find_unraid_derived_slots "$first_device" 2>/dev/null)
+                if [[ -n "$derived_slots" ]]; then
+                    debug_log "Main script found derived slots on $first_device: $derived_slots"
+                    echo "true"
+                    return 0
                 fi
             fi
-            
-            debug_log "No hardware-derived tokens found on $device"
-        else
-            debug_log "No luksDump output for $device"
         fi
-    done
+        
+        debug_log "No hardware-derived tokens found on $first_device"
+    else
+        debug_log "No luksDump output for $first_device"
+    fi
     
     debug_log "No hardware-derived tokens found"
     echo "false"
@@ -172,8 +172,8 @@ test_hardware_keys_work() {
         for route in "${routes[@]}"; do
             interface=$(echo "$route" | awk '{print $1}')
             gateway_ip=$(echo "$route" | awk '{print $2}')
-            # Use arping to find the MAC address (same as old plugin)
-            mac_address=$(arping -c 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
+            # Use arping to find the MAC address with timeout (optimization: prevent network delays)
+            mac_address=$(timeout 2 arping -c 1 -w 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
             if [[ -n "$mac_address" ]]; then
                 break
             fi
@@ -208,19 +208,19 @@ test_hardware_keys_work() {
     # Write key to file with no newline (same as old plugin: echo -n)
     echo -n "$current_key" > "$temp_keyfile"
     
-    # Test if current key works on any LUKS device using file method
-    for device in "${luks_devices[@]}"; do
-        debug_log "Testing hardware key on device: $device using file method"
-        
-        # Test the key using --key-file method (same as old plugin)
-        if cryptsetup luksOpen --test-passphrase --key-file="$temp_keyfile" "$device" &>/dev/null; then
-            debug_log "Hardware key works on $device"
-            # Clean up temp file
-            rm -f "$temp_keyfile"
-            echo "true"
-            return 0
-        fi
-    done
+    # Test if current key works on first LUKS device (optimization: single device test)
+    # Since hardware keys are device-independent, testing one device is sufficient
+    local first_device="${luks_devices[0]}"
+    debug_log "Testing hardware key on first device: $first_device using file method"
+    
+    # Test the key using --key-file method (same as old plugin)
+    if cryptsetup luksOpen --test-passphrase --key-file="$temp_keyfile" "$first_device" &>/dev/null; then
+        debug_log "Hardware key works on $first_device"
+        # Clean up temp file
+        rm -f "$temp_keyfile"
+        echo "true"
+        return 0
+    fi
     
     # Clean up temp file
     rm -f "$temp_keyfile"
