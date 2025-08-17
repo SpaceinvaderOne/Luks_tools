@@ -284,11 +284,13 @@ get_system_state() {
     
     if [[ ${#luks_devices[@]} -eq 0 ]]; then
         debug_log "No LUKS devices found - plugin not applicable"
+        save_encrypted_disks_flag "false"
         echo "no_encrypted_disks"
         return 0
     fi
     
     debug_log "Found ${#luks_devices[@]} LUKS devices, checking key status..."
+    save_encrypted_disks_flag "true"
     
     # LUKS devices exist, now check key status
     keys_work=$(test_hardware_keys_work)
@@ -314,18 +316,41 @@ load_config() {
     else
         # Create default config if missing
         echo "AUTO_UNLOCK_ENABLED=false" > "$CONFIG_FILE"
+        echo "ENCRYPTED_DISKS_AVAILABLE=true" >> "$CONFIG_FILE"
         AUTO_UNLOCK_ENABLED="false"
+        ENCRYPTED_DISKS_AVAILABLE="true"
         debug_log "Created default config file"
     fi
     
+    # Set defaults for missing values
+    [[ -z "$AUTO_UNLOCK_ENABLED" ]] && AUTO_UNLOCK_ENABLED="false"
+    [[ -z "$ENCRYPTED_DISKS_AVAILABLE" ]] && ENCRYPTED_DISKS_AVAILABLE="true"
+    
     debug_log "Current auto-unlock status: $AUTO_UNLOCK_ENABLED"
+    debug_log "Current encrypted disks status: $ENCRYPTED_DISKS_AVAILABLE"
 }
 
 # Save plugin configuration
 save_config() {
     local enabled="$1"
+    # Load current config to preserve other settings
+    load_config
+    # Save both settings
     echo "AUTO_UNLOCK_ENABLED=$enabled" > "$CONFIG_FILE"
-    debug_log "Saved config: AUTO_UNLOCK_ENABLED=$enabled"
+    echo "ENCRYPTED_DISKS_AVAILABLE=$ENCRYPTED_DISKS_AVAILABLE" >> "$CONFIG_FILE"
+    debug_log "Saved config: AUTO_UNLOCK_ENABLED=$enabled, ENCRYPTED_DISKS_AVAILABLE=$ENCRYPTED_DISKS_AVAILABLE"
+}
+
+# Save encrypted disks availability flag
+save_encrypted_disks_flag() {
+    local available="$1"
+    # Load current config to preserve other settings
+    load_config
+    # Save both settings
+    echo "AUTO_UNLOCK_ENABLED=$AUTO_UNLOCK_ENABLED" > "$CONFIG_FILE"
+    echo "ENCRYPTED_DISKS_AVAILABLE=$available" >> "$CONFIG_FILE"
+    ENCRYPTED_DISKS_AVAILABLE="$available"
+    debug_log "Saved encrypted disks flag: ENCRYPTED_DISKS_AVAILABLE=$available"
 }
 
 # Verify required directories and files exist
