@@ -130,14 +130,28 @@ test_hardware_keys_work() {
     # Generate current hardware key using same method as fetch_key.sh
     debug_log "Generating hardware key using same method as fetch_key.sh"
     
-    # Get hardware components (same method as fetch_key.sh)
+    # Get hardware components (EXACT same method as old working plugin)
     local motherboard_id mac_address
-    motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
-    if [[ -z "$motherboard_id" ]] || [[ "$motherboard_id" == "Not Specified" ]] || [[ "$motherboard_id" == "000000000" ]]; then
-        motherboard_id=$(dmidecode -s system-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
-    fi
+    motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null)
     
-    mac_address=$(ip route show default | head -1 | awk '{print $3}' | xargs -I {} arp -n {} 2>/dev/null | awk '{print $3}' | head -1)
+    # Use original gateway MAC detection method (arping-based)
+    local interface gateway_ip
+    mapfile -t routes < <(ip route show default | awk '/default/ {print $5 " " $3}')
+    
+    if [[ ${#routes[@]} -eq 0 ]]; then
+        debug_log "No default gateway found"
+        mac_address=""
+    else
+        for route in "${routes[@]}"; do
+            interface=$(echo "$route" | awk '{print $1}')
+            gateway_ip=$(echo "$route" | awk '{print $2}')
+            # Use arping to find the MAC address (same as old plugin)
+            mac_address=$(arping -c 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
+            if [[ -n "$mac_address" ]]; then
+                break
+            fi
+        done
+    fi
     
     if [[ -z "$motherboard_id" ]] || [[ "$motherboard_id" == "unknown" ]] || [[ -z "$mac_address" ]]; then
         debug_log "Failed to get hardware components: MB='$motherboard_id' MAC='$mac_address'"
@@ -202,19 +216,31 @@ get_hardware_fingerprint() {
         # Extract hardware info from the fetch_key script output
         local motherboard_id gateway_mac
         
-        # Get motherboard serial (same method as fetch_key.sh)
-        motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
-        if [[ -z "$motherboard_id" ]] || [[ "$motherboard_id" == "Not Specified" ]] || [[ "$motherboard_id" == "000000000" ]]; then
-            # Try alternative methods
-            motherboard_id=$(dmidecode -s system-serial-number 2>/dev/null | head -1 | tr -d '[:space:]')
-        fi
+        # Get motherboard serial (EXACT same method as old working plugin)
+        motherboard_id=$(dmidecode -s baseboard-serial-number 2>/dev/null)
         
-        # Get gateway MAC (same method as fetch_key.sh)  
-        gateway_mac=$(ip route show default | head -1 | awk '{print $3}' | xargs -I {} arp -n {} 2>/dev/null | awk '{print $3}' | head -1)
+        # Get gateway MAC (EXACT same method as old working plugin)
+        local interface gateway_ip
+        mapfile -t routes < <(ip route show default | awk '/default/ {print $5 " " $3}')
+        
+        if [[ ${#routes[@]} -eq 0 ]]; then
+            debug_log "No default gateway found"
+            gateway_mac=""
+        else
+            for route in "${routes[@]}"; do
+                interface=$(echo "$route" | awk '{print $1}')
+                gateway_ip=$(echo "$route" | awk '{print $2}')
+                # Use arping to find the MAC address (same as old plugin)
+                gateway_mac=$(arping -c 1 -I "$interface" "$gateway_ip" 2>/dev/null | grep "reply from" | awk '{print $5}' | tr -d '[]')
+                if [[ -n "$gateway_mac" ]]; then
+                    break
+                fi
+            done
+        fi
         
         debug_log "Detected hardware: MB='$motherboard_id' GW='$gateway_mac'"
         
-        if [[ -n "$motherboard_id" ]] && [[ -n "$gateway_mac" ]] && [[ "$motherboard_id" != "000000000" ]]; then
+        if [[ -n "$motherboard_id" ]] && [[ -n "$gateway_mac" ]]; then
             echo "MB:${motherboard_id} / GW:${gateway_mac}"
         else
             echo "unknown (MB:${motherboard_id:-none} / GW:${gateway_mac:-none})"
