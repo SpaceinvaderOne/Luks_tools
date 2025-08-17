@@ -1645,9 +1645,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function toggleAutoUnlock(enable) {
     console.log('DEBUG: toggleAutoUnlock called with enable:', enable);
     
-    // Show loading in toggle area
-    const toggleDiv = document.getElementById('autoUnlockToggle');
-    toggleDiv.innerHTML = '<span style="color: #868e96;">⏳ Processing...</span>';
+    // Show loading message in status area
+    showStatusInTab(enable ? 'Enabling auto-unlock...' : 'Disabling auto-unlock...');
     
     const action = enable ? 'enable' : 'disable';
     const postData = { action: action };
@@ -1669,7 +1668,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       
       // Check for success/failure in response
       if (data.includes('successfully')) {
-        // Refresh smart status to update state cards
+        // Refresh smart status to update state cards (orange → green or green → orange)
         loadSmartStatus();
         
         // Show brief success message

@@ -37,32 +37,27 @@ verbose_log() {
 
 # Array status detection for accurate LUKS information
 
-# Check if Unraid array is started and LUKS devices are accessible
+# Check if Unraid storage is started (arrays, pools, or both)
 check_array_status() {
-    debug_log "Checking Unraid array status..."
+    debug_log "Checking Unraid storage status..."
     
-    # Check if /proc/mdstat exists and has active arrays
-    if [[ ! -f "/proc/mdstat" ]]; then
-        debug_log "No /proc/mdstat found"
-        echo "false"
-        return 1
-    fi
-    
-    # Look for active MD arrays (Unraid uses md1, md2, etc.)
-    if grep -q "active" /proc/mdstat 2>/dev/null; then
-        debug_log "Found active MD arrays in /proc/mdstat"
+    # Primary: Check if user shares are mounted (/mnt/user)
+    # This works for all configurations: array-only, pools-only, or hybrid
+    if mountpoint -q /mnt/user 2>/dev/null; then
+        debug_log "User shares mounted at /mnt/user - storage is active"
         echo "true"
         return 0
     fi
     
-    # Alternative check: Look for mounted /mnt/user or /mnt/disk* (Unraid mount points)
-    if mount | grep -q "/mnt/disk\|/mnt/user" 2>/dev/null; then
-        debug_log "Found Unraid mount points, array appears to be started"
+    # Fallback: Check if user share service (shfs) is running
+    # Confirms storage services are active even if mount check fails
+    if pgrep -x shfs >/dev/null 2>&1; then
+        debug_log "User share service (shfs) is running - storage is active"
         echo "true"
         return 0
     fi
     
-    debug_log "No active arrays or Unraid mount points found"
+    debug_log "No user shares mounted and no shfs process - storage not started"
     echo "false"
     return 1
 }
