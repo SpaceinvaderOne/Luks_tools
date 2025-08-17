@@ -581,24 +581,6 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       </div>
     </div>
     
-    <!-- Step 4: Action Selection -->
-    <div id="encinfoStep4" style="display: none;">
-      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
-        <h3 style="margin-top: 0; color: #51cf66;"><i class="fa fa-play"></i> Step 4: Choose Action</h3>
-        <p>Analysis: <strong id="selectedDetailLevel3">Simple</strong> | Key Type: <strong id="selectedKeyType2">Passphrase</strong></p>
-        <p>Everything is ready! Choose what you want to do:</p>
-        
-        <dl>
-          <dt>&nbsp;</dt>
-          <dd>
-            <span style="margin-right: 15px;"><button type="button" onclick="runEncryptionInfoWorkflow('view')" style="background: #51cf66; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">View Encryption Status</button></span>
-            <span style="margin-right: 15px;"><button type="button" onclick="runEncryptionInfoWorkflow('download')" style="background: #51cf66; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Download Analysis</button></span>
-            <span><button type="button" onclick="goBackToStep(3)" style="background: #666; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Back</button></span>
-          </dd>
-        </dl>
-      </div>
-    </div>
-    
     <!-- Progress Spinner Card -->
     <div id="encinfoProgress" style="display: none;">
       <div style="margin: 20px 0; padding: 20px; border-radius: 8px; background-color: #ffc107; text-align: center;">
@@ -619,7 +601,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       <dl>
         <dt>&nbsp;</dt>
         <dd>
-          <span><button type="button" onclick="resetEncryptionInfoWorkflow()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Start New Analysis</button></span>
+          <span style="margin-right: 15px;"><button type="button" onclick="resetEncryptionInfoWorkflow()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Start New Analysis</button></span>
+          <span><button type="button" onclick="downloadEncryptionReport()" style="background: #51cf66; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Download Report</button></span>
         </dd>
       </dl>
     </div>
@@ -1500,7 +1483,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     document.getElementById('encinfoStep3').style.display = 'block';
   }
   
-  // Step 3: Validate and Proceed to Actions
+  // Step 3: Validate and Proceed Directly to Analysis
   function proceedToActions() {
     console.log('DEBUG: proceedToActions called');
     
@@ -1511,9 +1494,13 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       return;
     }
     
-    // Hide Step 3 and show Step 4
+    // Skip Step 4 and go directly to analysis with 'view' action
     document.getElementById('encinfoStep3').style.display = 'none';
-    document.getElementById('encinfoStep4').style.display = 'block';
+    document.getElementById('encinfoProgress').style.display = 'block';
+    
+    // Show spinner and execute analysis
+    showEncinfoSpinner();
+    executeEncryptionAnalysis('view');
   }
   
   // Custom validation for encinfo workflow
@@ -1647,8 +1634,13 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   function makeEncryptionInfoWorkflowRequest(postData, action) {
     console.log('DEBUG: makeEncryptionInfoWorkflowRequest called with action:', action);
     
+    // For download actions, use the download script instead
+    const scriptUrl = action === 'download' 
+      ? '/plugins/luks-key-management/scripts/run_encryption_download.php'
+      : '/plugins/luks-key-management/scripts/run_encryption_info.php';
+    
     $.ajax({
-      url: '/plugins/luks-key-management/scripts/run_encryption_info.php',
+      url: scriptUrl,
       type: 'POST',
       data: postData,
       success: function(data) {
@@ -1656,8 +1648,20 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         hideEncinfoSpinner();
         
         if (action === 'download') {
-          // Handle download logic here if needed
-          console.log('DEBUG: Download action - processing download');
+          // Check for download signal and trigger download
+          const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+          if (downloadMatch) {
+            const downloadPath = downloadMatch[1];
+            const filename = downloadPath.split('/').pop();
+            
+            // Trigger download
+            window.location.href = '/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
+            
+            // Show success message and return to results
+            document.getElementById('encinfoProgress').style.display = 'none';
+            document.getElementById('encinfoResults').style.display = 'block';
+            return;
+          }
         }
         
         // Parse and display results in cards
@@ -1974,6 +1978,22 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     resultsContent.innerHTML = '<div style="padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);"><h4 style="color: #ff6b6b; margin-top: 0;"><i class="fa fa-exclamation-triangle"></i> Error</h4><p>' + message + '</p></div>';
   }
   
+  // Download the encryption analysis report
+  function downloadEncryptionReport() {
+    console.log('DEBUG: downloadEncryptionReport called');
+    
+    // Show progress message
+    document.getElementById('encinfoProgressText').textContent = 'Generating downloadable report...';
+    document.getElementById('encinfoProgress').style.display = 'block';
+    document.getElementById('encinfoResults').style.display = 'none';
+    
+    // Show spinner
+    showEncinfoSpinner();
+    
+    // Execute download analysis
+    executeEncryptionAnalysis('download');
+  }
+  
   // Reset workflow to start over
   function resetEncryptionInfoWorkflow() {
     console.log('DEBUG: resetEncryptionInfoWorkflow called');
@@ -1985,8 +2005,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       action: ''
     };
     
-    // Hide all steps except Step 1
-    for (let i = 2; i <= 4; i++) {
+    // Hide all steps except Step 1 (no Step 4 anymore)
+    for (let i = 2; i <= 3; i++) {
       document.getElementById('encinfoStep' + i).style.display = 'none';
     }
     document.getElementById('encinfoProgress').style.display = 'none';
