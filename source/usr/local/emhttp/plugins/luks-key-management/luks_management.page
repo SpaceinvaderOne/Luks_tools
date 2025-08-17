@@ -191,7 +191,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
       <dl>
         <dt>&nbsp;</dt>
         <dd>
-          <span><button type="button" onclick="goToDiskSettings()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Disk Settings → Start Array</button></span>
+          <span><button type="button" onclick="goToDiskSettings()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Go to Main Tab → Start Array</button></span>
           <div class="description">Start your array to enable LUKS device detection and key verification.</div>
         </dd>
       </dl>
@@ -1209,13 +1209,16 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
               try {
                 // Try multiple selectors to find the Array Operation section
                 const selectors = [
-                  'input[value="Start"]',         // START button
-                  'button:contains("Start")',     // START button as button element
-                  'span:contains("Array Operation")', // Section heading
-                  'div:contains("Array Operation")', // Section container
-                  '.title:contains("Array Operation")', // Title containing array operation
-                  'h3:contains("Array Operation")', // Different heading level
+                  'input[value="Start"]',              // START button
                   'input[type="button"][value="Start"]', // More specific START button
+                  'input[onclick*="startArray"]',      // Array start function
+                  'input[onclick*="start"]',           // Start-related onclick
+                  'button[onclick*="start"]',          // Button with start onclick  
+                  'form[action*="array"]',             // Array operation form
+                  'form[action*="control"]',           // Control form (may contain array operations)
+                  '.title',                            // Any title element (fallback)
+                  'h2',                                // Main headings
+                  'h3',                                // Sub headings
                 ];
                 
                 let arrayElement = null;
@@ -1224,20 +1227,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
                 for (const selector of selectors) {
                   console.log('DEBUG: Trying selector:', selector);
                   
-                  if (selector.includes(':contains')) {
-                    // Handle text-based selectors manually
-                    const elements = newWindow.document.querySelectorAll(selector.split(':')[0]);
-                    for (const el of elements) {
-                      const searchText = selector.match(/contains\("([^"]+)"\)/)[1];
-                      if (el.textContent.toLowerCase().includes(searchText.toLowerCase())) {
-                        arrayElement = el;
-                        usedSelector = selector;
-                        break;
-                      }
-                    }
-                  } else {
-                    arrayElement = newWindow.document.querySelector(selector);
-                  }
+                  arrayElement = newWindow.document.querySelector(selector);
                   
                   if (arrayElement) {
                     usedSelector = selector;
@@ -1300,41 +1290,27 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
                   }
                   console.log('DEBUG: Found elements with "start" or "array" text:', arrayElements);
                   
-                  // Fallback: try more specific selectors for the Array Operation section
+                  // Fallback: try more basic selectors to find any array control area
                   const fallbackSelectors = [
-                    'form',                           // Any form (array controls)
-                    'input[type="button"]',           // Button inputs
-                    'input[type="submit"]',           // Submit inputs
+                    'form',                           // Any form (likely array controls)
+                    'input[type="button"]',           // Button inputs (START button)
+                    'input[type="submit"]',           // Submit inputs 
                     'button',                         // Button elements
-                    'dt:contains("Array Operation")', // Any dt with "Array Operation"
-                    'span:contains("Start")',         // Any span with Start
+                    'table',                          // Table containing array info
+                    '.container',                     // Container divs
+                    'div[id*="array"]',               // Divs with array in ID
+                    'div[class*="array"]',            // Divs with array in class
                   ];
                   
                   let scrollTarget = null;
                   for (const selector of fallbackSelectors) {
                     console.log('DEBUG: Trying fallback selector:', selector);
                     
-                    if (selector.includes(':contains')) {
-                      // Handle text-based selectors
-                      const baseSelector = selector.split(':')[0];
-                      const searchText = selector.match(/contains\("([^"]+)"\)/)[1];
-                      const elements = newWindow.document.querySelectorAll(baseSelector);
-                      
-                      for (const el of elements) {
-                        if (el.textContent.toLowerCase().includes(searchText.toLowerCase())) {
-                          scrollTarget = el;
-                          console.log('DEBUG: Found fallback target with text search:', el);
-                          break;
-                        }
-                      }
-                    } else {
-                      scrollTarget = newWindow.document.querySelector(selector);
-                      if (scrollTarget) {
-                        console.log('DEBUG: Found fallback target with direct selector:', scrollTarget);
-                      }
+                    scrollTarget = newWindow.document.querySelector(selector);
+                    if (scrollTarget) {
+                      console.log('DEBUG: Found fallback target with selector:', selector, scrollTarget);
+                      break;
                     }
-                    
-                    if (scrollTarget) break;
                   }
                   
                   if (scrollTarget) {
