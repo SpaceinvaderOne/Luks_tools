@@ -151,12 +151,11 @@ $env = array(
 // For main script, pass encryption key via environment variables
 // Since we now use temp files for both passphrases and keyfiles (Unraid pattern),
 // we always use LUKS_KEYFILE, but also pass the original user input type
-if ($headers_only !== 'true') {
-    $env['LUKS_KEYFILE'] = $encryption_key['value'];
-    $env['LUKS_ORIGINAL_INPUT_TYPE'] = $key_type;  // 'passphrase' or 'keyfile'
-    if (!empty($zip_password)) {
-        $env['LUKS_ZIP_PASSWORD'] = $zip_password;
-    }
+// Headers backup also needs encryption keys to access LUKS devices
+$env['LUKS_KEYFILE'] = $encryption_key['value'];
+$env['LUKS_ORIGINAL_INPUT_TYPE'] = $key_type;  // 'passphrase' or 'keyfile'
+if (!empty($zip_password)) {
+    $env['LUKS_ZIP_PASSWORD'] = $zip_password;
 }
 
 // Start the process with the explicit environment
@@ -201,21 +200,16 @@ if (is_resource($process)) {
             $backup_file = $matches[1];
             $filename = basename($backup_file);
             
-            // Create symlink in plugin directory for browser access
-            $plugin_download_dir = "/usr/local/emhttp/plugins/luks-key-management/downloads";
-            $symlink_path = "$plugin_download_dir/$filename";
+            // Create download directory in /tmp to avoid flash drive wear
+            $tmp_download_dir = "/tmp/luksheaders/download";
+            $tmp_file_path = "$tmp_download_dir/$filename";
             
-            // Ensure download directory exists with proper permissions
-            if (!is_dir($plugin_download_dir)) {
-                if (!mkdir($plugin_download_dir, 0755, true)) {
-                    $output .= "\nWarning: Could not create download directory.";
+            // Ensure temp download directory exists with proper permissions
+            if (!is_dir($tmp_download_dir)) {
+                if (!mkdir($tmp_download_dir, 0755, true)) {
+                    $output .= "\nWarning: Could not create temp download directory.";
                     return;
                 }
-            }
-            
-            // Remove any existing file and create new one
-            if (file_exists($symlink_path)) {
-                unlink($symlink_path);
             }
             
             // Check if source file exists before copying
@@ -224,14 +218,34 @@ if (is_resource($process)) {
                 return;
             }
             
-            // Copy the file to the plugin directory instead of symlinking from temp location
-            // This prevents issues with temp directory cleanup
-            if (copy($backup_file, $symlink_path)) {
-                // Set proper permissions on the copied file
-                chmod($symlink_path, 0644);
-                $output .= "\nDOWNLOAD_READY: $symlink_path";
+            // Copy the file to temp directory first
+            if (!copy($backup_file, $tmp_file_path)) {
+                $output .= "\nWarning: Could not copy backup file to temp location.";
+                return;
+            }
+            chmod($tmp_file_path, 0644);
+            
+            // Create web-accessible symlink directory in plugin folder
+            $web_download_dir = "/usr/local/emhttp/plugins/luks-key-management/downloads";
+            $web_symlink_path = "$web_download_dir/$filename";
+            
+            // Ensure web download directory exists
+            if (!is_dir($web_download_dir)) {
+                if (!mkdir($web_download_dir, 0755, true)) {
+                    $output .= "\nWarning: Could not create web download directory.";
+                    return;
+                }
+            }
+            
+            // Remove any existing symlink and create new one pointing to temp file
+            if (file_exists($web_symlink_path)) {
+                unlink($web_symlink_path);
+            }
+            
+            if (symlink($tmp_file_path, $web_symlink_path)) {
+                $output .= "\nDOWNLOAD_READY: $web_symlink_path";
             } else {
-                $output .= "\nWarning: Could not copy backup file to download location.";
+                $output .= "\nWarning: Could not create download symlink.";
             }
         }
     }

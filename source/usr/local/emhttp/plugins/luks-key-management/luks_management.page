@@ -1805,7 +1805,7 @@ cryptsetup luksDump /dev/md1p1</pre>
             const filename = downloadPath.split('/').pop();
             
             // Trigger download
-            window.location.href = '/usr/local/emhttp/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
+            window.location.href = '/plugins/luks-key-management/downloads/' + filename;
             
             // Show success message and return to results
             document.getElementById('encinfoProgress').style.display = 'none';
@@ -2409,7 +2409,7 @@ cryptsetup luksDump /dev/md1p1</pre>
             const filename = downloadPath.split('/').pop();
             
             // Trigger download
-            window.location.href = '/usr/local/emhttp/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
+            window.location.href = '/plugins/luks-key-management/downloads/' + filename;
           }
         }
         
