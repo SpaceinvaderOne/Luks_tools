@@ -376,72 +376,224 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
   
   <!-- Normal Headers Content -->
   <div id="headersNormalContent">
-    <p>Create backups of your LUKS headers for all devices that your authentication method can unlock. These backups are essential for recovery if headers become corrupted.</p>
+    <p>Manage your LUKS headers with secure backup and restore operations. Header backups are essential for recovery if encryption headers become corrupted.</p>
     
-    <p><strong>Backup Security:</strong> When using passphrase authentication, header backups are encrypted with your LUKS passphrase. When using keyfile authentication, you can provide a custom password to encrypt the backup ZIP file for security.</p>
-  </div>
-  
-  <form id="headersForm" style="display: block;">
-    <h3>Backup LUKS Headers</h3>
-    
-    <dl>
-      <dt>Existing Encryption Key</dt>
-      <dd>
-        <select id="keyType_headers" class="short" onchange="toggleKeyInput('headers')">
-          <option value="passphrase" selected>Passphrase</option>
-          <option value="keyfile">Keyfile</option>
-        </select>
-      </dd>
-    </dl>
-    
-    <div id="passphraseSection_headers">
-      <dl>
-        <dt>Enter Existing Passphrase</dt>
-        <dd>
-          <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
-          <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
-          <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
-        </dd>
-      </dl>
+    <!-- Step 1: Operation Selection -->
+    <div id="headersStep1" style="display: block;">
+      <h3><i class="fa fa-shield"></i> Step 1: Choose Operation</h3>
+      
+      <!-- Backup Headers Card -->
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+        <h4 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-shield"></i> Backup LUKS Headers</h4>
+        <p><strong>Create encrypted backups of all accessible LUKS headers</strong> for recovery purposes. Backups are encrypted with your authentication method for security.</p>
+        <p><strong>Best for:</strong> Regular maintenance, safety, and disaster recovery preparation.</p>
+        
+        <dl>
+          <dt>&nbsp;</dt>
+          <dd>
+            <span><button type="button" onclick="selectHeadersOperation('backup')" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Select Backup</button></span>
+          </dd>
+        </dl>
+      </div>
+      
+      <!-- Restore Headers Card -->
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+        <h4 style="margin-top: 0; color: #ffa726;"><i class="fa fa-wrench"></i> Restore LUKS Headers</h4>
+        <p><strong>Learn how to manually restore LUKS headers from backup files</strong>. This process requires array maintenance mode and careful attention to parity preservation.</p>
+        <p><strong>Best for:</strong> Recovery from header corruption or drive replacement scenarios.</p>
+        
+        <dl>
+          <dt>&nbsp;</dt>
+          <dd>
+            <span><button type="button" onclick="selectHeadersOperation('restore')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">View Instructions</button></span>
+          </dd>
+        </dl>
+      </div>
     </div>
     
-    <div id="keyfileSection_headers" style="display: none;">
-      <dl>
-        <dt>Select Existing Keyfile</dt>
-        <dd>
-          <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
-          <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
-        </dd>
-      </dl>
+    <!-- Step 2: Backup Location Selection -->
+    <div id="headersStep2" style="display: none;">
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+        <h3 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-download"></i> Step 2: Choose Backup Location</h3>
+        <p>Selected Operation: <strong>Backup Headers</strong></p>
+        <p>Choose where to store your encrypted LUKS header backups:</p>
+        
+        <!-- Download to PC Card -->
+        <div style="margin: 15px 0; padding: 15px; border-radius: 5px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.05);">
+          <h4 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-desktop"></i> Download to Computer</h4>
+          <p>Files downloaded via browser to your computer's download folder. Secure and portable for offline storage.</p>
+          <dl>
+            <dt>&nbsp;</dt>
+            <dd>
+              <span><button type="button" onclick="selectBackupLocation('download')" style="background: #4dabf7; color: white; padding: 10px 20px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;">Select PC Download</button></span>
+            </dd>
+          </dl>
+        </div>
+        
+        <!-- Save to Server Card -->
+        <div style="margin: 15px 0; padding: 15px; border-radius: 5px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.05);">
+          <h4 style="margin-top: 0; color: #ffa726;"><i class="fa fa-server"></i> Save to Boot Device</h4>
+          <p>Backup stored on server at <code>/boot/config/luksheaders/</code> for easy access and automated scripts.</p>
+          <dl>
+            <dt>&nbsp;</dt>
+            <dd>
+              <span><button type="button" onclick="selectBackupLocation('server')" style="background: #ffa726; color: white; padding: 10px 20px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;">Select Server Storage</button></span>
+            </dd>
+          </dl>
+        </div>
+        
+        <dl>
+          <dt>&nbsp;</dt>
+          <dd>
+            <span><button type="button" onclick="goBackToHeadersStep(1)" style="background: #666; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Back</button></span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+    
+    <!-- Step 3: Encryption Key Type Selection -->
+    <div id="headersStep3" style="display: none;">
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+        <h3 style="margin-top: 0; color: #ffa726;"><i class="fa fa-key"></i> Step 3: Choose Encryption Key Type</h3>
+        <p>Operation: <strong>Backup Headers</strong> | Location: <strong id="selectedBackupLocation">Download to PC</strong></p>
+        <p>Choose how you want to provide your LUKS encryption key:</p>
+        
+        <dl>
+          <dt>&nbsp;</dt>
+          <dd>
+            <span style="margin-right: 15px;"><button type="button" onclick="selectHeadersKeyType('passphrase')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Use Passphrase</button></span>
+            <span><button type="button" onclick="selectHeadersKeyType('keyfile')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Use Keyfile</button></span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+    
+    <!-- Step 4: Encryption Key Input -->
+    <div id="headersStep4" style="display: none;">
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+        <h3 style="margin-top: 0; color: #ffa726;"><i class="fa fa-lock"></i> Step 4: Enter Encryption Key</h3>
+        <p>Operation: <strong>Backup Headers</strong> | Location: <strong id="selectedBackupLocation2">Download to PC</strong> | Key Type: <strong id="selectedHeadersKeyType">Passphrase</strong></p>
+        
+        <!-- Passphrase Section -->
+        <div id="passphraseSection_headers">
+          <dl>
+            <dt>Enter Existing Passphrase</dt>
+            <dd>
+              <input type="password" id="passphrase_headers" name="passphrase" class="short" maxlength="512" required>
+              <label><input type="checkbox" onchange="togglePasswordVisibility('headers')"> show passphrase</label>
+              <div class="description">Enter your LUKS encryption key. All devices this passphrase unlocks will be backed up.</div>
+            </dd>
+          </dl>
+        </div>
+        
+        <!-- Keyfile Section -->
+        <div id="keyfileSection_headers" style="display: none;">
+          <dl>
+            <dt>Select Existing Keyfile</dt>
+            <dd>
+              <input type="file" id="keyfile_headers" name="keyfile" onchange="validateKeyfileSize(this, 'headers')">
+              <div class="description">Select your LUKS encryption keyfile. All devices this keyfile unlocks will be backed up. Maximum size: 8 MiB. Any file type accepted.</div>
+            </dd>
+          </dl>
+          
+          <dl>
+            <dt>Backup ZIP Password</dt>
+            <dd>
+              <input type="password" id="zipPassword_headers" class="short" maxlength="512">
+              <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_headers" onchange="togglePasswordVisibility('headers')"> Show password</label>
+              <div class="description">Password to encrypt the LUKS headers backup ZIP file. Required for keyfile authentication.</div>
+            </dd>
+          </dl>
+        </div>
+        
+        <dl>
+          <dt>&nbsp;</dt>
+          <dd>
+            <span><button type="button" onclick="proceedToHeadersBackup()" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Start Backup</button></span>
+            <span style="margin-left: 10px;"><button type="button" onclick="goBackToHeadersStep(3)" style="background: #666; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Back</button></span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+    
+    <!-- Progress Spinner Card -->
+    <div id="headersProgress" style="display: none;">
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; background-color: #ffc107; text-align: center;">
+        <div id="headersSpinner" style="margin: 0 auto 15px auto; width: 120px; height: 70px;">
+          <!-- Official Unraid spinner will be inserted here by JavaScript -->
+        </div>
+        <div id="headersProgressText">Backing up LUKS headers...</div>
+      </div>
+    </div>
+    
+    <!-- Results Display Area -->
+    <div id="headersResults" style="display: none;">
+      <h3><i class="fa fa-check-circle"></i> Backup Complete</h3>
+      <div id="headersResultsContent">
+        <!-- Results will be displayed here -->
+      </div>
       
       <dl>
-        <dt>Backup ZIP Password</dt>
+        <dt>&nbsp;</dt>
         <dd>
-          <input type="password" id="zipPassword_headers" class="short" maxlength="512">
-          <label style="margin-left: 10px;"><input type="checkbox" id="showZipPassword_headers" onchange="togglePasswordVisibility('headers')"> Show password</label>
-          <div class="description">Password to encrypt the LUKS headers backup ZIP file. Required for keyfile authentication.</div>
+          <span style="margin-right: 15px;"><button type="button" onclick="resetHeadersWorkflow()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Start New Backup</button></span>
+          <span><button type="button" onclick="downloadHeadersBackup()" style="background: #51cf66; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Download Backup</button></span>
         </dd>
       </dl>
     </div>
     
-    <dl>
-      <dt>Header Backup Location</dt>
-      <dd>
-        <select id="headersBackupLocation" name="headersBackupLocation" class="short" onchange="updateHeadersBackupLocationDescription()">
-          <option value="yes">Save to boot device</option>
-          <option value="download" selected>Download to PC</option>
-        </select>
-        <div class="description" id="headersBackupLocationDescription">Choose to save the encrypted backup on the server or download it to your computer.</div>
-      </dd>
-    </dl>
-    
-    <dl>
-      <dt>&nbsp;</dt>
-      <dd>
-        <span><button type="button" onclick="runHeadersBackup()">Backup Headers</button></span>
-      </dd>
-    </dl>
-  </form>
+    <!-- Restore Instructions Display -->
+    <div id="headersRestoreInfo" style="display: none;">
+      <h3><i class="fa fa-info-circle"></i> Manual LUKS Header Restore Instructions</h3>
+      
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);">
+        <h4 style="margin-top: 0; color: #ff6b6b;"><i class="fa fa-exclamation-triangle"></i> Important Prerequisites</h4>
+        <ul>
+          <li><strong>Array must be stopped</strong> - LUKS devices cannot be mounted during header restoration</li>
+          <li><strong>Maintenance mode required</strong> - Critical for parity preservation</li>
+          <li><strong>Backup files needed</strong> - Locate your header backup files (usually .img files)</li>
+          <li><strong>Expert knowledge recommended</strong> - Incorrect restoration can cause data loss</li>
+        </ul>
+      </div>
+      
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #4dabf7; background-color: rgba(77, 171, 247, 0.1);">
+        <h4 style="margin-top: 0; color: #4dabf7;"><i class="fa fa-terminal"></i> Restoration Commands</h4>
+        <p><strong>Basic command structure:</strong></p>
+        <pre style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace;">cryptsetup luksHeaderRestore /dev/sdXY backup_file.img</pre>
+        
+        <p><strong>Example restoration process:</strong></p>
+        <pre style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace;"># 1. Identify the device needing restoration
+lsblk -f
+
+# 2. Restore the header (replace with your device and backup file)
+cryptsetup luksHeaderRestore /dev/md1p1 /boot/config/luksheaders/md1p1_backup.img
+
+# 3. Verify the restoration
+cryptsetup luksDump /dev/md1p1</pre>
+      </div>
+      
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #ffa726; background-color: rgba(255, 167, 38, 0.1);">
+        <h4 style="margin-top: 0; color: #ffa726;"><i class="fa fa-shield"></i> Parity Considerations</h4>
+        <ul>
+          <li><strong>Parity preservation</strong> - Header restoration does not affect data blocks, parity remains valid</li>
+          <li><strong>No parity rebuild needed</strong> - Only headers are modified, not data content</li>
+          <li><strong>Test unlock first</strong> - Verify you can unlock the device before starting the array</li>
+        </ul>
+      </div>
+      
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
+        <h4 style="margin-top: 0; color: #51cf66;"><i class="fa fa-magic"></i> Future Automation</h4>
+        <p>Automated header restoration with guided recovery workflows is planned for a future version of this plugin. This will provide a safer, more user-friendly restoration process.</p>
+      </div>
+      
+      <dl>
+        <dt>&nbsp;</dt>
+        <dd>
+          <span><button type="button" onclick="resetHeadersWorkflow()" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Back to Operations</button></span>
+        </dd>
+      </dl>
+    </div>
+  </div>
 </div>
 
 
@@ -2015,6 +2167,336 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
     document.getElementById('passphrase_encinfo').value = '';
     const keyfileInput = document.getElementById('keyfile_encinfo');
     if (keyfileInput) keyfileInput.value = '';
+  }
+
+  // ========================================
+  // LUKS Headers Workflow Functions  
+  // ========================================
+  
+  // Global headers workflow state
+  let headersWorkflowState = {
+    operation: '',      // 'backup' or 'restore'
+    location: '',       // 'download' or 'server'
+    keyType: '',        // 'passphrase' or 'keyfile'
+    action: ''          // for future use
+  };
+  
+  // Step 1: Operation Selection
+  function selectHeadersOperation(operation) {
+    console.log('DEBUG: selectHeadersOperation called with:', operation);
+    headersWorkflowState.operation = operation;
+    
+    if (operation === 'backup') {
+      // Hide Step 1 and show Step 2 (backup location selection)
+      document.getElementById('headersStep1').style.display = 'none';
+      document.getElementById('headersStep2').style.display = 'block';
+    } else if (operation === 'restore') {
+      // Hide Step 1 and show restore instructions
+      document.getElementById('headersStep1').style.display = 'none';
+      document.getElementById('headersRestoreInfo').style.display = 'block';
+    }
+  }
+  
+  // Step 2: Backup Location Selection
+  function selectBackupLocation(location) {
+    console.log('DEBUG: selectBackupLocation called with:', location);
+    headersWorkflowState.location = location;
+    
+    // Update location display text
+    const locationText = location === 'download' ? 'Download to PC' : 'Save to Server';
+    document.getElementById('selectedBackupLocation').textContent = locationText;
+    document.getElementById('selectedBackupLocation2').textContent = locationText;
+    
+    // Hide Step 2 and show Step 3
+    document.getElementById('headersStep2').style.display = 'none';
+    document.getElementById('headersStep3').style.display = 'block';
+  }
+  
+  // Step 3: Key Type Selection
+  function selectHeadersKeyType(keyType) {
+    console.log('DEBUG: selectHeadersKeyType called with:', keyType);
+    headersWorkflowState.keyType = keyType;
+    
+    // Update the selected key type display
+    const displayKeyType = keyType.charAt(0).toUpperCase() + keyType.slice(1);
+    document.getElementById('selectedHeadersKeyType').textContent = displayKeyType;
+    
+    // Show/hide appropriate input sections
+    const passphraseSection = document.getElementById('passphraseSection_headers');
+    const keyfileSection = document.getElementById('keyfileSection_headers');
+    
+    if (keyType === 'passphrase') {
+      passphraseSection.style.display = 'block';
+      keyfileSection.style.display = 'none';
+    } else {
+      passphraseSection.style.display = 'none';
+      keyfileSection.style.display = 'block';
+    }
+    
+    // Hide Step 3 and show Step 4
+    document.getElementById('headersStep3').style.display = 'none';
+    document.getElementById('headersStep4').style.display = 'block';
+  }
+  
+  // Step 4: Validate and Proceed to Backup
+  function proceedToHeadersBackup() {
+    console.log('DEBUG: proceedToHeadersBackup called');
+    
+    // Validate encryption key input for headers workflow
+    const validationError = validateHeadersKeyInput();
+    if (validationError) {
+      alert('Error: ' + validationError);
+      return;
+    }
+    
+    // Hide Step 4 and show progress
+    document.getElementById('headersStep4').style.display = 'none';
+    document.getElementById('headersProgress').style.display = 'block';
+    
+    // Show spinner and execute backup
+    showHeadersSpinner();
+    executeHeadersBackup();
+  }
+  
+  // Custom validation for headers workflow
+  function validateHeadersKeyInput() {
+    if (headersWorkflowState.keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_headers').value;
+      if (!passphrase) {
+        return 'Please enter your encryption passphrase.';
+      }
+      if (passphrase.length > 512) {
+        return 'Passphrase exceeds 512 character limit (Unraid standard).';
+      }
+    } else {
+      const keyfileInput = document.getElementById('keyfile_headers');
+      if (!keyfileInput.files || !keyfileInput.files[0]) {
+        return 'Please select your encryption keyfile.';
+      }
+      
+      // Validate ZIP password for keyfile users
+      const zipPassword = document.getElementById('zipPassword_headers').value;
+      if (!zipPassword) {
+        return 'Please enter a password to encrypt the backup ZIP file.';
+      }
+      if (zipPassword.length < 4) {
+        return 'ZIP password must be at least 4 characters long.';
+      }
+      if (zipPassword.length > 512) {
+        return 'ZIP password exceeds 512 character limit.';
+      }
+    }
+    
+    return null; // No validation errors
+  }
+  
+  // Navigation: Go Back to Previous Step
+  function goBackToHeadersStep(stepNumber) {
+    console.log('DEBUG: goBackToHeadersStep called with:', stepNumber);
+    
+    // Hide all steps first
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('headersStep' + i).style.display = 'none';
+    }
+    document.getElementById('headersRestoreInfo').style.display = 'none';
+    
+    // Show the requested step
+    document.getElementById('headersStep' + stepNumber).style.display = 'block';
+  }
+  
+  // Show official Unraid spinner in progress card
+  function showHeadersSpinner() {
+    const spinnerDiv = document.getElementById('headersSpinner');
+    if (spinnerDiv) {
+      // Apply the official spinner class for proper CSS animations
+      spinnerDiv.className = 'spinner';
+      
+      // Use Unraid's built-in spinner mechanism
+      if (typeof unraid_logo !== 'undefined') {
+        spinnerDiv.innerHTML = unraid_logo;
+      } else {
+        // Use the same fallback as the official showStatusLoading function
+        spinnerDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 133.52 76.97" class="unraid_mark"><defs><linearGradient id="unraid_logo_headers" x1="23.76" y1="81.49" x2="109.76" y2="-4.51" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e32929"/><stop offset="1" stop-color="#ff8d30"/></linearGradient></defs><path d="m70,19.24zm57,0l6.54,0l0,38.49l-6.54,0l0,-38.49z" fill="url(#unraid_logo_headers)" class="unraid_mark_9"/><path d="m70,19.24zm47.65,11.9l-6.55,0l0,-23.79l6.55,0l0,23.79z" fill="url(#unraid_logo_headers)" class="unraid_mark_8"/><path d="m70,19.24zm31.77,-4.54l-6.54,0l0,-14.7l6.54,0l0,14.7z" fill="url(#unraid_logo_headers)" class="unraid_mark_7"/><path d="m70,19.24zm15.9,11.9l-6.54,0l0,-23.79l6.54,0l0,23.79z" fill="url(#unraid_logo_headers)" class="unraid_mark_6"/><path d="m63.49,19.24l6.51,0l0,38.49l-6.51,0l0,-38.49z" fill="url(#unraid_logo_headers)" class="unraid_mark_5"/><path d="m70,19.24zm-22.38,26.6l6.54,0l0,23.78l-6.54,0l0,-23.78z" fill="url(#unraid_logo_headers)" class="unraid_mark_4"/><path d="m70,19.24zm-38.26,43.03l6.55,0l0,14.73l-6.55,0l0,-14.73z" fill="url(#unraid_logo_headers)" class="unraid_mark_3"/><path d="m70,19.24zm-54.13,26.6l6.54,0l0,23.78l-6.54,0l0,-23.78z" fill="url(#unraid_logo_headers)" class="unraid_mark_2"/><path d="m70,19.24zm-63.46,38.49l-6.54,0l0,-38.49l6.54,0l0,38.49z" fill="url(#unraid_logo_headers)" class="unraid_mark_1"/></svg>';
+      }
+      spinnerDiv.style.display = 'block';
+    }
+  }
+  
+  // Hide spinner in progress card
+  function hideHeadersSpinner() {
+    const spinnerDiv = document.getElementById('headersSpinner');
+    if (spinnerDiv) {
+      spinnerDiv.style.display = 'none';
+      spinnerDiv.innerHTML = '';
+      spinnerDiv.className = '';
+    }
+  }
+  
+  // Execute the actual headers backup
+  function executeHeadersBackup() {
+    console.log('DEBUG: executeHeadersBackup called');
+    
+    // Update progress text
+    document.getElementById('headersProgressText').textContent = 'Backing up LUKS headers...';
+    
+    // Prepare data using the same pattern as existing code
+    const postData = {
+      keyType: headersWorkflowState.keyType,
+      backupHeaders: headersWorkflowState.location === 'download' ? 'download' : 'yes',
+      dryRun: 'no', // Headers backup is always live
+      headersOnly: 'true' // Flag to indicate this is headers-only operation
+    };
+    
+    if (headersWorkflowState.keyType === 'passphrase') {
+      const passphrase = document.getElementById('passphrase_headers').value;
+      postData.passphrase = passphrase;
+      
+      // Add CSRF token
+      if (csrf_token) {
+        postData.csrf_token = csrf_token;
+      }
+      
+      // Make request directly for passphrase
+      makeHeadersWorkflowRequest(postData);
+    } else {
+      const keyfileInput = document.getElementById('keyfile_headers');
+      if (keyfileInput.files && keyfileInput.files[0]) {
+        // Add ZIP password for keyfile users
+        const zipPassword = document.getElementById('zipPassword_headers').value;
+        postData.zipPassword = zipPassword;
+        console.log('DEBUG: ZIP password included for headers keyfile user');
+        
+        // Convert file to base64 (same pattern as other tabs)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const base64Data = e.target.result;
+          postData.keyfileData = base64Data;
+          
+          // Add CSRF token
+          if (csrf_token) {
+            postData.csrf_token = csrf_token;
+          }
+          
+          makeHeadersWorkflowRequest(postData);
+        };
+        reader.readAsDataURL(keyfileInput.files[0]);
+        return;
+      } else {
+        hideHeadersSpinner();
+        showHeadersError('No keyfile selected');
+        return;
+      }
+    }
+  }
+  
+  // Make AJAX request for headers backup (stays in-tab)
+  function makeHeadersWorkflowRequest(postData) {
+    console.log('DEBUG: makeHeadersWorkflowRequest called');
+    
+    $.ajax({
+      url: '/plugins/luks-key-management/scripts/run_luks_script.php',
+      type: 'POST',
+      data: postData,
+      success: function(data) {
+        console.log('DEBUG: Headers backup response received');
+        hideHeadersSpinner();
+        
+        // Check if we need to download a backup file
+        if (headersWorkflowState.location === 'download') {
+          const downloadMatch = data.match(/DOWNLOAD_READY: (.+)/);
+          if (downloadMatch) {
+            const downloadPath = downloadMatch[1];
+            const filename = downloadPath.split('/').pop();
+            
+            // Trigger download
+            window.location.href = '/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
+          }
+        }
+        
+        // Show results
+        showHeadersResults(data);
+      },
+      error: function() {
+        hideHeadersSpinner();
+        showHeadersError('Failed to execute LUKS headers backup. Check browser console for more details.');
+      }
+    });
+  }
+  
+  // Show results in cards format
+  function showHeadersResults(rawOutput) {
+    console.log('DEBUG: showHeadersResults called');
+    
+    // Hide progress and show results
+    document.getElementById('headersProgress').style.display = 'none';
+    document.getElementById('headersResults').style.display = 'block';
+    
+    // Create success card
+    const resultsContent = document.getElementById('headersResultsContent');
+    const operation = headersWorkflowState.operation;
+    const location = headersWorkflowState.location;
+    const locationText = location === 'download' ? 'Downloaded to PC' : 'Saved to Server';
+    
+    resultsContent.innerHTML = `
+      <div style="margin: 20px 0; padding: 20px; border-radius: 8px; border: 2px solid #51cf66; background-color: rgba(81, 207, 102, 0.1);">
+        <h4 style="margin-top: 0; color: #51cf66;"><i class="fa fa-check-circle"></i> Headers Backup Successful</h4>
+        <p><strong>Operation:</strong> LUKS Headers Backup</p>
+        <p><strong>Location:</strong> ${locationText}</p>
+        <p><strong>Files Created:</strong> Encrypted header backup files with metadata</p>
+        ${location === 'server' ? '<p><strong>Server Path:</strong> <code>/boot/config/luksheaders/</code></p>' : ''}
+      </div>
+      
+      <div style="margin: 15px 0; padding: 10px; border-radius: 5px; border-left: 4px solid #FF9800;">
+        <strong>Next Steps:</strong> Store backup files securely and test restoration procedures in a safe environment.
+      </div>
+    `;
+  }
+  
+  // Show error in results area
+  function showHeadersError(message) {
+    document.getElementById('headersProgress').style.display = 'none';
+    document.getElementById('headersResults').style.display = 'block';
+    
+    const resultsContent = document.getElementById('headersResultsContent');
+    resultsContent.innerHTML = '<div style="padding: 20px; border-radius: 8px; border: 2px solid #ff6b6b; background-color: rgba(255, 107, 107, 0.1);"><h4 style="color: #ff6b6b; margin-top: 0;"><i class="fa fa-exclamation-triangle"></i> Error</h4><p>' + message + '</p></div>';
+  }
+  
+  // Download backup files (for server saves)
+  function downloadHeadersBackup() {
+    console.log('DEBUG: downloadHeadersBackup called');
+    
+    // This would trigger download of server-saved files
+    // Implementation depends on backend file listing capabilities
+    alert('Download functionality for server-saved backups will be implemented in the next iteration.');
+  }
+  
+  // Reset workflow to start over
+  function resetHeadersWorkflow() {
+    console.log('DEBUG: resetHeadersWorkflow called');
+    
+    // Reset state
+    headersWorkflowState = {
+      operation: '',
+      location: '',
+      keyType: '',
+      action: ''
+    };
+    
+    // Hide all steps except Step 1
+    for (let i = 2; i <= 4; i++) {
+      document.getElementById('headersStep' + i).style.display = 'none';
+    }
+    document.getElementById('headersProgress').style.display = 'none';
+    document.getElementById('headersResults').style.display = 'none';
+    document.getElementById('headersRestoreInfo').style.display = 'none';
+    document.getElementById('headersStep1').style.display = 'block';
+    
+    // Clear form inputs
+    document.getElementById('passphrase_headers').value = '';
+    const keyfileInput = document.getElementById('keyfile_headers');
+    if (keyfileInput) keyfileInput.value = '';
+    const zipPasswordInput = document.getElementById('zipPassword_headers');
+    if (zipPasswordInput) zipPasswordInput.value = '';
   }
 
   function runEncryptionInfo() {
