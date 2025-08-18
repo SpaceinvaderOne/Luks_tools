@@ -1805,7 +1805,7 @@ cryptsetup luksDump /dev/md1p1</pre>
             const filename = downloadPath.split('/').pop();
             
             // Trigger download
-            window.location.href = '/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
+            window.location.href = '/usr/local/emhttp/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
             
             // Show success message and return to results
             document.getElementById('encinfoProgress').style.display = 'none';
@@ -2409,7 +2409,7 @@ cryptsetup luksDump /dev/md1p1</pre>
             const filename = downloadPath.split('/').pop();
             
             // Trigger download
-            window.location.href = '/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
+            window.location.href = '/usr/local/emhttp/plugins/luks-key-management/scripts/download_backup.php?file=' + encodeURIComponent(filename);
           }
         }
         
@@ -2882,16 +2882,11 @@ cryptsetup luksDump /dev/md1p1</pre>
     }
   }
 
-  // Update backup location description for LUKS headers tab
+  // Update backup location description for LUKS headers tab (legacy function - no longer used in card workflow)
   function updateHeadersBackupLocationDescription() {
-    const location = document.getElementById('headersBackupLocation').value;
-    const desc = document.getElementById('headersBackupLocationDescription');
-    
-    if (location === 'download') {
-      desc.textContent = 'Files will be downloaded to your browser\'s download folder.';
-    } else {
-      desc.textContent = 'Files will be saved to /boot/config/luksheaders/ on your Unraid boot device.';
-    }
+    // This function is no longer needed with the card-based workflow
+    // Kept for backward compatibility but does nothing
+    return;
   }
 
   // Smart state detection functions for new interface
