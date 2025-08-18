@@ -391,7 +391,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span><button type="button" onclick="selectHeadersOperation('backup')" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Select Backup</button></span>
+            <span><button type="button" onclick="selectHeadersOperation('backup')" style="background: #4dabf7; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 200px; text-align: center;">Select Backup</button></span>
           </dd>
         </dl>
       </div>
@@ -405,7 +405,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span><button type="button" onclick="selectHeadersOperation('restore')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">View Instructions</button></span>
+            <span><button type="button" onclick="selectHeadersOperation('restore')" style="background: #ffa726; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 200px; text-align: center;">Select Restore</button></span>
           </dd>
         </dl>
       </div>
@@ -425,7 +425,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           <dl>
             <dt>&nbsp;</dt>
             <dd>
-              <span><button type="button" onclick="selectBackupLocation('download')" style="background: #4dabf7; color: white; padding: 10px 20px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;">Select PC Download</button></span>
+              <span><button type="button" onclick="selectBackupLocation('download')" style="background: #4dabf7; color: white; padding: 10px 20px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; width: 230px; text-align: center;">Select PC Download</button></span>
             </dd>
           </dl>
         </div>
@@ -437,7 +437,7 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
           <dl>
             <dt>&nbsp;</dt>
             <dd>
-              <span><button type="button" onclick="selectBackupLocation('server')" style="background: #ffa726; color: white; padding: 10px 20px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer;">Select Server Storage</button></span>
+              <span><button type="button" onclick="selectBackupLocation('server')" style="background: #ffa726; color: white; padding: 10px 20px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; width: 230px; text-align: center;">Select Server Storage</button></span>
             </dd>
           </dl>
         </div>
@@ -509,8 +509,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span><button type="button" onclick="proceedToHeadersBackup()" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Start Backup</button></span>
-            <span style="margin-left: 10px;"><button type="button" onclick="goBackToHeadersStep(3)" style="background: #666; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Back</button></span>
+            <span><button type="button" onclick="proceedToHeadersBackup()" style="background: #ffa726; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 150px; text-align: center;">Start Backup</button></span>
+            <span style="margin-left: 10px;"><button type="button" onclick="goBackToHeadersStep(3)" style="background: #666; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 150px; text-align: center;">Back</button></span>
           </dd>
         </dl>
       </div>
@@ -643,7 +643,7 @@ cryptsetup luksDump /dev/md1p1</pre>
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span><button type="button" onclick="selectDetailLevel('simple')" style="background: #4dabf7; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Select Simple</button></span>
+            <span><button type="button" onclick="selectDetailLevel('simple')" style="background: #4dabf7; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 220px; text-align: center;">Select Simple</button></span>
           </dd>
         </dl>
       </div>
@@ -657,7 +657,7 @@ cryptsetup luksDump /dev/md1p1</pre>
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span><button type="button" onclick="selectDetailLevel('detailed')" style="background: #51cf66; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Select Detailed</button></span>
+            <span><button type="button" onclick="selectDetailLevel('detailed')" style="background: #51cf66; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 220px; text-align: center;">Select Detailed</button></span>
           </dd>
         </dl>
       </div>
@@ -671,7 +671,7 @@ cryptsetup luksDump /dev/md1p1</pre>
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span><button type="button" onclick="selectDetailLevel('very_detailed')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Select Very Detailed</button></span>
+            <span><button type="button" onclick="selectDetailLevel('very_detailed')" style="background: #ffa726; color: white; padding: 12px 20px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 220px; text-align: center;">Select Very Detailed</button></span>
           </dd>
         </dl>
       </div>
