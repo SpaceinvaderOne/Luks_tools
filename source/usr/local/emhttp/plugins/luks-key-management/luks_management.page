@@ -461,8 +461,8 @@ This plugin manages encrypted drives with tools for auto-unlock at boot, LUKS he
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span style="margin-right: 15px;"><button type="button" onclick="selectHeadersKeyType('passphrase')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Use Passphrase</button></span>
-            <span><button type="button" onclick="selectHeadersKeyType('keyfile')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Use Keyfile</button></span>
+            <span style="margin-right: 15px;"><button type="button" onclick="selectHeadersKeyType('passphrase')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 160px;">Use Passphrase</button></span>
+            <span><button type="button" onclick="selectHeadersKeyType('keyfile')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 160px;">Use Keyfile</button></span>
           </dd>
         </dl>
       </div>
@@ -687,8 +687,8 @@ cryptsetup luksDump /dev/md1p1</pre>
         <dl>
           <dt>&nbsp;</dt>
           <dd>
-            <span style="margin-right: 15px;"><button type="button" onclick="selectKeyType('passphrase')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Use Passphrase</button></span>
-            <span><button type="button" onclick="selectKeyType('keyfile')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer;">Use Keyfile</button></span>
+            <span style="margin-right: 15px;"><button type="button" onclick="selectKeyType('passphrase')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 160px;">Use Passphrase</button></span>
+            <span><button type="button" onclick="selectKeyType('keyfile')" style="background: #ffa726; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; width: 160px;">Use Keyfile</button></span>
           </dd>
         </dl>
       </div>
